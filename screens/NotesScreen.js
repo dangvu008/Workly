@@ -61,7 +61,7 @@ const NotesScreen = () => {
 
   // Xử lý xóa ghi chú
   const handleDeleteNote = (note) => {
-    Alert.alert(t("common.confirm"), t("notes.deleteConfirm"), [
+    Alert.alert(t("common.confirm"), t("notes.deleteNoteConfirm"), [
       { text: t("common.cancel"), style: "cancel" },
       {
         text: t("common.delete"),

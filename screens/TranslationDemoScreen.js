@@ -23,9 +23,10 @@ const TranslationDemoScreen = ({ navigation }) => {
           onPress={toggleLanguage}
         >
           <Text style={styles.languageButtonText}>
-            {getCurrentLanguage() === "en"
-              ? "Switch to Vietnamese"
-              : "Chuyển sang tiếng Anh"}
+            {t("settings.switchToLanguage", {
+              language:
+                getCurrentLanguage() === "en" ? "Vietnamese" : "tiếng Anh",
+            })}
           </Text>
         </TouchableOpacity>
       </View>

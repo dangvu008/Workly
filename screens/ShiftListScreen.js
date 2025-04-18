@@ -1,53 +1,73 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from "react-native"
-import { useAppContext } from "../context/AppContext"
-import { COLORS } from "../constants/colors"
-import { MaterialIcons } from "@expo/vector-icons"
-import { formatDuration } from "../utils/dateUtils"
+import { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Alert,
+} from "react-native";
+import { useAppContext } from "../context/AppContext";
+import { COLORS } from "../constants/colors";
+import { MaterialIcons } from "@expo/vector-icons";
+import { formatDuration } from "../utils/dateUtils";
+import { useLocalization } from "../localization/LocalizationContext";
 
 const ShiftListScreen = ({ navigation }) => {
-  const { shifts, deleteShift } = useAppContext()
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [selectedShift, setSelectedShift] = useState(null)
+  const { shifts, deleteShift } = useAppContext();
+  const { t } = useLocalization();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [selectedShift, setSelectedShift] = useState(null);
 
   const handleShiftPress = (shift) => {
-    navigation.navigate("ShiftDetail", { shiftId: shift.id })
-  }
+    navigation.navigate("ShiftDetail", { shiftId: shift.id });
+  };
 
   const handleDeletePress = (shift) => {
-    setSelectedShift(shift)
-    setShowDeleteConfirm(true)
-  }
+    setSelectedShift(shift);
+    setShowDeleteConfirm(true);
+  };
 
   const confirmDelete = () => {
     if (selectedShift) {
-      deleteShift(selectedShift.id)
-      setShowDeleteConfirm(false)
-      setSelectedShift(null)
+      deleteShift(selectedShift.id);
+      setShowDeleteConfirm(false);
+      setSelectedShift(null);
     }
-  }
+  };
 
   const cancelDelete = () => {
-    setShowDeleteConfirm(false)
-    setSelectedShift(null)
-  }
+    setShowDeleteConfirm(false);
+    setSelectedShift(null);
+  };
 
   // Show delete confirmation
   if (showDeleteConfirm) {
-    Alert.alert("Xác nhận xóa", `Bạn có chắc chắn muốn xóa ca "${selectedShift.name}" không?`, [
-      { text: "Hủy", onPress: cancelDelete, style: "cancel" },
-      { text: "Xóa", onPress: confirmDelete, style: "destructive" },
-    ])
-    setShowDeleteConfirm(false)
+    Alert.alert(
+      t("shifts.deleteConfirm"),
+      t("shifts.deleteConfirmMessage", { name: selectedShift.name }),
+      [
+        { text: t("common.cancel"), onPress: cancelDelete, style: "cancel" },
+        {
+          text: t("common.delete"),
+          onPress: confirmDelete,
+          style: "destructive",
+        },
+      ]
+    );
+    setShowDeleteConfirm(false);
   }
 
   const renderShiftItem = ({ item }) => {
-    const duration = formatDuration(item.breakMinutes)
+    const duration = formatDuration(item.breakMinutes);
 
     return (
-      <TouchableOpacity style={styles.shiftCard} onPress={() => handleShiftPress(item)}>
+      <TouchableOpacity
+        style={styles.shiftCard}
+        onPress={() => handleShiftPress(item)}
+      >
         <View style={styles.shiftHeader}>
           <Text style={styles.shiftName}>{item.name}</Text>
           <TouchableOpacity onPress={() => handleDeletePress(item)}>
@@ -57,30 +77,51 @@ const ShiftListScreen = ({ navigation }) => {
 
         <View style={styles.shiftDetails}>
           <View style={styles.shiftTime}>
-            <MaterialIcons name="access-time" size={16} color={COLORS.primary} />
+            <MaterialIcons
+              name="access-time"
+              size={16}
+              color={COLORS.primary}
+            />
             <Text style={styles.shiftTimeText}>
               {item.startTime} - {item.endTime}
             </Text>
           </View>
 
           <View style={styles.shiftTime}>
-            <MaterialIcons name="free-breakfast" size={16} color={COLORS.primary} />
-            <Text style={styles.shiftTimeText}>Nghỉ: {duration}</Text>
+            <MaterialIcons
+              name="free-breakfast"
+              size={16}
+              color={COLORS.primary}
+            />
+            <Text style={styles.shiftTimeText}>
+              {t("shifts.break")}: {duration}
+            </Text>
           </View>
         </View>
 
         <View style={styles.daysContainer}>
           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
-            <View key={day} style={[styles.dayCircle, item.daysApplied.includes(day) ? styles.activeDayCircle : {}]}>
-              <Text style={[styles.dayText, item.daysApplied.includes(day) ? styles.activeDayText : {}]}>
+            <View
+              key={day}
+              style={[
+                styles.dayCircle,
+                item.daysApplied.includes(day) ? styles.activeDayCircle : {},
+              ]}
+            >
+              <Text
+                style={[
+                  styles.dayText,
+                  item.daysApplied.includes(day) ? styles.activeDayText : {},
+                ]}
+              >
                 {day.charAt(0)}
               </Text>
             </View>
           ))}
         </View>
       </TouchableOpacity>
-    )
-  }
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -91,18 +132,23 @@ const ShiftListScreen = ({ navigation }) => {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>Chưa có ca làm việc nào</Text>
-            <Text style={styles.emptySubText}>Nhấn nút bên dưới để thêm ca mới</Text>
+            <Text style={styles.emptyText}>{t("shifts.noShifts")}</Text>
+            <Text style={styles.emptySubText}>
+              {t("shifts.addShiftPrompt")}
+            </Text>
           </View>
         }
       />
 
-      <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate("ShiftDetail", { isNew: true })}>
+      <TouchableOpacity
+        style={styles.addButton}
+        onPress={() => navigation.navigate("ShiftDetail", { isNew: true })}
+      >
         <MaterialIcons name="add" size={24} color={COLORS.white} />
       </TouchableOpacity>
     </View>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -203,6 +249,6 @@ const styles = StyleSheet.create({
     color: COLORS.gray,
     textAlign: "center",
   },
-})
+});
 
-export default ShiftListScreen
+export default ShiftListScreen;

@@ -61,6 +61,8 @@ export default {
     notes: "Notes",
     deleteShift: "Delete Shift",
     deleteShiftConfirm: "Are you sure you want to delete this shift?",
+    deleteConfirm: "Confirm Delete",
+    deleteConfirmMessage: 'Are you sure you want to delete the shift "{name}"?',
     noShifts: "No shifts",
     invalidTimeRange: "End time must be after start time",
     shiftSaved: "Shift saved",
@@ -70,6 +72,8 @@ export default {
     shiftTip: "For overnight shifts, set the end time to be after midnight.",
     breakExplanation:
       "A {duration} minute break is automatically deducted from your work hours.",
+    break: "Break",
+    addShiftPrompt: "Tap the button below to add a new shift",
   },
   settings: {
     settings: "Settings",
@@ -92,6 +96,7 @@ export default {
     language: "Language",
     about: "About",
     hapticFeedback: "Haptic Feedback",
+    switchToLanguage: "Switch to {language}",
     options: {
       full: "Full",
       simple: "Simple",
@@ -169,6 +174,7 @@ export default {
     editNote: "Edit Note",
     deleteNote: "Delete Note",
     deleteNoteConfirm: "Are you sure you want to delete this note?",
+    saveConfirm: "Save this note?",
     title: "Title",
     content: "Content",
     reminderTime: "Reminder Time",
@@ -183,6 +189,16 @@ export default {
     duplicateNote: "A note with a similar title already exists",
     selectDays: "Select Days",
     selectShifts: "Select Shifts",
+    addNotePrompt: "Add a new note",
+    workNotes: "Work Notes",
+    characterCount: "{current}/{max} characters",
+    validation: {
+      titleRequired: "Title is required",
+      contentRequired: "Content is required",
+      reminderTimeRequired: "Reminder time is required",
+      reminderDaysRequired: "At least one reminder day is required",
+      duplicateNote: "A note with a similar title already exists",
+    },
   },
   backup: {
     backupRestore: "Backup & Restore",
@@ -206,6 +222,15 @@ export default {
     sharingNotAvailableMessage: "Your device does not support file sharing.",
     processing: "Processing...",
   },
+  time: {
+    hour: "hour",
+    hours: "hours",
+    minute: "minute",
+    minutes: "minutes",
+    duration: "{hours} hours {minutes} minutes",
+    durationHoursOnly: "{hours} hours",
+    durationMinutesOnly: "{minutes} minutes",
+  },
   alarm: {
     alarm: "Alarm",
     timeToWork: "Time to work",
@@ -213,5 +238,10 @@ export default {
     shiftEndingSoon: "Shift {name} will end in {minutes} minutes.",
     dismissAlarm: "Dismiss Alarm",
     displayTime: "Display time",
+    sounds: {
+      standard: "Standard Bell",
+      gentle: "Gentle Bell",
+      emergency: "Emergency Bell",
+    },
   },
 };

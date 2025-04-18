@@ -345,7 +345,7 @@ const HomeScreen = ({ navigation }) => {
   // Xử lý xóa ghi chú
   const handleDeleteNote = useCallback(
     (note) => {
-      Alert.alert(t("common.confirm"), t("notes.deleteConfirm"), [
+      Alert.alert(t("common.confirm"), t("notes.deleteNoteConfirm"), [
         { text: t("common.cancel"), style: "cancel" },
         {
           text: t("common.delete"),

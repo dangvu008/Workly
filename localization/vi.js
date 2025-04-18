@@ -62,6 +62,8 @@ export default {
     notes: "Ghi chú",
     deleteShift: "Xóa ca làm việc",
     deleteShiftConfirm: "Bạn có chắc chắn muốn xóa ca làm việc này?",
+    deleteConfirm: "Xác nhận xóa",
+    deleteConfirmMessage: 'Bạn có chắc chắn muốn xóa ca "{name}" không?',
     noShifts: "Không có ca làm việc nào",
     invalidTimeRange: "Thời gian kết thúc phải sau thời gian bắt đầu",
     shiftSaved: "Ca làm việc đã được lưu",
@@ -72,6 +74,8 @@ export default {
       "Đối với ca làm việc qua đêm, đặt thời gian kết thúc sau nửa đêm.",
     breakExplanation:
       "Thời gian nghỉ {duration} phút sẽ tự động được trừ khỏi giờ làm việc của bạn.",
+    break: "Nghỉ",
+    addShiftPrompt: "Nhấn nút bên dưới để thêm ca mới",
   },
   settings: {
     settings: "Cài đặt",
@@ -94,6 +98,7 @@ export default {
     language: "Ngôn ngữ",
     about: "Giới thiệu",
     hapticFeedback: "Phản hồi xúc giác",
+    switchToLanguage: "Chuyển sang {language}",
     options: {
       full: "Đầy đủ",
       simple: "Đơn giản",
@@ -172,6 +177,7 @@ export default {
     editNote: "Sửa ghi chú",
     deleteNote: "Xóa ghi chú",
     deleteNoteConfirm: "Bạn có chắc chắn muốn xóa ghi chú này?",
+    saveConfirm: "Lưu ghi chú này?",
     title: "Tiêu đề",
     content: "Nội dung",
     reminderTime: "Thời gian nhắc nhở",
@@ -186,6 +192,16 @@ export default {
     duplicateNote: "Đã tồn tại một ghi chú với tiêu đề tương tự",
     selectDays: "Chọn các ngày",
     selectShifts: "Chọn ca làm việc",
+    addNotePrompt: "Thêm ghi chú mới",
+    workNotes: "Ghi chú công việc",
+    characterCount: "{current}/{max} ký tự",
+    validation: {
+      titleRequired: "Tiêu đề là bắt buộc",
+      contentRequired: "Nội dung là bắt buộc",
+      reminderTimeRequired: "Thời gian nhắc nhở là bắt buộc",
+      reminderDaysRequired: "Cần chọn ít nhất một ngày nhắc nhở",
+      duplicateNote: "Đã tồn tại một ghi chú với tiêu đề tương tự",
+    },
   },
   backup: {
     backupRestore: "Sao lưu & Phục hồi",
@@ -209,6 +225,15 @@ export default {
     sharingNotAvailableMessage: "Thiết bị của bạn không hỗ trợ chia sẻ tệp.",
     processing: "Đang xử lý...",
   },
+  time: {
+    hour: "giờ",
+    hours: "giờ",
+    minute: "phút",
+    minutes: "phút",
+    duration: "{hours} giờ {minutes} phút",
+    durationHoursOnly: "{hours} giờ",
+    durationMinutesOnly: "{minutes} phút",
+  },
   alarm: {
     alarm: "Báo thức",
     timeToWork: "Đến giờ làm việc",
@@ -216,5 +241,10 @@ export default {
     shiftEndingSoon: "Ca làm việc {name} sẽ kết thúc trong {minutes} phút.",
     dismissAlarm: "Tắt báo thức",
     displayTime: "Thời gian hiển thị",
+    sounds: {
+      standard: "Chuông chuẩn",
+      gentle: "Chuông nhẹ nhàng",
+      emergency: "Chuông khẩn cấp",
+    },
   },
 };
