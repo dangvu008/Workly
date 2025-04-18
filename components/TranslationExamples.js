@@ -1,30 +1,38 @@
-"use client"
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from "react-native"
-import { useTranslation } from "../i18n/useTranslation"
-import { MaterialIcons } from "@expo/vector-icons"
-import { COLORS } from "../constants/colors"
+"use client";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+} from "react-native";
+import { useTranslation } from "../i18n/useTranslation";
+import { MaterialIcons } from "@expo/vector-icons";
+import { COLORS } from "../constants/colors";
 
 const TranslationExamples = ({ navigation }) => {
-  const { t, Trans } = useTranslation() // Lấy Trans từ useTranslation
+  const { t } = useTranslation(); // Chỉ cần lấy hàm t để dịch
 
   // Sample data for dynamic content
   const weatherData = {
     temperature: 28,
     condition: "Sunny",
-  }
+  };
 
-  const reminderCount = 3
-  const breakDuration = 60
+  const reminderCount = 3;
+  const breakDuration = 60;
 
   // Helper component for styled text
-  const StyledText = ({ children, style }) => <Text style={[styles.styledText, style]}>{children}</Text>
+  const StyledText = ({ children, style }) => (
+    <Text style={[styles.styledText, style]}>{children}</Text>
+  );
 
   // Helper component for links
   const TextLink = ({ children, onPress }) => (
     <TouchableOpacity onPress={onPress}>
       <Text style={styles.link}>{children}</Text>
     </TouchableOpacity>
-  )
+  );
 
   return (
     <ScrollView style={styles.container}>
@@ -33,39 +41,48 @@ const TranslationExamples = ({ navigation }) => {
 
         {/* Welcome message with styled app name */}
         <View style={styles.card}>
-          <Trans i18nKey="home.welcomeMessage">
-            Welcome to <StyledText>Workly</StyledText>, your personal shift management app!
-          </Trans>
+          <Text>{t("home.welcomeMessage")}</Text>
         </View>
 
         {/* Weather alert with dynamic data */}
         <View style={styles.card}>
-          <MaterialIcons name="cloud" size={24} color={COLORS.primary} style={styles.icon} />
-          <Trans
-            i18nKey="home.weatherAlert"
-            values={{ temperature: weatherData.temperature, condition: weatherData.condition }}
-          >
-            Current weather: <StyledText style={styles.temperature}>{weatherData.temperature}°C</StyledText> -
-            <Text style={styles.condition}>{weatherData.condition}</Text>
-          </Trans>
+          <MaterialIcons
+            name="cloud"
+            size={24}
+            color={COLORS.primary}
+            style={styles.icon}
+          />
+          <Text>
+            {t("home.weatherAlert", {
+              temperature: weatherData.temperature,
+              condition: weatherData.condition,
+            })}
+          </Text>
         </View>
 
         {/* Instructions with button names */}
         <View style={styles.card}>
-          <MaterialIcons name="info" size={24} color={COLORS.primary} style={styles.icon} />
-          <Trans i18nKey="home.shiftInstructions">
-            Tap <StyledText style={styles.buttonName}>Go to Work</StyledText> to start your shift, then use{" "}
-            <StyledText style={styles.buttonName}>Check In</StyledText> when you arrive.
-          </Trans>
+          <MaterialIcons
+            name="info"
+            size={24}
+            color={COLORS.primary}
+            style={styles.icon}
+          />
+          <Text>{t("home.shiftInstructions")}</Text>
         </View>
 
         {/* Reminder note with count and link */}
         <View style={styles.card}>
-          <MaterialIcons name="notifications" size={24} color={COLORS.primary} style={styles.icon} />
-          <Trans i18nKey="home.reminderNote" values={{ count: reminderCount }}>
-            You have <StyledText style={styles.count}>{reminderCount}</StyledText> reminder(s) scheduled for today.{" "}
-            <TextLink onPress={() => navigation.navigate("Notes")}>View all</TextLink>.
-          </Trans>
+          <MaterialIcons
+            name="notifications"
+            size={24}
+            color={COLORS.primary}
+            style={styles.icon}
+          />
+          <Text>{t("home.reminderNote", { count: reminderCount })}</Text>
+          <TouchableOpacity onPress={() => navigation.navigate("Notes")}>
+            <Text style={styles.link}>{t("common.viewAll")}</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -74,34 +91,51 @@ const TranslationExamples = ({ navigation }) => {
 
         {/* Shift tip with formatting */}
         <View style={styles.card}>
-          <MaterialIcons name="lightbulb" size={24} color={COLORS.accent} style={styles.icon} />
-          <Trans i18nKey="shifts.shiftTip">
-            For <StyledText style={styles.highlight}>overnight shifts</StyledText>, set the end time to be{" "}
-            <StyledText style={styles.highlight}>after midnight</StyledText>.
-          </Trans>
+          <MaterialIcons
+            name="lightbulb"
+            size={24}
+            color={COLORS.accent}
+            style={styles.icon}
+          />
+          <Text>{t("shifts.shiftTip")}</Text>
         </View>
 
         {/* Break explanation with dynamic duration */}
         <View style={styles.card}>
-          <MaterialIcons name="free-breakfast" size={24} color={COLORS.primary} style={styles.icon} />
-          <Trans i18nKey="shifts.breakExplanation" values={{ duration: breakDuration }}>
-            A <StyledText style={styles.duration}>{breakDuration}</StyledText> minute break is{" "}
-            <StyledText style={styles.highlight}>automatically deducted</StyledText> from your work hours.
-          </Trans>
+          <MaterialIcons
+            name="free-breakfast"
+            size={24}
+            color={COLORS.primary}
+            style={styles.icon}
+          />
+          <Text>
+            {t("shifts.breakExplanation", { duration: breakDuration })}
+          </Text>
         </View>
 
         {/* Help text with links */}
         <View style={styles.card}>
-          <MaterialIcons name="help" size={24} color={COLORS.info} style={styles.icon} />
-          <Trans i18nKey="home.helpText">
-            Need help? Visit our <TextLink onPress={() => alert("Opening help center...")}>help center</TextLink> or
-            contact <TextLink onPress={() => alert("Opening support...")}>support</TextLink>.
-          </Trans>
+          <MaterialIcons
+            name="help"
+            size={24}
+            color={COLORS.info}
+            style={styles.icon}
+          />
+          <Text>{t("home.helpText")}</Text>
+          <View style={{ flexDirection: "row", marginTop: 8 }}>
+            <TouchableOpacity onPress={() => alert("Opening help center...")}>
+              <Text style={styles.link}>{t("common.helpCenter")}</Text>
+            </TouchableOpacity>
+            <Text style={{ marginHorizontal: 4 }}> | </Text>
+            <TouchableOpacity onPress={() => alert("Opening support...")}>
+              <Text style={styles.link}>{t("common.support")}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </ScrollView>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -170,6 +204,6 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
     fontWeight: "bold",
   },
-})
+});
 
-export default TranslationExamples
+export default TranslationExamples;
