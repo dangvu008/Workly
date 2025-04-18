@@ -29,7 +29,12 @@ const TimeDisplay = () => {
         month: "long",
         day: "numeric",
       };
-      setFormattedDate(now.toLocaleDateString(t("common.locale"), options));
+      try {
+        setFormattedDate(now.toLocaleDateString(t("common.locale"), options));
+      } catch (error) {
+        // Fallback to default locale if the provided locale is invalid
+        setFormattedDate(now.toLocaleDateString(undefined, options));
+      }
     };
 
     // Update immediately

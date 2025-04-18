@@ -19,6 +19,7 @@ export default {
     viewAll: "View All",
     helpCenter: "Help Center",
     support: "Support",
+    locale: "en-US",
   },
   home: {
     todayShifts: "Today's Shifts",
@@ -42,7 +43,8 @@ export default {
     workingFor: "Working for {duration}",
     welcomeMessage: "Welcome to Workly, your personal shift management app!",
     weatherAlert: "Current weather: {temperature}°C - {condition}",
-    shiftInstructions: "Tap 'Go to Work' to start your shift, then use 'Check In' when you arrive.",
+    shiftInstructions:
+      "Tap 'Go to Work' to start your shift, then use 'Check In' when you arrive.",
     reminderNote: "You have {count} reminder(s) scheduled for today.",
     helpText: "Need help? Visit our help center or contact support.",
   },
@@ -66,7 +68,8 @@ export default {
     selectDays: "Select Days",
     showPunchButton: "Show Punch Button",
     shiftTip: "For overnight shifts, set the end time to be after midnight.",
-    breakExplanation: "A {duration} minute break is automatically deducted from your work hours.",
+    breakExplanation:
+      "A {duration} minute break is automatically deducted from your work hours.",
   },
   settings: {
     settings: "Settings",
@@ -114,7 +117,8 @@ export default {
       alarmSound: "Enable/disable sound for alarm notifications",
       alarmVibration: "Enable/disable vibration for alarm notifications",
       hapticFeedback: "Enable/disable haptic feedback when pressing buttons",
-      shiftChangeReminder: "Set reminders for when shifts are about to start or end",
+      shiftChangeReminder:
+        "Set reminders for when shifts are about to start or end",
       weatherWarning: "Receive alerts about extreme weather conditions",
       language: "Change the app's display language",
     },
@@ -131,8 +135,10 @@ export default {
     needCheckInFirst: "You need to check in first",
     noShiftsToCheckIn: "No shifts to check in",
     chooseShift: "Choose a shift",
-    multipleShiftsPrompt: "You have multiple shifts today. Please choose one to check in:",
-    multipleCheckInsPrompt: "You have checked in for multiple shifts. Please choose one to check out:",
+    multipleShiftsPrompt:
+      "You have multiple shifts today. Please choose one to check in:",
+    multipleCheckInsPrompt:
+      "You have checked in for multiple shifts. Please choose one to check out:",
   },
   weather: {
     currentLocation: "Current Location",
@@ -188,11 +194,14 @@ export default {
       "Import data from a previously exported backup file. Note: Current data will be overwritten when you import new data.",
     exportData: "Export Data",
     importData: "Import Data",
-    backupWarning: "Back up your data regularly to avoid data loss when changing devices or uninstalling the app.",
+    backupWarning:
+      "Back up your data regularly to avoid data loss when changing devices or uninstalling the app.",
     confirmRestore: "Confirm Import",
-    confirmRestoreMessage: "Current data will be overwritten. Are you sure you want to continue?",
+    confirmRestoreMessage:
+      "Current data will be overwritten. Are you sure you want to continue?",
     importSuccess: "Data has been imported successfully.",
-    importError: "Could not import data. The file may be corrupted or in the wrong format.",
+    importError:
+      "Could not import data. The file may be corrupted or in the wrong format.",
     sharingNotAvailable: "Sharing not available",
     sharingNotAvailableMessage: "Your device does not support file sharing.",
     processing: "Processing...",

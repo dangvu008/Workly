@@ -19,6 +19,7 @@ export default {
     viewAll: "Xem tất cả",
     helpCenter: "Trung tâm trợ giúp",
     support: "Hỗ trợ",
+    locale: "vi-VN",
   },
   home: {
     todayShifts: "Ca làm việc hôm nay",
@@ -40,9 +41,11 @@ export default {
     logCheckOut: "Check-out",
     logComplete: "Hoàn thành",
     workingFor: "Đang làm việc trong {duration}",
-    welcomeMessage: "Chào mừng đến với Workly, ứng dụng quản lý ca làm việc cá nhân của bạn!",
+    welcomeMessage:
+      "Chào mừng đến với Workly, ứng dụng quản lý ca làm việc cá nhân của bạn!",
     weatherAlert: "Thời tiết hiện tại: {temperature}°C - {condition}",
-    shiftInstructions: "Nhấn 'Đi làm' để bắt đầu ca làm việc, sau đó sử dụng 'Check In' khi bạn đến nơi.",
+    shiftInstructions:
+      "Nhấn 'Đi làm' để bắt đầu ca làm việc, sau đó sử dụng 'Check In' khi bạn đến nơi.",
     reminderNote: "Bạn có {count} lời nhắc được lên lịch cho hôm nay.",
     helpText: "Cần trợ giúp? Truy cập trung tâm trợ giúp hoặc liên hệ hỗ trợ.",
   },
@@ -65,8 +68,10 @@ export default {
     shiftDeleted: "Ca làm việc đã được xóa",
     selectDays: "Chọn các ngày",
     showPunchButton: "Hiển thị nút Punch",
-    shiftTip: "Đối với ca làm việc qua đêm, đặt thời gian kết thúc sau nửa đêm.",
-    breakExplanation: "Thời gian nghỉ {duration} phút sẽ tự động được trừ khỏi giờ làm việc của bạn.",
+    shiftTip:
+      "Đối với ca làm việc qua đêm, đặt thời gian kết thúc sau nửa đêm.",
+    breakExplanation:
+      "Thời gian nghỉ {duration} phút sẽ tự động được trừ khỏi giờ làm việc của bạn.",
   },
   settings: {
     settings: "Cài đặt",
@@ -107,14 +112,16 @@ export default {
       english: "Tiếng Anh",
     },
     descriptions: {
-      multiButtonMode: "Chọn kiểu hiển thị của nút đa chức năng trên màn hình chính",
+      multiButtonMode:
+        "Chọn kiểu hiển thị của nút đa chức năng trên màn hình chính",
       firstDayOfWeek: "Chọn ngày đầu tiên của tuần trong lịch",
       timeFormat: "Chọn định dạng hiển thị thời gian",
       theme: "Chọn giao diện ứng dụng",
       alarmSound: "Bật/tắt âm thanh cho các thông báo báo thức",
       alarmVibration: "Bật/tắt rung cho các thông báo báo thức",
       hapticFeedback: "Bật/tắt phản hồi xúc giác khi nhấn các nút",
-      shiftChangeReminder: "Cài đặt nhắc nhở khi ca làm việc sắp bắt đầu hoặc kết thúc",
+      shiftChangeReminder:
+        "Cài đặt nhắc nhở khi ca làm việc sắp bắt đầu hoặc kết thúc",
       weatherWarning: "Nhận cảnh báo về điều kiện thời tiết khắc nghiệt",
       language: "Thay đổi ngôn ngữ hiển thị của ứng dụng",
     },
@@ -131,8 +138,10 @@ export default {
     needCheckInFirst: "Bạn cần check-in trước khi check-out",
     noShiftsToCheckIn: "Không có ca làm việc nào được lên lịch cho hôm nay",
     chooseShift: "Chọn ca làm việc",
-    multipleShiftsPrompt: "Bạn có nhiều ca làm việc hôm nay. Vui lòng chọn ca để check-in:",
-    multipleCheckInsPrompt: "Bạn đã check-in cho nhiều ca làm việc. Vui lòng chọn ca để check-out:",
+    multipleShiftsPrompt:
+      "Bạn có nhiều ca làm việc hôm nay. Vui lòng chọn ca để check-in:",
+    multipleCheckInsPrompt:
+      "Bạn đã check-in cho nhiều ca làm việc. Vui lòng chọn ca để check-out:",
   },
   weather: {
     currentLocation: "Vị trí hiện tại",
@@ -191,9 +200,11 @@ export default {
     backupWarning:
       "Hãy sao lưu dữ liệu thường xuyên để tránh mất dữ liệu khi thay đổi thiết bị hoặc gỡ cài đặt ứng dụng.",
     confirmRestore: "Xác nhận nhập dữ liệu",
-    confirmRestoreMessage: "Dữ liệu hiện tại sẽ bị ghi đè. Bạn có chắc chắn muốn tiếp tục?",
+    confirmRestoreMessage:
+      "Dữ liệu hiện tại sẽ bị ghi đè. Bạn có chắc chắn muốn tiếp tục?",
     importSuccess: "Dữ liệu đã được nhập thành công.",
-    importError: "Không thể nhập dữ liệu. Tệp có thể bị hỏng hoặc sai định dạng.",
+    importError:
+      "Không thể nhập dữ liệu. Tệp có thể bị hỏng hoặc sai định dạng.",
     sharingNotAvailable: "Không thể chia sẻ",
     sharingNotAvailableMessage: "Thiết bị của bạn không hỗ trợ chia sẻ tệp.",
     processing: "Đang xử lý...",

@@ -14,11 +14,24 @@ const WeeklySchedule = ({ weekData, onDayPress }) => {
     for (let i = 0; i < 7; i++) {
       const date = new Date();
       date.setDate(date.getDate() - date.getDay() + i);
-      days.push({
-        short: date.toLocaleDateString(t("common.locale"), {
+
+      let shortName, fullName;
+      try {
+        shortName = date.toLocaleDateString(t("common.locale"), {
           weekday: "short",
-        }),
-        full: date.toLocaleDateString(t("common.locale"), { weekday: "long" }),
+        });
+        fullName = date.toLocaleDateString(t("common.locale"), {
+          weekday: "long",
+        });
+      } catch (error) {
+        // Fallback to default locale if the provided locale is invalid
+        shortName = date.toLocaleDateString(undefined, { weekday: "short" });
+        fullName = date.toLocaleDateString(undefined, { weekday: "long" });
+      }
+
+      days.push({
+        short: shortName,
+        full: fullName,
         date: new Date(date),
       });
     }
