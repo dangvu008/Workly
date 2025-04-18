@@ -1,9 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Animated,
+} from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { BlurView } from "expo-blur";
 import { useLocalization } from "../localization/LocalizationContext";
 import { COLORS } from "../constants/colors";
+import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 
 const ShiftStatus = ({ status, onCheckIn, onCheckOut }) => {

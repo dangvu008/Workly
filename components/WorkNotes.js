@@ -1,12 +1,24 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, FlatList } from "react-native";
-import { BlurView } from "expo-blur";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+} from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalization } from "../localization/LocalizationContext";
 import { COLORS } from "../constants/colors";
 import { formatDate } from "../utils/dateUtils";
+import { BlurView } from "expo-blur";
 
-const WorkNotes = ({ notes, onAddNote, onEditNote, onDeleteNote, onViewAll }) => {
+const WorkNotes = ({
+  notes,
+  onAddNote,
+  onEditNote,
+  onDeleteNote,
+  onViewAll,
+}) => {
   const { t } = useLocalization();
   const [expandedNote, setExpandedNote] = useState(null);
 
@@ -29,8 +41,9 @@ const WorkNotes = ({ notes, onAddNote, onEditNote, onDeleteNote, onViewAll }) =>
   // Render note item
   const renderNoteItem = ({ item }) => {
     const isExpanded = expandedNote === item.id;
-    const hasReminder = item.reminderDate && new Date(item.reminderDate) > new Date();
-    
+    const hasReminder =
+      item.reminderDate && new Date(item.reminderDate) > new Date();
+
     return (
       <TouchableOpacity
         style={[
@@ -49,16 +62,14 @@ const WorkNotes = ({ notes, onAddNote, onEditNote, onDeleteNote, onViewAll }) =>
               <MaterialIcons name="star" size={16} color={COLORS.warning} />
             )}
           </View>
-          
-          {isExpanded && (
-            <Text style={styles.noteText}>{item.content}</Text>
-          )}
-          
+
+          {isExpanded && <Text style={styles.noteText}>{item.content}</Text>}
+
           <View style={styles.noteFooter}>
             <Text style={styles.noteDate}>
               {formatDate(new Date(item.updatedAt), "date")}
             </Text>
-            
+
             {hasReminder && (
               <View style={styles.reminderContainer}>
                 <MaterialIcons name="alarm" size={14} color={COLORS.info} />
@@ -67,7 +78,7 @@ const WorkNotes = ({ notes, onAddNote, onEditNote, onDeleteNote, onViewAll }) =>
                 </Text>
               </View>
             )}
-            
+
             {isExpanded && (
               <View style={styles.noteActions}>
                 <TouchableOpacity
@@ -103,7 +114,7 @@ const WorkNotes = ({ notes, onAddNote, onEditNote, onDeleteNote, onViewAll }) =>
           </TouchableOpacity>
         </View>
       </View>
-      
+
       {notes.length === 0 ? (
         renderEmptyState()
       ) : (

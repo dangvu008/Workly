@@ -1,9 +1,9 @@
 import React, { useMemo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { BlurView } from "expo-blur";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalization } from "../localization/LocalizationContext";
 import { COLORS } from "../constants/colors";
+import { BlurView } from "expo-blur";
 
 const WeeklySchedule = ({ weekData, onDayPress }) => {
   const { t } = useLocalization();
@@ -15,7 +15,9 @@ const WeeklySchedule = ({ weekData, onDayPress }) => {
       const date = new Date();
       date.setDate(date.getDate() - date.getDay() + i);
       days.push({
-        short: date.toLocaleDateString(t("common.locale"), { weekday: "short" }),
+        short: date.toLocaleDateString(t("common.locale"), {
+          weekday: "short",
+        }),
         full: date.toLocaleDateString(t("common.locale"), { weekday: "long" }),
         date: new Date(date),
       });
@@ -44,7 +46,7 @@ const WeeklySchedule = ({ weekData, onDayPress }) => {
   // Get day data
   const getDayData = (date) => {
     if (!weekData) return { status: "none" };
-    
+
     const dateStr = date.toISOString().split("T")[0];
     return weekData[dateStr] || { status: "none" };
   };

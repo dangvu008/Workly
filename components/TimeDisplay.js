@@ -15,29 +15,29 @@ const TimeDisplay = () => {
     const updateTime = () => {
       const now = new Date();
       setCurrentTime(now);
-      
+
       // Format time: HH:MM:SS
       const hours = now.getHours().toString().padStart(2, "0");
       const minutes = now.getMinutes().toString().padStart(2, "0");
       const seconds = now.getSeconds().toString().padStart(2, "0");
       setFormattedTime(`${hours}:${minutes}:${seconds}`);
-      
+
       // Format date: Weekday, Month Day, Year
-      const options = { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+      const options = {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
       };
-      setFormattedDate(now.toLocaleDateString(t('common.locale'), options));
+      setFormattedDate(now.toLocaleDateString(t("common.locale"), options));
     };
 
     // Update immediately
     updateTime();
-    
+
     // Set interval for updates
     const interval = setInterval(updateTime, 1000);
-    
+
     // Clean up interval
     return () => clearInterval(interval);
   }, [t]);
