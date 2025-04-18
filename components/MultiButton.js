@@ -14,6 +14,7 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  Modal,
 } from "react-native";
 import { useAppContext } from "../context/AppContext";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -595,7 +596,7 @@ const MultiButton = () => {
       }
     } catch (error) {
       console.error("Error loading logs:", error);
-      setErrorMessage("Không thể tải lịch sử. Vui lòng thử lại sau.");
+      setErrorMessage(t("errors.cannotLoadLogs"));
     }
   }, [getLogsForDate, animateLogsContainer, showLogs]);
 
@@ -689,7 +690,7 @@ const MultiButton = () => {
       setCurrentStatus("waiting_check_in");
     } catch (error) {
       console.error("Error handling go work:", error);
-      setErrorMessage("Không thể bắt đầu ca làm việc. Vui lòng thử lại sau.");
+      setErrorMessage(t("errors.cannotStartShift"));
       triggerHapticFeedback(HAPTIC_TYPES.ERROR);
     }
   }, [activeShift, addAttendanceLog, triggerHapticFeedback]);
@@ -706,7 +707,7 @@ const MultiButton = () => {
       startWorkDurationTimer(now);
     } catch (error) {
       console.error("Error handling check in:", error);
-      setErrorMessage("Không thể chấm công vào. Vui lòng thử lại sau.");
+      setErrorMessage(t("errors.cannotCheckIn"));
       triggerHapticFeedback(HAPTIC_TYPES.ERROR);
     }
   }, [
@@ -726,7 +727,7 @@ const MultiButton = () => {
       addAttendanceLog("punch", activeShift.id);
     } catch (error) {
       console.error("Error handling punch:", error);
-      setErrorMessage("Không thể ký công. Vui lòng thử lại sau.");
+      setErrorMessage(t("errors.cannotPunch"));
       triggerHapticFeedback(HAPTIC_TYPES.ERROR);
     }
   }, [
@@ -758,7 +759,7 @@ const MultiButton = () => {
       setWorkDuration(null);
     } catch (error) {
       console.error("Error handling check out:", error);
-      setErrorMessage("Không thể chấm công ra. Vui lòng thử lại sau.");
+      setErrorMessage(t("errors.cannotCheckOut"));
       triggerHapticFeedback(HAPTIC_TYPES.ERROR);
     }
   }, [activeShift, addAttendanceLog, triggerHapticFeedback]);
@@ -773,7 +774,7 @@ const MultiButton = () => {
       setCurrentStatus("completed");
     } catch (error) {
       console.error("Error handling complete:", error);
-      setErrorMessage("Không thể hoàn tất ca làm việc. Vui lòng thử lại sau.");
+      setErrorMessage(t("errors.cannotCompleteShift"));
       triggerHapticFeedback(HAPTIC_TYPES.ERROR);
     }
   }, [activeShift, addAttendanceLog, triggerHapticFeedback]);
@@ -807,9 +808,7 @@ const MultiButton = () => {
           }
         } catch (error) {
           console.error("Error executing action:", error);
-          setErrorMessage(
-            `Không thể thực hiện hành động "${action}". Vui lòng thử lại sau.`
-          );
+          setErrorMessage(t("errors.cannotPerformAction", { action }));
           triggerHapticFeedback(HAPTIC_TYPES.ERROR);
         } finally {
           setIsProcessing(false);
@@ -1098,7 +1097,6 @@ const MultiButton = () => {
               ...(currentStatus === "working" ? [{ scale: pulseAnim }] : []),
             ],
             opacity: opacityAnim,
-            flex: 1,
           }}
         >
           <TouchableOpacity
@@ -1115,12 +1113,12 @@ const MultiButton = () => {
             accessibilityHint={buttonInfo.description}
           >
             {isProcessing ? (
-              <ActivityIndicator size="small" color={colors.white} />
+              <ActivityIndicator size="large" color={colors.white} />
             ) : (
               <>
                 <MaterialIcons
                   name={buttonInfo.icon}
-                  size={24}
+                  size={32}
                   color={colors.white}
                 />
                 <Text
@@ -1143,7 +1141,6 @@ const MultiButton = () => {
                   multiButtonStyles.progressBar,
                   {
                     width: progressWidth,
-                    backgroundColor: colors.primary,
                   },
                 ]}
               />
@@ -1155,7 +1152,6 @@ const MultiButton = () => {
               style={[
                 multiButtonStyles.buttonDescription,
                 {
-                  color: colors.darkGray,
                   opacity: fadeAnim,
                   transform: [{ translateX: slideAnim }],
                 },
@@ -1168,45 +1164,12 @@ const MultiButton = () => {
           ) : null}
         </Animated.View>
 
-        {/* Punch button (if needed) */}
-        {showPunchButton && (
-          <Animated.View
-            style={{
-              transform: [{ scale: scaleAnim }],
-              opacity: opacityAnim,
-            }}
-          >
-            <TouchableOpacity
-              style={[
-                multiButtonStyles.punchButton,
-                { backgroundColor: colors.accent },
-              ]}
-              onPress={handlePunch}
-              disabled={isProcessing}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityLabel={t("home.punch")}
-            >
-              <MaterialIcons name="touch-app" size={20} color={colors.white} />
-              <Text
-                style={[
-                  multiButtonStyles.punchButtonText,
-                  { color: colors.white },
-                ]}
-              >
-                {t("home.punch")}
-              </Text>
-            </TouchableOpacity>
-          </Animated.View>
-        )}
-
         {/* Reset button */}
         {showResetButton && (
           <Animated.View
             style={[
               multiButtonStyles.resetButton,
               {
-                backgroundColor: colors.error,
                 transform: [{ rotate: spin }],
               },
             ]}
@@ -1225,6 +1188,36 @@ const MultiButton = () => {
         )}
       </View>
 
+      {/* Punch button (if needed) */}
+      {showPunchButton && (
+        <Animated.View
+          style={{
+            transform: [{ scale: scaleAnim }],
+            opacity: opacityAnim,
+            alignItems: "center",
+          }}
+        >
+          <TouchableOpacity
+            style={multiButtonStyles.punchButton}
+            onPress={handlePunch}
+            disabled={isProcessing}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={t("home.punch")}
+          >
+            <MaterialIcons name="touch-app" size={20} color={colors.white} />
+            <Text
+              style={[
+                multiButtonStyles.punchButtonText,
+                { color: colors.white },
+              ]}
+            >
+              {t("home.punch")}
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
+
       {/* Display current shift */}
       {activeShift && (
         <Animated.View
@@ -1237,10 +1230,7 @@ const MultiButton = () => {
           ]}
         >
           <Text
-            style={[
-              multiButtonStyles.activeShiftText,
-              { color: colors.darkGray },
-            ]}
+            style={multiButtonStyles.activeShiftText}
             numberOfLines={1}
             ellipsizeMode="tail"
           >
@@ -1262,7 +1252,7 @@ const MultiButton = () => {
             showLogs ? t("common.collapse") : t("common.expand")
           }
         >
-          <Text style={[multiButtonStyles.logsTitle, { color: colors.text }]}>
+          <Text style={multiButtonStyles.logsTitle}>
             {t("home.todayLogs")} ({todayLogs.length})
           </Text>
           <Animated.View
@@ -1280,7 +1270,7 @@ const MultiButton = () => {
             <MaterialIcons
               name="keyboard-arrow-down"
               size={24}
-              color={colors.primary}
+              color={colors.white}
             />
           </Animated.View>
         </TouchableOpacity>
@@ -1292,7 +1282,6 @@ const MultiButton = () => {
           style={[
             multiButtonStyles.logsContainer,
             {
-              backgroundColor: colors.card,
               maxHeight: logsHeightAnim.interpolate({
                 inputRange: [0, 1],
                 outputRange: [0, 300],
@@ -1318,8 +1307,53 @@ const MultiButton = () => {
         </Animated.View>
       )}
 
-      {/* Confirmation Dialog */}
-      <ConfirmationDialog {...confirmationDialogProps} />
+      {/* Confirmation Dialog as Modal */}
+      <Modal
+        visible={showConfirmation}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowConfirmation(false)}
+      >
+        <View style={multiButtonStyles.confirmationOverlay}>
+          <View style={multiButtonStyles.confirmationDialog}>
+            <Text style={multiButtonStyles.confirmationTitle}>
+              {confirmationDialogProps.title || t("common.confirm")}
+            </Text>
+            <Text style={multiButtonStyles.confirmationMessage}>
+              {confirmationDialogProps.message || ""}
+            </Text>
+            <View style={multiButtonStyles.confirmationButtons}>
+              <TouchableOpacity
+                style={[
+                  multiButtonStyles.confirmationButton,
+                  multiButtonStyles.cancelButton,
+                ]}
+                onPress={() => handleConfirmation(false)}
+              >
+                <Text style={multiButtonStyles.confirmationButtonText}>
+                  {t("common.cancel")}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  multiButtonStyles.confirmationButton,
+                  { backgroundColor: colors.appPurple },
+                ]}
+                onPress={() => handleConfirmation(true)}
+              >
+                <Text
+                  style={[
+                    multiButtonStyles.confirmationButtonText,
+                    { color: colors.white },
+                  ]}
+                >
+                  {t("common.confirm")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };

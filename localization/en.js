@@ -244,4 +244,21 @@ export default {
       emergency: "Emergency Bell",
     },
   },
+  errors: {
+    invalidCredentials: "Invalid email or password",
+    networkError: "Network error. Please check your connection",
+    unknownError: "An unknown error occurred",
+    sessionExpired: "Your session has expired. Please log in again",
+    permissionDenied: "Permission denied",
+    locationError: "Could not get your location",
+    weatherError: "Could not fetch weather data",
+    cannotLoadLogs: "Cannot load history. Please try again later.",
+    cannotStartShift: "Cannot start work shift. Please try again later.",
+    cannotCheckIn: "Cannot check in. Please try again later.",
+    cannotPunch: "Cannot punch. Please try again later.",
+    cannotCheckOut: "Cannot check out. Please try again later.",
+    cannotCompleteShift: "Cannot complete work shift. Please try again later.",
+    cannotPerformAction:
+      'Cannot perform action "{action}". Please try again later.',
+  },
 };

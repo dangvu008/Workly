@@ -1,7 +1,7 @@
-import { StyleSheet } from "react-native"
-import { COLORS } from "../theme/colors"
-import { SPACING, RADIUS } from "../theme/spacing"
-import { FONT_SIZES } from "../theme/typography"
+import { StyleSheet } from "react-native";
+import { COLORS } from "../theme/colors";
+import { SPACING, RADIUS } from "../theme/spacing";
+import { FONT_SIZES } from "../theme/typography";
 
 export const multiButtonStyles = StyleSheet.create({
   container: {
@@ -15,13 +15,12 @@ export const multiButtonStyles = StyleSheet.create({
     position: "relative",
   },
   mainButton: {
-    flexDirection: "row",
+    width: 128,
+    height: 128,
+    borderRadius: 64,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.xl,
-    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.appPurple,
     elevation: 3,
     shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 2 },
@@ -29,30 +28,31 @@ export const multiButtonStyles = StyleSheet.create({
     shadowRadius: 2,
   },
   disabledButton: {
-    backgroundColor: COLORS.gray,
+    backgroundColor: COLORS.appDarkLight,
+    opacity: 0.7,
     elevation: 0,
   },
   buttonText: {
     color: COLORS.white,
     fontWeight: "bold",
-    fontSize: FONT_SIZES.md,
-    marginLeft: SPACING.sm,
+    fontSize: FONT_SIZES.sm,
+    marginTop: SPACING.sm,
   },
   buttonDescription: {
     textAlign: "center",
-    marginTop: 4,
+    marginTop: SPACING.sm,
     fontSize: FONT_SIZES.xs,
-    color: COLORS.darkGray,
+    color: COLORS.appDarkTextSecondary,
   },
   punchButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: COLORS.accent,
-    paddingVertical: SPACING.md,
+    backgroundColor: COLORS.appStatusWarning,
+    paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
     borderRadius: RADIUS.md,
-    marginLeft: SPACING.sm,
+    marginTop: SPACING.md,
     elevation: 2,
     shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 1 },
@@ -69,10 +69,10 @@ export const multiButtonStyles = StyleSheet.create({
     position: "absolute",
     top: -8,
     right: -8,
-    backgroundColor: COLORS.error,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    backgroundColor: COLORS.appStatusWarning,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     elevation: 4,
@@ -93,7 +93,7 @@ export const multiButtonStyles = StyleSheet.create({
     alignItems: "center",
   },
   activeShiftText: {
-    color: COLORS.darkGray,
+    color: COLORS.appDarkTextSecondary,
     fontSize: FONT_SIZES.sm,
   },
   logsHeader: {
@@ -105,7 +105,7 @@ export const multiButtonStyles = StyleSheet.create({
   },
   logsContainer: {
     marginTop: SPACING.sm,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.appDarkLight,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     elevation: 1,
@@ -113,6 +113,8 @@ export const multiButtonStyles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 1,
+    borderWidth: 1,
+    borderColor: COLORS.appDarkBorder,
   },
   logsList: {
     paddingBottom: SPACING.sm,
@@ -120,20 +122,20 @@ export const multiButtonStyles = StyleSheet.create({
   logsTitle: {
     fontSize: FONT_SIZES.sm,
     fontWeight: "bold",
-    color: COLORS.text,
+    color: COLORS.white,
   },
   logItem: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.lightGray,
+    borderBottomColor: COLORS.appDarkBorder,
   },
   logIconContainer: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.appPurple,
     alignItems: "center",
     justifyContent: "center",
     marginRight: SPACING.sm,
@@ -146,22 +148,22 @@ export const multiButtonStyles = StyleSheet.create({
   },
   logType: {
     fontSize: FONT_SIZES.sm,
-    color: COLORS.text,
+    color: COLORS.white,
   },
   logTime: {
     fontSize: FONT_SIZES.xs,
-    color: COLORS.gray,
+    color: COLORS.appDarkTextSecondary,
   },
   progressBarContainer: {
     height: 4,
-    backgroundColor: COLORS.lightGray,
+    backgroundColor: COLORS.appDarkBorder,
     borderRadius: RADIUS.xs,
     marginTop: 4,
     overflow: "hidden",
   },
   progressBar: {
     height: "100%",
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.appPurple,
   },
   // Confirmation dialog styles
   confirmationOverlay: {
@@ -170,14 +172,14 @@ export const multiButtonStyles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0,0,0,0.7)",
     justifyContent: "center",
     alignItems: "center",
     zIndex: 1000,
   },
   confirmationDialog: {
     width: "80%",
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.appDarkLight,
     borderRadius: RADIUS.md,
     padding: SPACING.lg,
     elevation: 5,
@@ -185,16 +187,18 @@ export const multiButtonStyles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: COLORS.appDarkBorder,
   },
   confirmationTitle: {
     fontSize: FONT_SIZES.lg,
     fontWeight: "bold",
     marginBottom: SPACING.sm,
-    color: COLORS.text,
+    color: COLORS.white,
   },
   confirmationMessage: {
     fontSize: FONT_SIZES.md,
-    color: COLORS.darkGray,
+    color: COLORS.appDarkTextSecondary,
     marginBottom: SPACING.lg,
   },
   confirmationButtons: {
@@ -211,10 +215,10 @@ export const multiButtonStyles = StyleSheet.create({
     marginHorizontal: 4,
   },
   cancelButton: {
-    backgroundColor: COLORS.lightGray,
+    backgroundColor: COLORS.appDarkBorder,
   },
   confirmationButtonText: {
     fontWeight: "bold",
     fontSize: FONT_SIZES.sm,
   },
-})
+});

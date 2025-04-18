@@ -1,20 +1,22 @@
-import { StyleSheet } from "react-native"
-import { COLORS } from "../theme/colors"
-import { SPACING, RADIUS } from "../theme/spacing"
-import { FONT_SIZES } from "../theme/typography"
+import { StyleSheet } from "react-native";
+import { COLORS } from "../theme/colors";
+import { SPACING, RADIUS } from "../theme/spacing";
+import { FONT_SIZES } from "../theme/typography";
 
 export const homeScreenStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.appDark,
   },
   header: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.appDarkLight,
     padding: 20,
     alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.appDarkBorder,
   },
   date: {
-    color: COLORS.white,
+    color: COLORS.appDarkTextSecondary,
     fontSize: FONT_SIZES.md,
   },
   time: {
@@ -26,7 +28,7 @@ export const homeScreenStyles = StyleSheet.create({
   status: {
     color: COLORS.white,
     fontSize: FONT_SIZES.sm,
-    backgroundColor: COLORS.primaryDark,
+    backgroundColor: COLORS.appPurple,
     paddingHorizontal: SPACING.md,
     paddingVertical: 4,
     borderRadius: RADIUS.lg,
@@ -36,15 +38,15 @@ export const homeScreenStyles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     padding: SPACING.md,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.appDarkLight,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.lightGray,
+    borderBottomColor: COLORS.appDarkBorder,
   },
   actionButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.appPurple,
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.lg,
     borderRadius: RADIUS.md,
@@ -52,7 +54,7 @@ export const homeScreenStyles = StyleSheet.create({
     marginHorizontal: 4,
   },
   checkOutButton: {
-    backgroundColor: COLORS.error,
+    backgroundColor: COLORS.appStatusError,
   },
   actionButtonText: {
     color: COLORS.white,
@@ -74,7 +76,7 @@ export const homeScreenStyles = StyleSheet.create({
     fontWeight: "bold",
     marginHorizontal: SPACING.md,
     marginBottom: SPACING.sm,
-    color: COLORS.text,
+    color: COLORS.white,
   },
   noteActions: {
     flexDirection: "row",
@@ -84,11 +86,11 @@ export const homeScreenStyles = StyleSheet.create({
     marginRight: SPACING.sm,
   },
   viewAllText: {
-    color: COLORS.primary,
+    color: COLORS.appPurple,
     fontWeight: "bold",
   },
   addNoteButton: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.appPurple,
     width: 32,
     height: 32,
     borderRadius: 16,
@@ -97,7 +99,7 @@ export const homeScreenStyles = StyleSheet.create({
     marginRight: SPACING.md,
   },
   shiftCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.appDarkLight,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     marginHorizontal: SPACING.md,
@@ -107,6 +109,8 @@ export const homeScreenStyles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
+    borderWidth: 1,
+    borderColor: COLORS.appDarkBorder,
   },
   shiftHeader: {
     flexDirection: "row",
@@ -117,7 +121,7 @@ export const homeScreenStyles = StyleSheet.create({
   shiftName: {
     fontSize: FONT_SIZES.md,
     fontWeight: "bold",
-    color: COLORS.text,
+    color: COLORS.white,
   },
   shiftTimes: {
     flexDirection: "row",
@@ -125,21 +129,23 @@ export const homeScreenStyles = StyleSheet.create({
   },
   shiftTime: {
     fontSize: FONT_SIZES.sm,
-    color: COLORS.darkGray,
+    color: COLORS.appDarkTextSecondary,
   },
   emptyState: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.appDarkLight,
     borderRadius: RADIUS.md,
     padding: 20,
     marginHorizontal: SPACING.md,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: COLORS.appDarkBorder,
   },
   emptyText: {
-    color: COLORS.gray,
+    color: COLORS.appDarkTextSecondary,
     marginBottom: SPACING.md,
   },
   addButton: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.appPurple,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
     borderRadius: RADIUS.sm,
@@ -149,7 +155,7 @@ export const homeScreenStyles = StyleSheet.create({
     fontWeight: "bold",
   },
   weatherCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.appDarkLight,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     marginHorizontal: SPACING.md,
@@ -158,12 +164,15 @@ export const homeScreenStyles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
+    borderWidth: 1,
+    borderColor: COLORS.appDarkBorder,
   },
   weatherLocation: {
     fontSize: FONT_SIZES.md,
     fontWeight: "bold",
     marginBottom: SPACING.sm,
     textAlign: "center",
+    color: COLORS.white,
   },
   weatherInfo: {
     flexDirection: "row",
@@ -177,23 +186,26 @@ export const homeScreenStyles = StyleSheet.create({
   weatherTemp: {
     fontSize: FONT_SIZES.xxl,
     fontWeight: "bold",
+    color: COLORS.white,
   },
   weatherDesc: {
     fontSize: FONT_SIZES.sm,
-    color: COLORS.darkGray,
+    color: COLORS.appDarkTextSecondary,
     textTransform: "capitalize",
   },
   warningBox: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.warning + "20",
+    backgroundColor: "rgba(245, 158, 11, 0.1)", // Amber-500 with opacity
     padding: SPACING.sm,
     borderRadius: RADIUS.sm,
     marginTop: SPACING.sm,
+    borderWidth: 1,
+    borderColor: "rgba(245, 158, 11, 0.3)", // Amber-500 with opacity
   },
   warningText: {
-    color: COLORS.darkGray,
+    color: COLORS.appDarkTextSecondary,
     marginLeft: SPACING.sm,
     flex: 1,
   },
-})
+});

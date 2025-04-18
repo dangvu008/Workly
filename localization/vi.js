@@ -247,4 +247,22 @@ export default {
       emergency: "Chuông khẩn cấp",
     },
   },
+  errors: {
+    invalidCredentials: "Email hoặc mật khẩu không hợp lệ",
+    networkError: "Lỗi mạng. Vui lòng kiểm tra kết nối của bạn",
+    unknownError: "Đã xảy ra lỗi không xác định",
+    sessionExpired: "Phiên của bạn đã hết hạn. Vui lòng đăng nhập lại",
+    permissionDenied: "Quyền truy cập bị từ chối",
+    locationError: "Không thể lấy vị trí của bạn",
+    weatherError: "Không thể lấy dữ liệu thời tiết",
+    cannotLoadLogs: "Không thể tải lịch sử. Vui lòng thử lại sau.",
+    cannotStartShift: "Không thể bắt đầu ca làm việc. Vui lòng thử lại sau.",
+    cannotCheckIn: "Không thể chấm công vào. Vui lòng thử lại sau.",
+    cannotPunch: "Không thể ký công. Vui lòng thử lại sau.",
+    cannotCheckOut: "Không thể chấm công ra. Vui lòng thử lại sau.",
+    cannotCompleteShift:
+      "Không thể hoàn tất ca làm việc. Vui lòng thử lại sau.",
+    cannotPerformAction:
+      'Không thể thực hiện hành động "{action}". Vui lòng thử lại sau.',
+  },
 };

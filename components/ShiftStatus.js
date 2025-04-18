@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalization } from "../localization/LocalizationContext";
-import { COLORS } from "../constants/colors";
+import { COLORS } from "../styles/theme/colors";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 
@@ -19,9 +19,9 @@ const ShiftStatus = ({ status, onCheckIn, onCheckOut }) => {
 
   // Status colors
   const statusColors = {
-    notCheckedIn: COLORS.primary,
-    checkedIn: COLORS.success,
-    checkedOut: COLORS.gray,
+    notCheckedIn: COLORS.appPurple,
+    checkedIn: COLORS.appStatusSuccess,
+    checkedOut: COLORS.appDarkTextSecondary,
   };
 
   // Status icons
@@ -187,6 +187,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
   },
   blurView: {
     width: "100%",
