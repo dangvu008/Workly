@@ -1,7 +1,8 @@
 "use client";
 
-import { useTranslation as useI18nTranslation, Trans } from "react-i18next";
+import { useTranslation as useI18nTranslation } from "react-i18next";
 import { useCallback } from "react";
+import TransWrapper from "../components/TransWrapper";
 
 export const useTranslation = () => {
   const { t, i18n } = useI18nTranslation();
@@ -52,9 +53,9 @@ export const useTranslation = () => {
     t: translate,
     changeLanguage,
     getCurrentLanguage,
-    Trans, // Export Trans để sử dụng trong các component
+    Trans: TransWrapper, // Export Trans để sử dụng trong các component
   };
 };
 
-// Re-export Trans để tương thích với cả hai cách import
-export { Trans };
+// Export TransWrapper as Trans để tương thích với các cách import khác
+export const Trans = TransWrapper;
