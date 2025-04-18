@@ -13,7 +13,11 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalization } from "../localization/LocalizationContext";
 import MultiButton from "../components/MultiButton";
 import { homeScreenStyles } from "../styles/screens/homeScreen";
-import Logo from "../components/Logo"; // Import the Logo component
+import Logo from "../components/Logo";
+import TimeDisplay from "../components/TimeDisplay";
+import ShiftStatus from "../components/ShiftStatus";
+import WeeklySchedule from "../components/WeeklySchedule";
+import WorkNotes from "../components/WorkNotes";
 
 const HomeScreen = ({ navigation }) => {
   const {
@@ -240,11 +244,61 @@ const HomeScreen = ({ navigation }) => {
 
   // Handle day press on weekly grid
   const handleDayPress = useCallback(
-    (date) => {
+    (date, dayData) => {
       navigation.navigate("CheckInOut", { date: date.toISOString() });
     },
     [navigation]
   );
+
+  // Generate weekly data for the schedule
+  const weeklyData = useMemo(() => {
+    const data = {};
+    const today = new Date();
+
+    // Get the start of the week (Sunday)
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+
+    // Generate data for each day of the week
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startOfWeek);
+      date.setDate(startOfWeek.getDate() + i);
+      const dateStr = date.toISOString().split("T")[0];
+
+      // Check if there are shifts for this day
+      const dayOfWeek = getDayOfWeek(date);
+      const shiftsForDay = shifts.filter((shift) =>
+        shift.daysApplied.includes(dayOfWeek)
+      );
+
+      // Check if there are attendance records for this day
+      const checkInsForDay = attendanceRecords.filter(
+        (record) =>
+          record.date.startsWith(dateStr) && record.type === "check-in"
+      );
+
+      const checkOutsForDay = attendanceRecords.filter(
+        (record) =>
+          record.date.startsWith(dateStr) && record.type === "check-out"
+      );
+
+      // Determine status based on shifts and attendance
+      let status = "none";
+      if (shiftsForDay.length > 0) {
+        if (checkInsForDay.length > 0 && checkOutsForDay.length > 0) {
+          status = "completed";
+        } else if (checkInsForDay.length > 0) {
+          status = "warning";
+        } else if (date < today) {
+          status = "late";
+        }
+      }
+
+      data[dateStr] = { status };
+    }
+
+    return data;
+  }, [shifts, attendanceRecords]);
 
   // Get today's attendance status
   const getTodayAttendanceStatus = useCallback(() => {
@@ -259,11 +313,20 @@ const HomeScreen = ({ navigation }) => {
     );
 
     if (checkIns.length === 0) {
-      return t("home.checkInStatus.notCheckedIn");
+      return {
+        text: t("home.checkInStatus.notCheckedIn"),
+        status: "notCheckedIn",
+      };
     } else if (checkOuts.length === 0) {
-      return t("home.checkInStatus.checkedInNotOut");
+      return {
+        text: t("home.checkInStatus.checkedInNotOut"),
+        status: "checkedIn",
+      };
     } else {
-      return t("home.checkInStatus.checkedInAndOut");
+      return {
+        text: t("home.checkInStatus.checkedInAndOut"),
+        status: "checkedOut",
+      };
     }
   }, [attendanceRecords, t]);
 
@@ -424,40 +487,21 @@ const HomeScreen = ({ navigation }) => {
         <View style={homeScreenStyles.header}>
           {/* Add Logo at the top of the header */}
           <Logo size="small" showText={true} style={{ marginBottom: 8 }} />
-          <Text style={homeScreenStyles.date}>
-            {formatDate(currentTime, "date")}
-          </Text>
-          <Text style={homeScreenStyles.time}>
-            {formatDate(currentTime, "time") || "00:00"}
-          </Text>
+
+          {/* New TimeDisplay component */}
+          <TimeDisplay />
+
           <Text style={homeScreenStyles.status}>
-            {getTodayAttendanceStatus()}
+            {getTodayAttendanceStatus().text}
           </Text>
         </View>
 
-        <View style={homeScreenStyles.actionButtons}>
-          <TouchableOpacity
-            style={homeScreenStyles.actionButton}
-            onPress={handleCheckIn}
-          >
-            <MaterialIcons name="login" size={24} color="#FFFFFF" />
-            <Text style={homeScreenStyles.actionButtonText}>
-              {t("attendance.checkIn")}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              homeScreenStyles.actionButton,
-              homeScreenStyles.checkOutButton,
-            ]}
-            onPress={handleCheckOut}
-          >
-            <MaterialIcons name="logout" size={24} color="#FFFFFF" />
-            <Text style={homeScreenStyles.actionButtonText}>
-              {t("attendance.checkOut")}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* New ShiftStatus component */}
+        <ShiftStatus
+          status={getTodayAttendanceStatus().status}
+          onCheckIn={handleCheckIn}
+          onCheckOut={handleCheckOut}
+        />
 
         {/* Nút Đa Năng */}
         <MultiButton />
@@ -466,7 +510,7 @@ const HomeScreen = ({ navigation }) => {
           <Text style={homeScreenStyles.sectionTitle}>
             {t("home.weeklySchedule")}
           </Text>
-          <WeeklyStatusGrid onDayPress={handleDayPress} />
+          <WeeklySchedule weekData={weeklyData} onDayPress={handleDayPress} />
         </View>
 
         <View style={homeScreenStyles.section}>
@@ -477,29 +521,13 @@ const HomeScreen = ({ navigation }) => {
         </View>
 
         {/* Khu vực ghi chú */}
-        <View style={homeScreenStyles.section}>
-          <View style={homeScreenStyles.sectionHeader}>
-            <Text style={homeScreenStyles.sectionTitle}>{t("home.notes")}</Text>
-            <View style={homeScreenStyles.noteActions}>
-              <TouchableOpacity
-                style={homeScreenStyles.viewAllButton}
-                onPress={handleViewAllNotes}
-              >
-                <Text style={homeScreenStyles.viewAllText}>
-                  {t("common.viewAll")}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={homeScreenStyles.addNoteButton}
-                onPress={handleAddNote}
-              >
-                <MaterialIcons name="add" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {renderTodayNotes}
-        </View>
+        <WorkNotes
+          notes={todayNotes}
+          onAddNote={handleAddNote}
+          onEditNote={handleEditNote}
+          onDeleteNote={handleDeleteNote}
+          onViewAll={handleViewAllNotes}
+        />
 
         {renderWeatherCard}
       </ScrollView>
