@@ -1,56 +1,63 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from "react-native"
-import { useAppContext } from "../context/AppContext"
-import { COLORS } from "../constants/colors"
-import { MaterialIcons } from "@expo/vector-icons"
-import NoteItem from "../components/NoteItem"
-import NoteForm from "../components/NoteForm"
-import { useTranslation } from "../i18n/useTranslation"
+import { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Alert,
+} from "react-native";
+import { useAppContext } from "../context/AppContext";
+import { COLORS } from "../constants/colors";
+import { MaterialIcons } from "@expo/vector-icons";
+import NoteItem from "../components/NoteItem";
+import NoteForm from "../components/NoteForm";
+import { useLocalization } from "../localization/LocalizationContext";
 
 const NotesScreen = () => {
-  const { notes, deleteNote, getNextReminderDate } = useAppContext()
-  const { t } = useTranslation()
+  const { notes, deleteNote, getNextReminderDate } = useAppContext();
+  const { t } = useLocalization();
 
-  const [showNoteForm, setShowNoteForm] = useState(false)
-  const [noteToEdit, setNoteToEdit] = useState(null)
-  const [sortedNotes, setSortedNotes] = useState([])
+  const [showNoteForm, setShowNoteForm] = useState(false);
+  const [noteToEdit, setNoteToEdit] = useState(null);
+  const [sortedNotes, setSortedNotes] = useState([]);
 
   // Sắp xếp ghi chú theo thời gian nhắc nhở gần nhất
   useEffect(() => {
     const sortNotes = () => {
       const sorted = [...notes].sort((a, b) => {
-        const dateA = getNextReminderDate(a)
-        const dateB = getNextReminderDate(b)
+        const dateA = getNextReminderDate(a);
+        const dateB = getNextReminderDate(b);
 
         // Nếu không có ngày nhắc nhở, sắp xếp theo updatedAt
         if (!dateA && !dateB) {
-          return new Date(b.updatedAt) - new Date(a.updatedAt)
+          return new Date(b.updatedAt) - new Date(a.updatedAt);
         }
-        if (!dateA) return 1
-        if (!dateB) return -1
+        if (!dateA) return 1;
+        if (!dateB) return -1;
 
-        return dateA.getTime() - dateB.getTime()
-      })
+        return dateA.getTime() - dateB.getTime();
+      });
 
-      setSortedNotes(sorted)
-    }
+      setSortedNotes(sorted);
+    };
 
-    sortNotes()
-  }, [notes, getNextReminderDate])
+    sortNotes();
+  }, [notes, getNextReminderDate]);
 
   // Xử lý thêm ghi chú mới
   const handleAddNote = () => {
-    setNoteToEdit(null)
-    setShowNoteForm(true)
-  }
+    setNoteToEdit(null);
+    setShowNoteForm(true);
+  };
 
   // Xử lý sửa ghi chú
   const handleEditNote = (note) => {
-    setNoteToEdit(note)
-    setShowNoteForm(true)
-  }
+    setNoteToEdit(note);
+    setShowNoteForm(true);
+  };
 
   // Xử lý xóa ghi chú
   const handleDeleteNote = (note) => {
@@ -61,11 +68,13 @@ const NotesScreen = () => {
         onPress: () => deleteNote(note.id),
         style: "destructive",
       },
-    ])
-  }
+    ]);
+  };
 
   // Render item cho FlatList
-  const renderNoteItem = ({ item }) => <NoteItem note={item} onEdit={handleEditNote} onDelete={handleDeleteNote} />
+  const renderNoteItem = ({ item }) => (
+    <NoteItem note={item} onEdit={handleEditNote} onDelete={handleDeleteNote} />
+  );
 
   return (
     <View style={styles.container}>
@@ -89,14 +98,14 @@ const NotesScreen = () => {
       <NoteForm
         visible={showNoteForm}
         onClose={() => {
-          setShowNoteForm(false)
-          setNoteToEdit(null)
+          setShowNoteForm(false);
+          setNoteToEdit(null);
         }}
         noteToEdit={noteToEdit}
       />
     </View>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -137,6 +146,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
   },
-})
+});
 
-export default NotesScreen
+export default NotesScreen;

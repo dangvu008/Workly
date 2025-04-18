@@ -1,16 +1,16 @@
-"use client"
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native"
-import { useTranslation } from "../i18n/useTranslation"
-import { COLORS } from "../constants/colors"
-import TranslationExamples from "../components/TranslationExamples"
+"use client";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { useLocalization } from "../localization/LocalizationContext";
+import { COLORS } from "../constants/colors";
+import TranslationExamples from "../components/TranslationExamples";
 
 const TranslationDemoScreen = ({ navigation }) => {
-  const { t, changeLanguage, getCurrentLanguage } = useTranslation()
+  const { t, changeLanguage, getCurrentLanguage } = useLocalization();
 
   const toggleLanguage = () => {
-    const currentLang = getCurrentLanguage()
-    changeLanguage(currentLang === "en" ? "vi" : "en")
-  }
+    const currentLang = getCurrentLanguage();
+    changeLanguage(currentLang === "en" ? "vi" : "en");
+  };
 
   return (
     <View style={styles.container}>
@@ -18,17 +18,22 @@ const TranslationDemoScreen = ({ navigation }) => {
         <Text style={styles.headerTitle}>
           {t("common.appName")} - {t("settings.language")}
         </Text>
-        <TouchableOpacity style={styles.languageButton} onPress={toggleLanguage}>
+        <TouchableOpacity
+          style={styles.languageButton}
+          onPress={toggleLanguage}
+        >
           <Text style={styles.languageButtonText}>
-            {getCurrentLanguage() === "en" ? "Switch to Vietnamese" : "Chuyển sang tiếng Anh"}
+            {getCurrentLanguage() === "en"
+              ? "Switch to Vietnamese"
+              : "Chuyển sang tiếng Anh"}
           </Text>
         </TouchableOpacity>
       </View>
 
       <TranslationExamples navigation={navigation} />
     </View>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -56,6 +61,6 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: "bold",
   },
-})
+});
 
-export default TranslationDemoScreen
+export default TranslationDemoScreen;

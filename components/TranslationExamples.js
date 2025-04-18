@@ -6,12 +6,12 @@ import {
   ScrollView,
   StyleSheet,
 } from "react-native";
-import { useTranslation } from "../i18n/useTranslation";
+import { useLocalization } from "../localization/LocalizationContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 
 const TranslationExamples = ({ navigation }) => {
-  const { t } = useTranslation(); // Chỉ cần lấy hàm t để dịch
+  const { t } = useLocalization(); // Chỉ cần lấy hàm t để dịch
 
   // Sample data for dynamic content
   const weatherData = {

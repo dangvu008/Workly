@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import {
   View,
   Text,
@@ -14,29 +14,32 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
-} from "react-native"
-import { useAppContext } from "../context/AppContext"
-import { MaterialIcons } from "@expo/vector-icons"
-import { formatDate, timeToMinutes, formatDuration } from "../utils/dateUtils"
-import { useTranslation } from "../i18n/useTranslation"
-import { multiButtonStyles } from "../styles/components/multiButton"
-import { useTheme } from "../context/ThemeContext"
+} from "react-native";
+import { useAppContext } from "../context/AppContext";
+import { MaterialIcons } from "@expo/vector-icons";
+import { formatDate, timeToMinutes, formatDuration } from "../utils/dateUtils";
+import { useLocalization } from "../localization/LocalizationContext";
+import { multiButtonStyles } from "../styles/components/multiButton";
+import { useTheme } from "../context/ThemeContext";
 // Import Haptics module from Expo
-import * as Haptics from "expo-haptics"
+import * as Haptics from "expo-haptics";
 
 // Enable LayoutAnimation for Android
-if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true)
+if (
+  Platform.OS === "android" &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
 // Constants
-const { width } = Dimensions.get("window")
-const isSmallScreen = width < 375
+const { width } = Dimensions.get("window");
+const isSmallScreen = width < 375;
 const ANIMATION_DURATION = {
   SHORT: 100,
   MEDIUM: 300,
   LONG: 500,
-}
+};
 const HAPTIC_TYPES = {
   LIGHT: "light",
   MEDIUM: "medium",
@@ -44,43 +47,43 @@ const HAPTIC_TYPES = {
   SUCCESS: "success",
   WARNING: "warning",
   ERROR: "error",
-}
+};
 
 // Memoized LogItem component
 const LogItem = memo(({ item, colors, t, formatDate }) => {
   // Determine log type and icon
   const logInfo = useMemo(() => {
-    let logTypeText = ""
-    let logIcon = ""
+    let logTypeText = "";
+    let logIcon = "";
 
     switch (item.type) {
       case "go_work":
-        logTypeText = t("home.logGoWork")
-        logIcon = "directions-walk"
-        break
+        logTypeText = t("home.logGoWork");
+        logIcon = "directions-walk";
+        break;
       case "check_in":
-        logTypeText = t("home.logCheckIn")
-        logIcon = "login"
-        break
+        logTypeText = t("home.logCheckIn");
+        logIcon = "login";
+        break;
       case "punch":
-        logTypeText = t("home.logPunch")
-        logIcon = "touch-app"
-        break
+        logTypeText = t("home.logPunch");
+        logIcon = "touch-app";
+        break;
       case "check_out":
-        logTypeText = t("home.logCheckOut")
-        logIcon = "logout"
-        break
+        logTypeText = t("home.logCheckOut");
+        logIcon = "logout";
+        break;
       case "complete":
-        logTypeText = t("home.logComplete")
-        logIcon = "check-circle"
-        break
+        logTypeText = t("home.logComplete");
+        logIcon = "check-circle";
+        break;
       default:
-        logTypeText = item.type
-        logIcon = "info"
+        logTypeText = item.type;
+        logIcon = "info";
     }
 
-    return { logTypeText, logIcon }
-  }, [item.type, t])
+    return { logTypeText, logIcon };
+  }, [item.type, t]);
 
   return (
     <View
@@ -91,84 +94,126 @@ const LogItem = memo(({ item, colors, t, formatDate }) => {
         },
       ]}
     >
-      <View style={[multiButtonStyles.logIconContainer, { backgroundColor: colors.primary }]}>
+      <View
+        style={[
+          multiButtonStyles.logIconContainer,
+          { backgroundColor: colors.primary },
+        ]}
+      >
         <MaterialIcons name={logInfo.logIcon} size={16} color={colors.white} />
       </View>
       <View style={multiButtonStyles.logContent}>
-        <Text style={[multiButtonStyles.logType, { color: colors.text }]}>{logInfo.logTypeText}</Text>
+        <Text style={[multiButtonStyles.logType, { color: colors.text }]}>
+          {logInfo.logTypeText}
+        </Text>
         <Text style={[multiButtonStyles.logTime, { color: colors.gray }]}>
           {formatDate(new Date(item.date), "time")}
         </Text>
       </View>
     </View>
-  )
-})
+  );
+});
 
 // Set display name for debugging
-LogItem.displayName = "LogItem"
+LogItem.displayName = "LogItem";
 
 // Memoized ConfirmationDialog component
-const ConfirmationDialog = memo(({ visible, title, message, onConfirm, onCancel, colors, t }) => {
-  if (!visible) return null
+const ConfirmationDialog = memo(
+  ({ visible, title, message, onConfirm, onCancel, colors, t }) => {
+    if (!visible) return null;
 
-  return (
-    <View style={multiButtonStyles.confirmationOverlay}>
-      <View
-        style={[
-          multiButtonStyles.confirmationDialog,
-          {
-            backgroundColor: colors.card,
-          },
-        ]}
-      >
-        <Text style={[multiButtonStyles.confirmationTitle, { color: colors.text }]}>{title}</Text>
-        <Text style={[multiButtonStyles.confirmationMessage, { color: colors.darkGray }]}>{message}</Text>
-
-        <View style={multiButtonStyles.confirmationButtons}>
-          <TouchableOpacity
-            style={[multiButtonStyles.confirmationButton, multiButtonStyles.cancelButton]}
-            onPress={onCancel}
-            activeOpacity={0.7}
+    return (
+      <View style={multiButtonStyles.confirmationOverlay}>
+        <View
+          style={[
+            multiButtonStyles.confirmationDialog,
+            {
+              backgroundColor: colors.card,
+            },
+          ]}
+        >
+          <Text
+            style={[
+              multiButtonStyles.confirmationTitle,
+              { color: colors.text },
+            ]}
           >
-            <Text style={multiButtonStyles.confirmationButtonText}>{t("common.cancel")}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[multiButtonStyles.confirmationButton, { backgroundColor: colors.primary }]}
-            onPress={onConfirm}
-            activeOpacity={0.7}
+            {title}
+          </Text>
+          <Text
+            style={[
+              multiButtonStyles.confirmationMessage,
+              { color: colors.darkGray },
+            ]}
           >
-            <Text style={[multiButtonStyles.confirmationButtonText, { color: colors.white }]}>
-              {t("common.confirm")}
-            </Text>
-          </TouchableOpacity>
+            {message}
+          </Text>
+
+          <View style={multiButtonStyles.confirmationButtons}>
+            <TouchableOpacity
+              style={[
+                multiButtonStyles.confirmationButton,
+                multiButtonStyles.cancelButton,
+              ]}
+              onPress={onCancel}
+              activeOpacity={0.7}
+            >
+              <Text style={multiButtonStyles.confirmationButtonText}>
+                {t("common.cancel")}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                multiButtonStyles.confirmationButton,
+                { backgroundColor: colors.primary },
+              ]}
+              onPress={onConfirm}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  multiButtonStyles.confirmationButtonText,
+                  { color: colors.white },
+                ]}
+              >
+                {t("common.confirm")}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
-    </View>
-  )
-})
+    );
+  }
+);
 
 // Set display name for debugging
-ConfirmationDialog.displayName = "ConfirmationDialog"
+ConfirmationDialog.displayName = "ConfirmationDialog";
 
 // Main MultiButton component
 const MultiButton = () => {
-  const { userSettings, shifts, addAttendanceLog, resetDailyWorkStatus, getLogsForDate, getDailyStatusForDate } =
-    useAppContext()
-  const { t } = useTranslation()
-  const { colors, isDarkMode } = useTheme()
+  const {
+    userSettings,
+    shifts,
+    addAttendanceLog,
+    resetDailyWorkStatus,
+    getLogsForDate,
+    getDailyStatusForDate,
+  } = useAppContext();
+  const { t } = useLocalization();
+  const { colors, isDarkMode } = useTheme();
 
   // State
-  const [activeShift, setActiveShift] = useState(null)
-  const [currentStatus, setCurrentStatus] = useState("not_started")
-  const [todayLogs, setTodayLogs] = useState([])
-  const [buttonEnabled, setButtonEnabled] = useState(true)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [workDuration, setWorkDuration] = useState(null)
-  const [showConfirmation, setShowConfirmation] = useState(false)
-  const [pendingAction, setPendingAction] = useState(null)
-  const [showLogs, setShowLogs] = useState(false)
-  const [errorMessage, setErrorMessage] = useState(null)
+  const [activeShift, setActiveShift] = useState(null);
+  const [currentStatus, setCurrentStatus] = useState("not_started");
+  const [todayLogs, setTodayLogs] = useState([]);
+  const [buttonEnabled, setButtonEnabled] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [workDuration, setWorkDuration] = useState(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
+  const [showLogs, setShowLogs] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(null);
 
   // Animation values - memoized to avoid recreating on each render
   const animationValues = useMemo(
@@ -183,8 +228,8 @@ const MultiButton = () => {
       slideAnim: new Animated.Value(-50),
       fadeAnim: new Animated.Value(0),
     }),
-    [],
-  )
+    []
+  );
 
   const {
     scaleAnim,
@@ -196,13 +241,13 @@ const MultiButton = () => {
     pulseAnim,
     slideAnim,
     fadeAnim,
-  } = animationValues
+  } = animationValues;
 
   // Refs
-  const timerRef = useRef(null)
-  const pulseTimerRef = useRef(null)
-  const prevStatusRef = useRef(currentStatus)
-  const confirmationActionsRef = useRef({ onConfirm: null, onCancel: null })
+  const timerRef = useRef(null);
+  const pulseTimerRef = useRef(null);
+  const prevStatusRef = useRef(currentStatus);
+  const confirmationActionsRef = useRef({ onConfirm: null, onCancel: null });
 
   // Function to trigger haptic feedback based on intensity - optimized with useCallback
   const triggerHapticFeedback = useCallback(
@@ -212,39 +257,43 @@ const MultiButton = () => {
         try {
           switch (intensity) {
             case HAPTIC_TYPES.LIGHT:
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-              break
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              break;
             case HAPTIC_TYPES.MEDIUM:
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-              break
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              break;
             case HAPTIC_TYPES.HEAVY:
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-              break
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+              break;
             case HAPTIC_TYPES.SUCCESS:
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-              break
+              Haptics.notificationAsync(
+                Haptics.NotificationFeedbackType.Success
+              );
+              break;
             case HAPTIC_TYPES.WARNING:
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
-              break
+              Haptics.notificationAsync(
+                Haptics.NotificationFeedbackType.Warning
+              );
+              break;
             case HAPTIC_TYPES.ERROR:
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
-              break
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+              break;
             default:
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           }
         } catch (error) {
-          console.log("Haptic feedback error:", error)
+          console.log("Haptic feedback error:", error);
           // Silently fail if haptics aren't available
         }
       }
     },
-    [userSettings.hapticFeedbackEnabled],
-  )
+    [userSettings.hapticFeedbackEnabled]
+  );
 
   // Animation functions - optimized with useCallback
   const animateButtonPress = useCallback(() => {
     // Trigger medium haptic feedback for main button press
-    triggerHapticFeedback(HAPTIC_TYPES.MEDIUM)
+    triggerHapticFeedback(HAPTIC_TYPES.MEDIUM);
 
     Animated.sequence([
       Animated.parallel([
@@ -271,52 +320,52 @@ const MultiButton = () => {
           useNativeDriver: true,
         }),
       ]),
-    ]).start()
-  }, [scaleAnim, opacityAnim, triggerHapticFeedback])
+    ]).start();
+  }, [scaleAnim, opacityAnim, triggerHapticFeedback]);
 
   const animateResetButton = useCallback(() => {
     // Trigger warning haptic feedback for reset button
-    triggerHapticFeedback(HAPTIC_TYPES.WARNING)
+    triggerHapticFeedback(HAPTIC_TYPES.WARNING);
 
     Animated.timing(rotateAnim, {
       toValue: rotateAnim._value + 1,
       duration: ANIMATION_DURATION.LONG,
       useNativeDriver: true,
-    }).start()
-  }, [rotateAnim, triggerHapticFeedback])
+    }).start();
+  }, [rotateAnim, triggerHapticFeedback]);
 
   // Start timer to track work duration - optimized with useCallback
   const startWorkDurationTimer = useCallback(
     (checkInTime) => {
       if (timerRef.current) {
-        clearInterval(timerRef.current)
+        clearInterval(timerRef.current);
       }
 
       const updateDuration = () => {
-        const now = new Date()
-        const durationMinutes = Math.floor((now - checkInTime) / 60000)
-        setWorkDuration(durationMinutes)
+        const now = new Date();
+        const durationMinutes = Math.floor((now - checkInTime) / 60000);
+        setWorkDuration(durationMinutes);
 
         // Animate progress based on expected work duration (8 hours by default)
-        const expectedDuration = 8 * 60 // 8 hours in minutes
-        const progress = Math.min(durationMinutes / expectedDuration, 1)
+        const expectedDuration = 8 * 60; // 8 hours in minutes
+        const progress = Math.min(durationMinutes / expectedDuration, 1);
 
         Animated.timing(progressAnim, {
           toValue: progress,
           duration: ANIMATION_DURATION.MEDIUM,
           useNativeDriver: false,
-        }).start()
-      }
+        }).start();
+      };
 
-      updateDuration() // Initial update
-      timerRef.current = setInterval(updateDuration, 60000) // Update every minute
+      updateDuration(); // Initial update
+      timerRef.current = setInterval(updateDuration, 60000); // Update every minute
     },
-    [progressAnim],
-  )
+    [progressAnim]
+  );
 
   // Pulse animation functions - optimized with useCallback
   const startPulseAnimation = useCallback(() => {
-    if (pulseTimerRef.current) return
+    if (pulseTimerRef.current) return;
 
     const pulse = () => {
       Animated.sequence([
@@ -332,53 +381,53 @@ const MultiButton = () => {
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
-      ]).start()
-    }
+      ]).start();
+    };
 
-    pulse()
-    pulseTimerRef.current = setInterval(pulse, 1600)
-  }, [pulseAnim])
+    pulse();
+    pulseTimerRef.current = setInterval(pulse, 1600);
+  }, [pulseAnim]);
 
   const stopPulseAnimation = useCallback(() => {
     if (pulseTimerRef.current) {
-      clearInterval(pulseTimerRef.current)
-      pulseTimerRef.current = null
+      clearInterval(pulseTimerRef.current);
+      pulseTimerRef.current = null;
 
       // Reset to normal size
       Animated.timing(pulseAnim, {
         toValue: 1,
         duration: ANIMATION_DURATION.SHORT,
         useNativeDriver: true,
-      }).start()
+      }).start();
     }
-  }, [pulseAnim])
+  }, [pulseAnim]);
 
   // Animate logs container - optimized with useCallback
   const animateLogsContainer = useCallback(
     (show) => {
       // Trigger light haptic feedback when toggling logs
-      triggerHapticFeedback(HAPTIC_TYPES.LIGHT)
+      triggerHapticFeedback(HAPTIC_TYPES.LIGHT);
 
-      const targetHeight = show ? 1 : 0
+      const targetHeight = show ? 1 : 0;
 
       Animated.timing(logsHeightAnim, {
         toValue: targetHeight,
         duration: ANIMATION_DURATION.SHORT,
         useNativeDriver: false,
-      }).start()
+      }).start();
     },
-    [logsHeightAnim, triggerHapticFeedback],
-  )
+    [logsHeightAnim, triggerHapticFeedback]
+  );
 
   // Toggle logs visibility - optimized with useCallback
   const toggleLogs = useCallback(() => {
     // Trigger haptic feedback when toggling logs
-    triggerHapticFeedback(HAPTIC_TYPES.LIGHT)
+    triggerHapticFeedback(HAPTIC_TYPES.LIGHT);
 
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
-    setShowLogs((prev) => !prev)
-    animateLogsContainer(!showLogs)
-  }, [showLogs, animateLogsContainer, triggerHapticFeedback])
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setShowLogs((prev) => !prev);
+    animateLogsContainer(!showLogs);
+  }, [showLogs, animateLogsContainer, triggerHapticFeedback]);
 
   // Animate status change - optimized with useCallback
   const animateStatusChange = useCallback(
@@ -386,19 +435,19 @@ const MultiButton = () => {
       // Trigger appropriate haptic feedback based on the new status
       switch (newStatus) {
         case "waiting_check_in":
-          triggerHapticFeedback(HAPTIC_TYPES.LIGHT)
-          break
+          triggerHapticFeedback(HAPTIC_TYPES.LIGHT);
+          break;
         case "working":
-          triggerHapticFeedback(HAPTIC_TYPES.SUCCESS)
-          break
+          triggerHapticFeedback(HAPTIC_TYPES.SUCCESS);
+          break;
         case "ready_to_complete":
-          triggerHapticFeedback(HAPTIC_TYPES.MEDIUM)
-          break
+          triggerHapticFeedback(HAPTIC_TYPES.MEDIUM);
+          break;
         case "completed":
-          triggerHapticFeedback(HAPTIC_TYPES.SUCCESS)
-          break
+          triggerHapticFeedback(HAPTIC_TYPES.SUCCESS);
+          break;
         default:
-          triggerHapticFeedback(HAPTIC_TYPES.LIGHT)
+          triggerHapticFeedback(HAPTIC_TYPES.LIGHT);
       }
 
       // Animate button color change
@@ -406,7 +455,7 @@ const MultiButton = () => {
         toValue: getButtonColorValue(newStatus),
         duration: ANIMATION_DURATION.MEDIUM,
         useNativeDriver: false,
-      }).start()
+      }).start();
 
       // Slide in the status text
       Animated.sequence([
@@ -430,365 +479,410 @@ const MultiButton = () => {
           duration: ANIMATION_DURATION.SHORT,
           useNativeDriver: true,
         }),
-      ]).start()
+      ]).start();
 
       // Use LayoutAnimation for smooth transition
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     },
-    [buttonColorAnim, slideAnim, fadeAnim, triggerHapticFeedback],
-  )
+    [buttonColorAnim, slideAnim, fadeAnim, triggerHapticFeedback]
+  );
 
   // Get button color value for animation - memoized to avoid recalculation
   const getButtonColorValue = useCallback((status) => {
     switch (status) {
       case "not_started":
-        return 0
+        return 0;
       case "waiting_check_in":
-        return 1
+        return 1;
       case "working":
-        return 2
+        return 2;
       case "ready_to_complete":
-        return 3
+        return 3;
       case "completed":
-        return 4
+        return 4;
       default:
-        return 0
+        return 0;
     }
-  }, [])
+  }, []);
 
   // Find shift for today - optimized with useEffect
   useEffect(() => {
-    const today = new Date()
-    const dayOfWeek = today.toLocaleString("en-US", { weekday: "short" }).substring(0, 3)
+    const today = new Date();
+    const dayOfWeek = today
+      .toLocaleString("en-US", { weekday: "short" })
+      .substring(0, 3);
 
     // Get current status
-    const dailyStatus = getDailyStatusForDate(today)
+    const dailyStatus = getDailyStatusForDate(today);
 
     // Animate status change if status is different
     if (dailyStatus.status !== currentStatus) {
-      animateStatusChange(dailyStatus.status)
+      animateStatusChange(dailyStatus.status);
     }
 
-    setCurrentStatus(dailyStatus.status)
-    prevStatusRef.current = dailyStatus.status
+    setCurrentStatus(dailyStatus.status);
+    prevStatusRef.current = dailyStatus.status;
 
     // If there's already a shiftId in the status, use it
     if (dailyStatus.shiftId) {
-      const shift = shifts.find((s) => s.id === dailyStatus.shiftId)
+      const shift = shifts.find((s) => s.id === dailyStatus.shiftId);
       if (shift) {
-        setActiveShift(shift)
+        setActiveShift(shift);
 
         // Start timer if currently working
         if (dailyStatus.status === "working" && dailyStatus.checkInTime) {
-          startWorkDurationTimer(new Date(dailyStatus.checkInTime))
+          startWorkDurationTimer(new Date(dailyStatus.checkInTime));
         }
 
-        return
+        return;
       }
     }
 
     // If not, find appropriate shift for today
-    const todayShifts = shifts.filter((shift) => shift.daysApplied.includes(dayOfWeek))
+    const todayShifts = shifts.filter((shift) =>
+      shift.daysApplied.includes(dayOfWeek)
+    );
 
     if (todayShifts.length === 1) {
-      setActiveShift(todayShifts[0])
+      setActiveShift(todayShifts[0]);
     } else if (todayShifts.length > 1) {
       // If multiple shifts, choose the one closest to current time
-      const now = new Date()
-      const currentMinutes = now.getHours() * 60 + now.getMinutes()
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
       todayShifts.sort((a, b) => {
-        const startA = timeToMinutes(a.startTime)
-        const startB = timeToMinutes(b.startTime)
+        const startA = timeToMinutes(a.startTime);
+        const startB = timeToMinutes(b.startTime);
 
         // Calculate distance to current time
-        const distanceA = Math.abs(startA - currentMinutes)
-        const distanceB = Math.abs(startB - currentMinutes)
+        const distanceA = Math.abs(startA - currentMinutes);
+        const distanceB = Math.abs(startB - currentMinutes);
 
-        return distanceA - distanceB
-      })
+        return distanceA - distanceB;
+      });
 
-      setActiveShift(todayShifts[0])
+      setActiveShift(todayShifts[0]);
     }
-  }, [shifts, getDailyStatusForDate, animateStatusChange, startWorkDurationTimer])
+  }, [
+    shifts,
+    getDailyStatusForDate,
+    animateStatusChange,
+    startWorkDurationTimer,
+  ]);
 
   // Get logs for today - optimized with useEffect
   useEffect(() => {
     try {
-      const logs = getLogsForDate(new Date())
+      const logs = getLogsForDate(new Date());
 
       // Use LayoutAnimation for smooth transition when logs change
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
 
-      setTodayLogs(logs)
+      setTodayLogs(logs);
 
       // If we have logs, animate the logs container
       if (logs.length > 0 && !showLogs) {
         setTimeout(() => {
-          setShowLogs(true)
-          animateLogsContainer(true)
-        }, 500)
+          setShowLogs(true);
+          animateLogsContainer(true);
+        }, 500);
       }
     } catch (error) {
-      console.error("Error loading logs:", error)
-      setErrorMessage("Không thể tải lịch sử. Vui lòng thử lại sau.")
+      console.error("Error loading logs:", error);
+      setErrorMessage("Không thể tải lịch sử. Vui lòng thử lại sau.");
     }
-  }, [getLogsForDate, animateLogsContainer, showLogs])
+  }, [getLogsForDate, animateLogsContainer, showLogs]);
 
   // Check if button should be enabled - optimized with useEffect
   useEffect(() => {
     if (!activeShift) {
-      setButtonEnabled(false)
-      return
+      setButtonEnabled(false);
+      return;
     }
 
-    const now = new Date()
-    const currentMinutes = now.getHours() * 60 + now.getMinutes()
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
     switch (currentStatus) {
       case "not_started":
         // Always allow "Go to Work"
-        setButtonEnabled(true)
-        break
+        setButtonEnabled(true);
+        break;
       case "waiting_check_in": {
         // Allow check-in when close to start time (within 30 minutes)
-        const startMinutes = timeToMinutes(activeShift.startTime)
-        setButtonEnabled(Math.abs(currentMinutes - startMinutes) <= 30)
-        break
+        const startMinutes = timeToMinutes(activeShift.startTime);
+        setButtonEnabled(Math.abs(currentMinutes - startMinutes) <= 30);
+        break;
       }
       case "working": {
         // Allow check-out when worked minimum time or close to end time
-        const dailyStatus = getDailyStatusForDate(now)
+        const dailyStatus = getDailyStatusForDate(now);
         if (dailyStatus.checkInTime) {
-          const checkInTime = new Date(dailyStatus.checkInTime)
-          const workingMinutes = Math.floor((now - checkInTime) / 60000)
+          const checkInTime = new Date(dailyStatus.checkInTime);
+          const workingMinutes = Math.floor((now - checkInTime) / 60000);
 
           // Minimum 30 minutes work or close to end time
-          const officeEndMinutes = timeToMinutes(activeShift.officeEndTime)
-          setButtonEnabled(workingMinutes >= 30 || Math.abs(currentMinutes - officeEndMinutes) <= 30)
+          const officeEndMinutes = timeToMinutes(activeShift.officeEndTime);
+          setButtonEnabled(
+            workingMinutes >= 30 ||
+              Math.abs(currentMinutes - officeEndMinutes) <= 30
+          );
 
           // Start pulsing animation when close to end time
           if (Math.abs(currentMinutes - officeEndMinutes) <= 15) {
-            startPulseAnimation()
+            startPulseAnimation();
           } else {
-            stopPulseAnimation()
+            stopPulseAnimation();
           }
         } else {
-          setButtonEnabled(false)
+          setButtonEnabled(false);
         }
-        break
+        break;
       }
       case "ready_to_complete":
         // Always allow completion
-        setButtonEnabled(true)
-        break
+        setButtonEnabled(true);
+        break;
       case "completed":
         // Already completed, disable main button
-        setButtonEnabled(false)
-        break
+        setButtonEnabled(false);
+        break;
       default:
-        setButtonEnabled(true)
+        setButtonEnabled(true);
     }
-  }, [currentStatus, activeShift, getDailyStatusForDate, startPulseAnimation, stopPulseAnimation])
+  }, [
+    currentStatus,
+    activeShift,
+    getDailyStatusForDate,
+    startPulseAnimation,
+    stopPulseAnimation,
+  ]);
 
   // Cleanup timers on unmount - optimized with useEffect
   useEffect(() => {
     return () => {
       if (timerRef.current) {
-        clearInterval(timerRef.current)
-        timerRef.current = null
+        clearInterval(timerRef.current);
+        timerRef.current = null;
       }
       if (pulseTimerRef.current) {
-        clearInterval(pulseTimerRef.current)
-        pulseTimerRef.current = null
+        clearInterval(pulseTimerRef.current);
+        pulseTimerRef.current = null;
       }
-    }
-  }, [])
+    };
+  }, []);
 
   // Action handlers - optimized with useCallback
   const handleGoWork = useCallback(() => {
-    if (!activeShift) return
+    if (!activeShift) return;
 
     try {
       // Trigger success haptic feedback when going to work
-      triggerHapticFeedback(HAPTIC_TYPES.SUCCESS)
-      addAttendanceLog("go_work", activeShift.id)
-      setCurrentStatus("waiting_check_in")
+      triggerHapticFeedback(HAPTIC_TYPES.SUCCESS);
+      addAttendanceLog("go_work", activeShift.id);
+      setCurrentStatus("waiting_check_in");
     } catch (error) {
-      console.error("Error handling go work:", error)
-      setErrorMessage("Không thể bắt đầu ca làm việc. Vui lòng thử lại sau.")
-      triggerHapticFeedback(HAPTIC_TYPES.ERROR)
+      console.error("Error handling go work:", error);
+      setErrorMessage("Không thể bắt đầu ca làm việc. Vui lòng thử lại sau.");
+      triggerHapticFeedback(HAPTIC_TYPES.ERROR);
     }
-  }, [activeShift, addAttendanceLog, triggerHapticFeedback])
+  }, [activeShift, addAttendanceLog, triggerHapticFeedback]);
 
   const handleCheckIn = useCallback(() => {
-    if (!activeShift) return
+    if (!activeShift) return;
 
     try {
       // Trigger success haptic feedback when checking in
-      triggerHapticFeedback(HAPTIC_TYPES.SUCCESS)
-      const now = new Date()
-      addAttendanceLog("check_in", activeShift.id)
-      setCurrentStatus("working")
-      startWorkDurationTimer(now)
+      triggerHapticFeedback(HAPTIC_TYPES.SUCCESS);
+      const now = new Date();
+      addAttendanceLog("check_in", activeShift.id);
+      setCurrentStatus("working");
+      startWorkDurationTimer(now);
     } catch (error) {
-      console.error("Error handling check in:", error)
-      setErrorMessage("Không thể chấm công vào. Vui lòng thử lại sau.")
-      triggerHapticFeedback(HAPTIC_TYPES.ERROR)
+      console.error("Error handling check in:", error);
+      setErrorMessage("Không thể chấm công vào. Vui lòng thử lại sau.");
+      triggerHapticFeedback(HAPTIC_TYPES.ERROR);
     }
-  }, [activeShift, addAttendanceLog, triggerHapticFeedback, startWorkDurationTimer])
+  }, [
+    activeShift,
+    addAttendanceLog,
+    triggerHapticFeedback,
+    startWorkDurationTimer,
+  ]);
 
   const handlePunch = useCallback(() => {
-    if (!activeShift) return
+    if (!activeShift) return;
 
     try {
       // Trigger medium haptic feedback when punching
-      triggerHapticFeedback(HAPTIC_TYPES.MEDIUM)
-      animateButtonPress()
-      addAttendanceLog("punch", activeShift.id)
+      triggerHapticFeedback(HAPTIC_TYPES.MEDIUM);
+      animateButtonPress();
+      addAttendanceLog("punch", activeShift.id);
     } catch (error) {
-      console.error("Error handling punch:", error)
-      setErrorMessage("Không thể ký công. Vui lòng thử lại sau.")
-      triggerHapticFeedback(HAPTIC_TYPES.ERROR)
+      console.error("Error handling punch:", error);
+      setErrorMessage("Không thể ký công. Vui lòng thử lại sau.");
+      triggerHapticFeedback(HAPTIC_TYPES.ERROR);
     }
-  }, [activeShift, animateButtonPress, addAttendanceLog, triggerHapticFeedback])
+  }, [
+    activeShift,
+    animateButtonPress,
+    addAttendanceLog,
+    triggerHapticFeedback,
+  ]);
 
   const handleCheckOut = useCallback(() => {
-    if (!activeShift) return
+    if (!activeShift) return;
 
     try {
       // Trigger success haptic feedback when checking out
-      triggerHapticFeedback(HAPTIC_TYPES.SUCCESS)
+      triggerHapticFeedback(HAPTIC_TYPES.SUCCESS);
 
       if (timerRef.current) {
-        clearInterval(timerRef.current)
-        timerRef.current = null
+        clearInterval(timerRef.current);
+        timerRef.current = null;
       }
 
       if (pulseTimerRef.current) {
-        clearInterval(pulseTimerRef.current)
-        pulseTimerRef.current = null
+        clearInterval(pulseTimerRef.current);
+        pulseTimerRef.current = null;
       }
 
-      addAttendanceLog("check_out", activeShift.id)
-      setCurrentStatus("ready_to_complete")
-      setWorkDuration(null)
+      addAttendanceLog("check_out", activeShift.id);
+      setCurrentStatus("ready_to_complete");
+      setWorkDuration(null);
     } catch (error) {
-      console.error("Error handling check out:", error)
-      setErrorMessage("Không thể chấm công ra. Vui lòng thử lại sau.")
-      triggerHapticFeedback(HAPTIC_TYPES.ERROR)
+      console.error("Error handling check out:", error);
+      setErrorMessage("Không thể chấm công ra. Vui lòng thử lại sau.");
+      triggerHapticFeedback(HAPTIC_TYPES.ERROR);
     }
-  }, [activeShift, addAttendanceLog, triggerHapticFeedback])
+  }, [activeShift, addAttendanceLog, triggerHapticFeedback]);
 
   const handleComplete = useCallback(() => {
-    if (!activeShift) return
+    if (!activeShift) return;
 
     try {
       // Trigger success haptic feedback
-      triggerHapticFeedback(HAPTIC_TYPES.SUCCESS)
-      addAttendanceLog("complete", activeShift.id)
-      setCurrentStatus("completed")
+      triggerHapticFeedback(HAPTIC_TYPES.SUCCESS);
+      addAttendanceLog("complete", activeShift.id);
+      setCurrentStatus("completed");
     } catch (error) {
-      console.error("Error handling complete:", error)
-      setErrorMessage("Không thể hoàn tất ca làm việc. Vui lòng thử lại sau.")
-      triggerHapticFeedback(HAPTIC_TYPES.ERROR)
+      console.error("Error handling complete:", error);
+      setErrorMessage("Không thể hoàn tất ca làm việc. Vui lòng thử lại sau.");
+      triggerHapticFeedback(HAPTIC_TYPES.ERROR);
     }
-  }, [activeShift, addAttendanceLog, triggerHapticFeedback])
+  }, [activeShift, addAttendanceLog, triggerHapticFeedback]);
 
   // Execute action after confirmation - optimized with useCallback
   const executeAction = useCallback(
     (action) => {
-      if (!activeShift) return
+      if (!activeShift) return;
 
-      setIsProcessing(true)
+      setIsProcessing(true);
 
       // Simulate a short delay for better UX
       setTimeout(() => {
         try {
           switch (action) {
             case "go_work":
-              handleGoWork()
-              break
+              handleGoWork();
+              break;
             case "check_in":
-              handleCheckIn()
-              break
+              handleCheckIn();
+              break;
             case "check_out":
-              handleCheckOut()
-              break
+              handleCheckOut();
+              break;
             case "complete":
-              handleComplete()
-              break
+              handleComplete();
+              break;
             case "punch":
-              handlePunch()
-              break
+              handlePunch();
+              break;
           }
         } catch (error) {
-          console.error("Error executing action:", error)
-          setErrorMessage(`Không thể thực hiện hành động "${action}". Vui lòng thử lại sau.`)
-          triggerHapticFeedback(HAPTIC_TYPES.ERROR)
+          console.error("Error executing action:", error);
+          setErrorMessage(
+            `Không thể thực hiện hành động "${action}". Vui lòng thử lại sau.`
+          );
+          triggerHapticFeedback(HAPTIC_TYPES.ERROR);
         } finally {
-          setIsProcessing(false)
-          setShowConfirmation(false)
-          setPendingAction(null)
+          setIsProcessing(false);
+          setShowConfirmation(false);
+          setPendingAction(null);
         }
-      }, 300)
+      }, 300);
     },
-    [activeShift, handleGoWork, handleCheckIn, handleCheckOut, handleComplete, handlePunch, triggerHapticFeedback],
-  )
+    [
+      activeShift,
+      handleGoWork,
+      handleCheckIn,
+      handleCheckOut,
+      handleComplete,
+      handlePunch,
+      triggerHapticFeedback,
+    ]
+  );
 
   // Handle button press - optimized with useCallback
   const handleButtonPress = useCallback(() => {
     if (!activeShift) {
       // Trigger error haptic feedback when there's no active shift
-      triggerHapticFeedback(HAPTIC_TYPES.ERROR)
-      Alert.alert(t("common.error"), t("home.noActiveShift"))
-      return
+      triggerHapticFeedback(HAPTIC_TYPES.ERROR);
+      Alert.alert(t("common.error"), t("home.noActiveShift"));
+      return;
     }
 
-    animateButtonPress()
+    animateButtonPress();
 
     switch (currentStatus) {
       case "not_started":
-        executeAction("go_work")
-        break
+        executeAction("go_work");
+        break;
       case "waiting_check_in":
-        executeAction("check_in")
-        break
+        executeAction("check_in");
+        break;
       case "working":
         // Show confirmation for check-out
-        setPendingAction("check_out")
-        setShowConfirmation(true)
+        setPendingAction("check_out");
+        setShowConfirmation(true);
         // Trigger warning haptic feedback for confirmation dialog
-        triggerHapticFeedback(HAPTIC_TYPES.WARNING)
-        break
+        triggerHapticFeedback(HAPTIC_TYPES.WARNING);
+        break;
       case "ready_to_complete":
-        executeAction("complete")
-        break
+        executeAction("complete");
+        break;
       default:
-        break
+        break;
     }
-  }, [activeShift, currentStatus, animateButtonPress, executeAction, triggerHapticFeedback, t])
+  }, [
+    activeShift,
+    currentStatus,
+    animateButtonPress,
+    executeAction,
+    triggerHapticFeedback,
+    t,
+  ]);
 
   // Handle confirmation dialog - optimized with useCallback
   const handleConfirmation = useCallback(
     (confirmed) => {
       if (confirmed && pendingAction) {
         // Trigger success haptic feedback when confirming
-        triggerHapticFeedback(HAPTIC_TYPES.SUCCESS)
-        executeAction(pendingAction)
+        triggerHapticFeedback(HAPTIC_TYPES.SUCCESS);
+        executeAction(pendingAction);
       } else {
         // Trigger light haptic feedback when canceling
-        triggerHapticFeedback(HAPTIC_TYPES.LIGHT)
-        setShowConfirmation(false)
-        setPendingAction(null)
+        triggerHapticFeedback(HAPTIC_TYPES.LIGHT);
+        setShowConfirmation(false);
+        setPendingAction(null);
       }
     },
-    [pendingAction, executeAction, triggerHapticFeedback],
-  )
+    [pendingAction, executeAction, triggerHapticFeedback]
+  );
 
   // Handle reset - optimized with useCallback
   const handleReset = useCallback(() => {
-    animateResetButton()
+    animateResetButton();
 
     Alert.alert(t("common.confirm"), t("home.resetConfirmation"), [
       {
@@ -800,32 +894,38 @@ const MultiButton = () => {
         text: t("common.confirm"),
         onPress: () => {
           // Trigger error haptic feedback when resetting
-          triggerHapticFeedback(HAPTIC_TYPES.ERROR)
+          triggerHapticFeedback(HAPTIC_TYPES.ERROR);
 
           if (timerRef.current) {
-            clearInterval(timerRef.current)
-            timerRef.current = null
+            clearInterval(timerRef.current);
+            timerRef.current = null;
           }
 
           if (pulseTimerRef.current) {
-            clearInterval(pulseTimerRef.current)
-            pulseTimerRef.current = null
+            clearInterval(pulseTimerRef.current);
+            pulseTimerRef.current = null;
           }
 
-          resetDailyWorkStatus()
-          setCurrentStatus("not_started")
-          setTodayLogs([])
-          setWorkDuration(null)
+          resetDailyWorkStatus();
+          setCurrentStatus("not_started");
+          setTodayLogs([]);
+          setWorkDuration(null);
 
           // Animate logs container closing
-          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
-          setShowLogs(false)
-          animateLogsContainer(false)
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+          setShowLogs(false);
+          animateLogsContainer(false);
         },
         style: "destructive",
       },
-    ])
-  }, [animateResetButton, t, triggerHapticFeedback, resetDailyWorkStatus, animateLogsContainer])
+    ]);
+  }, [
+    animateResetButton,
+    t,
+    triggerHapticFeedback,
+    resetDailyWorkStatus,
+    animateLogsContainer,
+  ]);
 
   // Memoized values
   // Button display info based on status - memoized to avoid recalculation
@@ -837,57 +937,65 @@ const MultiButton = () => {
           icon: "directions-walk",
           color: colors.primary,
           description: t("home.goWorkDescription") || "Start your workday",
-        }
+        };
       case "waiting_check_in":
         return {
           text: t("home.waitingCheckIn"),
           icon: "schedule",
           color: colors.info,
-          description: t("home.waitingCheckInDescription") || "Ready to check in",
-        }
+          description:
+            t("home.waitingCheckInDescription") || "Ready to check in",
+        };
       case "working":
         return {
           text: t("home.checkOut"),
           icon: "logout",
           color: colors.error,
           description: workDuration
-            ? t("home.workingFor", { duration: formatDuration(workDuration) }) ||
-              `Working for ${formatDuration(workDuration)}`
+            ? t("home.workingFor", {
+                duration: formatDuration(workDuration),
+              }) || `Working for ${formatDuration(workDuration)}`
             : "",
-        }
+        };
       case "ready_to_complete":
         return {
           text: t("home.complete"),
           icon: "check-circle",
           color: colors.success,
           description: t("home.completeDescription") || "Finish your workday",
-        }
+        };
       case "completed":
         return {
           text: t("home.completed"),
           icon: "done-all",
           color: colors.gray,
           description: t("home.completedDescription") || "Workday completed",
-        }
+        };
       default:
         return {
           text: t("home.goWork"),
           icon: "directions-walk",
           color: colors.primary,
           description: "",
-        }
+        };
     }
-  }, [currentStatus, t, colors, workDuration])
+  }, [currentStatus, t, colors, workDuration]);
 
   // Interpolate button color - memoized to avoid recalculation
   const buttonColor = useMemo(
     () =>
       buttonColorAnim.interpolate({
         inputRange: [0, 1, 2, 3, 4],
-        outputRange: [colors.primary, colors.info, colors.error, colors.success, colors.gray],
+        outputRange: [
+          colors.primary,
+          colors.info,
+          colors.error,
+          colors.success,
+          colors.gray,
+        ],
       }),
-    [buttonColorAnim, colors],
-  )
+    [buttonColorAnim, colors]
+  );
 
   // Rotate interpolation for reset button - memoized to avoid recalculation
   const spin = useMemo(
@@ -896,8 +1004,8 @@ const MultiButton = () => {
         inputRange: [0, 1],
         outputRange: ["0deg", "360deg"],
       }),
-    [rotateAnim],
-  )
+    [rotateAnim]
+  );
 
   // Progress bar width interpolation - memoized to avoid recalculation
   const progressWidth = useMemo(
@@ -906,29 +1014,33 @@ const MultiButton = () => {
         inputRange: [0, 1],
         outputRange: ["0%", "100%"],
       }),
-    [progressAnim],
-  )
+    [progressAnim]
+  );
 
   // Optimized render item function for FlatList
   const renderLogItem = useCallback(
-    ({ item }) => <LogItem item={item} colors={colors} t={t} formatDate={formatDate} />,
-    [colors, t],
-  )
+    ({ item }) => (
+      <LogItem item={item} colors={colors} t={t} formatDate={formatDate} />
+    ),
+    [colors, t]
+  );
 
   // Memoized confirmation dialog props
   const confirmationDialogProps = useMemo(() => {
-    if (!showConfirmation) return { visible: false }
+    if (!showConfirmation) return { visible: false };
 
-    let title = ""
-    let message = ""
+    let title = "";
+    let message = "";
 
     switch (pendingAction) {
       case "check_out":
-        title = t("home.confirmCheckOut") || "Confirm Check Out"
-        message = t("home.confirmCheckOutMessage") || "Are you sure you want to check out now?"
-        break
+        title = t("home.confirmCheckOut") || "Confirm Check Out";
+        message =
+          t("home.confirmCheckOutMessage") ||
+          "Are you sure you want to check out now?";
+        break;
       default:
-        return { visible: false }
+        return { visible: false };
     }
 
     return {
@@ -939,20 +1051,23 @@ const MultiButton = () => {
       onCancel: () => handleConfirmation(false),
       colors,
       t,
-    }
-  }, [showConfirmation, pendingAction, t, colors, handleConfirmation])
+    };
+  }, [showConfirmation, pendingAction, t, colors, handleConfirmation]);
 
   // Check if punch button should be shown - memoized to avoid recalculation
   const showPunchButton = useMemo(
     () => currentStatus === "working" && activeShift && activeShift.showPunch,
-    [currentStatus, activeShift],
-  )
+    [currentStatus, activeShift]
+  );
 
   // Check if reset button should be shown - memoized to avoid recalculation
-  const showResetButton = useMemo(() => todayLogs.length > 0, [todayLogs.length])
+  const showResetButton = useMemo(
+    () => todayLogs.length > 0,
+    [todayLogs.length]
+  );
 
   // Get button info
-  const buttonInfo = buttonDisplayInfo
+  const buttonInfo = buttonDisplayInfo;
 
   // Error handling
   useEffect(() => {
@@ -962,9 +1077,9 @@ const MultiButton = () => {
           text: t("common.ok"),
           onPress: () => setErrorMessage(null),
         },
-      ])
+      ]);
     }
-  }, [errorMessage, t])
+  }, [errorMessage, t]);
 
   return (
     <View style={multiButtonStyles.container}>
@@ -972,7 +1087,10 @@ const MultiButton = () => {
         {/* Main button */}
         <Animated.View
           style={{
-            transform: [{ scale: scaleAnim }, ...(currentStatus === "working" ? [{ scale: pulseAnim }] : [])],
+            transform: [
+              { scale: scaleAnim },
+              ...(currentStatus === "working" ? [{ scale: pulseAnim }] : []),
+            ],
             opacity: opacityAnim,
             flex: 1,
           }}
@@ -994,8 +1112,19 @@ const MultiButton = () => {
               <ActivityIndicator size="small" color={colors.white} />
             ) : (
               <>
-                <MaterialIcons name={buttonInfo.icon} size={24} color={colors.white} />
-                <Text style={[multiButtonStyles.buttonText, { color: colors.white }]}>{buttonInfo.text}</Text>
+                <MaterialIcons
+                  name={buttonInfo.icon}
+                  size={24}
+                  color={colors.white}
+                />
+                <Text
+                  style={[
+                    multiButtonStyles.buttonText,
+                    { color: colors.white },
+                  ]}
+                >
+                  {buttonInfo.text}
+                </Text>
               </>
             )}
           </TouchableOpacity>
@@ -1042,7 +1171,10 @@ const MultiButton = () => {
             }}
           >
             <TouchableOpacity
-              style={[multiButtonStyles.punchButton, { backgroundColor: colors.accent }]}
+              style={[
+                multiButtonStyles.punchButton,
+                { backgroundColor: colors.accent },
+              ]}
               onPress={handlePunch}
               disabled={isProcessing}
               activeOpacity={0.8}
@@ -1050,7 +1182,14 @@ const MultiButton = () => {
               accessibilityLabel={t("home.punch")}
             >
               <MaterialIcons name="touch-app" size={20} color={colors.white} />
-              <Text style={[multiButtonStyles.punchButtonText, { color: colors.white }]}>{t("home.punch")}</Text>
+              <Text
+                style={[
+                  multiButtonStyles.punchButtonText,
+                  { color: colors.white },
+                ]}
+              >
+                {t("home.punch")}
+              </Text>
             </TouchableOpacity>
           </Animated.View>
         )}
@@ -1092,11 +1231,15 @@ const MultiButton = () => {
           ]}
         >
           <Text
-            style={[multiButtonStyles.activeShiftText, { color: colors.darkGray }]}
+            style={[
+              multiButtonStyles.activeShiftText,
+              { color: colors.darkGray },
+            ]}
             numberOfLines={1}
             ellipsizeMode="tail"
           >
-            {t("home.activeShift")}: {activeShift.name} ({activeShift.startTime} - {activeShift.endTime})
+            {t("home.activeShift")}: {activeShift.name} ({activeShift.startTime}{" "}
+            - {activeShift.endTime})
           </Text>
         </Animated.View>
       )}
@@ -1109,7 +1252,9 @@ const MultiButton = () => {
           activeOpacity={0.7}
           accessibilityRole="button"
           accessibilityLabel={t("home.todayLogs")}
-          accessibilityHint={showLogs ? t("common.collapse") : t("common.expand")}
+          accessibilityHint={
+            showLogs ? t("common.collapse") : t("common.expand")
+          }
         >
           <Text style={[multiButtonStyles.logsTitle, { color: colors.text }]}>
             {t("home.todayLogs")} ({todayLogs.length})
@@ -1126,7 +1271,11 @@ const MultiButton = () => {
               ],
             }}
           >
-            <MaterialIcons name="keyboard-arrow-down" size={24} color={colors.primary} />
+            <MaterialIcons
+              name="keyboard-arrow-down"
+              size={24}
+              color={colors.primary}
+            />
           </Animated.View>
         </TouchableOpacity>
       )}
@@ -1166,7 +1315,7 @@ const MultiButton = () => {
       {/* Confirmation Dialog */}
       <ConfirmationDialog {...confirmationDialogProps} />
     </View>
-  )
-}
+  );
+};
 
-export default memo(MultiButton)
+export default memo(MultiButton);

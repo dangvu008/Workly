@@ -1,34 +1,37 @@
-import { View, Text } from "react-native"
-import WeatherIcon from "./WeatherIcon"
-import { useTranslation } from "../i18n/useTranslation"
-import { forecastItemStyles } from "../styles/components/forecastItem"
+import { View, Text } from "react-native";
+import WeatherIcon from "./WeatherIcon";
+import { useLocalization } from "../localization/LocalizationContext";
+import { forecastItemStyles } from "../styles/components/forecastItem";
 
 const ForecastItem = ({ day, date, icon, minTemp, maxTemp, description }) => {
-  const { t } = useTranslation()
+  const { t } = useLocalization();
 
   // Format the date to display day name
   const formatDay = (dateString) => {
-    const date = new Date(dateString)
-    const today = new Date()
-    const tomorrow = new Date(today)
-    tomorrow.setDate(today.getDate() + 1)
+    const date = new Date(dateString);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
 
     // Check if it's today or tomorrow
     if (date.toDateString() === today.toDateString()) {
-      return t("weather.today")
+      return t("weather.today");
     } else if (date.toDateString() === tomorrow.toDateString()) {
-      return t("weather.tomorrow")
+      return t("weather.tomorrow");
     }
 
     // Otherwise return the day name
-    return date.toLocaleDateString(undefined, { weekday: "short" })
-  }
+    return date.toLocaleDateString(undefined, { weekday: "short" });
+  };
 
   // Format the date to display date in short format
   const formatDate = (dateString) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString(undefined, { month: "short", day: "numeric" })
-  }
+    const date = new Date(dateString);
+    return date.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    });
+  };
 
   return (
     <View style={forecastItemStyles.container}>
@@ -46,11 +49,15 @@ const ForecastItem = ({ day, date, icon, minTemp, maxTemp, description }) => {
         <Text style={forecastItemStyles.minTemp}>{Math.round(minTemp)}°</Text>
       </View>
 
-      <Text style={forecastItemStyles.description} numberOfLines={1} ellipsizeMode="tail">
+      <Text
+        style={forecastItemStyles.description}
+        numberOfLines={1}
+        ellipsizeMode="tail"
+      >
         {description}
       </Text>
     </View>
-  )
-}
+  );
+};
 
-export default ForecastItem
+export default ForecastItem;

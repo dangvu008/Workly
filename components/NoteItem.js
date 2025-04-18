@@ -5,13 +5,13 @@ import { memo, useMemo, useCallback } from "react";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAppContext } from "../context/AppContext";
 import { formatDate } from "../utils/dateUtils";
-import { useTranslation } from "../i18n/useTranslation";
+import { useLocalization } from "../localization/LocalizationContext";
 import { noteItemStyles } from "../styles/components/noteItem";
 import { useTheme } from "../context/ThemeContext";
 
 const NoteItem = memo(({ note, onEdit, onDelete }) => {
   const { getNextReminderDate, shifts } = useAppContext();
-  const { t } = useTranslation();
+  const { t } = useLocalization();
   const { colors } = useTheme();
 
   // Lấy thời gian nhắc nhở tiếp theo - tối ưu hóa bằng useMemo

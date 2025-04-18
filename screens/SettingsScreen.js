@@ -1,103 +1,116 @@
-"use client"
-import { View, Text, ScrollView, TouchableOpacity, Switch, Alert } from "react-native"
-import { useCallback } from "react"
+"use client";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Switch,
+  Alert,
+} from "react-native";
+import { useCallback } from "react";
 
-import { useAppContext } from "../context/AppContext"
-import { COLORS } from "../constants/colors"
-import { MaterialIcons } from "@expo/vector-icons"
-import * as FileSystem from "expo-file-system"
-import * as Sharing from "expo-sharing"
-import * as DocumentPicker from "expo-document-picker"
-import { useTranslation } from "../i18n/useTranslation"
+import { useAppContext } from "../context/AppContext";
+import { COLORS } from "../constants/colors";
+import { MaterialIcons } from "@expo/vector-icons";
+import * as FileSystem from "expo-file-system";
+import * as Sharing from "expo-sharing";
+import * as DocumentPicker from "expo-document-picker";
+import { useLocalization } from "../localization/LocalizationContext";
 // Import the useThemedStyles hook and createSettingsScreenStyles
-import { useThemedStyles } from "../hooks/useThemedStyles"
-import { createSettingsScreenStyles } from "../styles/screens/settingsScreenThemed"
+import { useThemedStyles } from "../hooks/useThemedStyles";
+import { createSettingsScreenStyles } from "../styles/screens/settingsScreenThemed";
 // Import the ThemePreview component
-import ThemePreview from "../components/ThemePreview"
-import Logo from "../components/Logo" // Import the Logo component
-import Constants from "expo-constants" // Import Constants to get app version
-import { useTheme } from "@react-navigation/native"
+import ThemePreview from "../components/ThemePreview";
+import Logo from "../components/Logo"; // Import the Logo component
+import Constants from "expo-constants"; // Import Constants to get app version
+import { useTheme } from "@react-navigation/native";
 
 const SettingsScreen = ({ navigation }) => {
-  const { userSettings, updateSettings, exportData, importData } = useAppContext()
-  const { t } = useTranslation()
-  const { colors } = useTheme()
+  const { userSettings, updateSettings, exportData, importData } =
+    useAppContext();
+  const { t } = useLocalization();
+  const { colors } = useTheme();
 
   // Get app version from app.json via Constants
-  const appVersion = Constants.manifest.version || "1.0.0"
+  const appVersion = Constants.manifest.version || "1.0.0";
 
   // Add this inside the SettingsScreen component, before the return statement:
-  const styles = useThemedStyles(extendedCreateSettingsScreenStyles)
+  const styles = useThemedStyles(extendedCreateSettingsScreenStyles);
 
   // Tối ưu hóa các hàm xử lý sự kiện bằng useCallback
   // Thay thế hàm toggleSetting
   const toggleSetting = useCallback(
     (key) => {
-      updateSettings({ [key]: !userSettings[key] })
+      updateSettings({ [key]: !userSettings[key] });
     },
-    [updateSettings, userSettings],
-  )
+    [updateSettings, userSettings]
+  );
 
   // Thay thế hàm handleMultiButtonModeChange
   const handleMultiButtonModeChange = useCallback(() => {
-    const newMode = userSettings.multiButtonMode === "full" ? "simple" : "full"
-    updateSettings({ multiButtonMode: newMode })
-  }, [userSettings.multiButtonMode, updateSettings])
+    const newMode = userSettings.multiButtonMode === "full" ? "simple" : "full";
+    updateSettings({ multiButtonMode: newMode });
+  }, [userSettings.multiButtonMode, updateSettings]);
 
   // Thay thế hàm handleFirstDayOfWeekChange
   const handleFirstDayOfWeekChange = useCallback(() => {
-    const newDay = userSettings.firstDayOfWeek === "Mon" ? "Sun" : "Mon"
-    updateSettings({ firstDayOfWeek: newDay })
-  }, [userSettings.firstDayOfWeek, updateSettings])
+    const newDay = userSettings.firstDayOfWeek === "Mon" ? "Sun" : "Mon";
+    updateSettings({ firstDayOfWeek: newDay });
+  }, [userSettings.firstDayOfWeek, updateSettings]);
 
   // Thay thế hàm handleTimeFormatChange
   const handleTimeFormatChange = useCallback(() => {
-    const newFormat = userSettings.timeFormat === "24h" ? "12h" : "24h"
-    updateSettings({ timeFormat: newFormat })
-  }, [userSettings.timeFormat, updateSettings])
+    const newFormat = userSettings.timeFormat === "24h" ? "12h" : "24h";
+    updateSettings({ timeFormat: newFormat });
+  }, [userSettings.timeFormat, updateSettings]);
 
   // Thay thế hàm handleChangeShiftReminderModeChange
   const handleChangeShiftReminderModeChange = useCallback(() => {
-    const modes = ["ask_weekly", "rotate", "disabled"]
-    const currentIndex = modes.indexOf(userSettings.changeShiftReminderMode)
-    const newIndex = (currentIndex + 1) % modes.length
-    updateSettings({ changeShiftReminderMode: modes[newIndex] })
-  }, [userSettings.changeShiftReminderMode, updateSettings])
+    const modes = ["ask_weekly", "rotate", "disabled"];
+    const currentIndex = modes.indexOf(userSettings.changeShiftReminderMode);
+    const newIndex = (currentIndex + 1) % modes.length;
+    updateSettings({ changeShiftReminderMode: modes[newIndex] });
+  }, [userSettings.changeShiftReminderMode, updateSettings]);
 
   // Thay thế hàm handleLanguageChange
   const handleLanguageChange = useCallback(() => {
-    const newLanguage = userSettings.language === "vi" ? "en" : "vi"
-    updateSettings({ language: newLanguage })
-  }, [userSettings.language, updateSettings])
+    const newLanguage = userSettings.language === "vi" ? "en" : "vi";
+    updateSettings({ language: newLanguage });
+  }, [userSettings.language, updateSettings]);
 
   // Thay thế hàm handleThemeChange
   const handleThemeChange = useCallback(() => {
     // Cycle through theme options: light -> dark -> system -> light
-    const themeOptions = ["light", "dark", "system"]
-    const currentIndex = themeOptions.indexOf(userSettings.theme)
-    const nextIndex = (currentIndex + 1) % themeOptions.length
-    updateSettings({ theme: themeOptions[nextIndex] })
-  }, [userSettings.theme, updateSettings])
+    const themeOptions = ["light", "dark", "system"];
+    const currentIndex = themeOptions.indexOf(userSettings.theme);
+    const nextIndex = (currentIndex + 1) % themeOptions.length;
+    updateSettings({ theme: themeOptions[nextIndex] });
+  }, [userSettings.theme, updateSettings]);
 
   // Thay thế hàm handleExportData
   const handleExportData = useCallback(async () => {
     try {
-      const data = await exportData()
-      const fileName = `workly_backup_${new Date().toISOString().split("T")[0]}.json`
-      const filePath = `${FileSystem.documentDirectory}${fileName}`
+      const data = await exportData();
+      const fileName = `workly_backup_${
+        new Date().toISOString().split("T")[0]
+      }.json`;
+      const filePath = `${FileSystem.documentDirectory}${fileName}`;
 
-      await FileSystem.writeAsStringAsync(filePath, data)
+      await FileSystem.writeAsStringAsync(filePath, data);
 
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(filePath)
+        await Sharing.shareAsync(filePath);
       } else {
-        Alert.alert(t("backup.sharingNotAvailable"), t("backup.sharingNotAvailableMessage"))
+        Alert.alert(
+          t("backup.sharingNotAvailable"),
+          t("backup.sharingNotAvailableMessage")
+        );
       }
     } catch (error) {
-      console.error("Error exporting data:", error)
-      Alert.alert(t("common.error"), t("backup.exportError"))
+      console.error("Error exporting data:", error);
+      Alert.alert(t("common.error"), t("backup.exportError"));
     }
-  }, [exportData, t])
+  }, [exportData, t]);
 
   // Thay thế hàm handleImportData
   const handleImportData = useCallback(async () => {
@@ -105,32 +118,36 @@ const SettingsScreen = ({ navigation }) => {
       const result = await DocumentPicker.getDocumentAsync({
         type: "application/json",
         copyToCacheDirectory: true,
-      })
+      });
 
       if (result.type === "success") {
-        const fileContent = await FileSystem.readAsStringAsync(result.uri)
+        const fileContent = await FileSystem.readAsStringAsync(result.uri);
 
-        Alert.alert(t("backup.confirmRestore"), t("backup.confirmRestoreMessage"), [
-          { text: t("common.cancel"), style: "cancel" },
-          {
-            text: t("backup.importData"),
-            onPress: async () => {
-              try {
-                await importData(fileContent)
-                Alert.alert(t("common.success"), t("backup.importSuccess"))
-              } catch (error) {
-                console.error("Error importing data:", error)
-                Alert.alert(t("common.error"), t("backup.importError"))
-              }
+        Alert.alert(
+          t("backup.confirmRestore"),
+          t("backup.confirmRestoreMessage"),
+          [
+            { text: t("common.cancel"), style: "cancel" },
+            {
+              text: t("backup.importData"),
+              onPress: async () => {
+                try {
+                  await importData(fileContent);
+                  Alert.alert(t("common.success"), t("backup.importSuccess"));
+                } catch (error) {
+                  console.error("Error importing data:", error);
+                  Alert.alert(t("common.error"), t("backup.importError"));
+                }
+              },
             },
-          },
-        ])
+          ]
+        );
       }
     } catch (error) {
-      console.error("Error picking document:", error)
-      Alert.alert(t("common.error"), t("backup.importError"))
+      console.error("Error picking document:", error);
+      Alert.alert(t("common.error"), t("backup.importError"));
     }
-  }, [t, importData])
+  }, [t, importData]);
 
   // Tối ưu hóa các hàm render bằng useCallback
   // Thay thế hàm renderSwitchSetting
@@ -139,7 +156,9 @@ const SettingsScreen = ({ navigation }) => {
       <View style={styles.settingItem}>
         <View style={styles.settingInfo}>
           <Text style={styles.settingTitle}>{title}</Text>
-          {description ? <Text style={styles.settingDescription}>{description}</Text> : null}
+          {description ? (
+            <Text style={styles.settingDescription}>{description}</Text>
+          ) : null}
         </View>
         <Switch
           value={userSettings[key]}
@@ -149,8 +168,8 @@ const SettingsScreen = ({ navigation }) => {
         />
       </View>
     ),
-    [userSettings, toggleSetting, styles, colors],
-  )
+    [userSettings, toggleSetting, styles, colors]
+  );
 
   // Thay thế hàm renderChoiceSetting
   const renderChoiceSetting = useCallback(
@@ -158,7 +177,9 @@ const SettingsScreen = ({ navigation }) => {
       <TouchableOpacity style={styles.settingItem} onPress={onPress}>
         <View style={styles.settingInfo}>
           <Text style={styles.settingTitle}>{title}</Text>
-          {description ? <Text style={styles.settingDescription}>{description}</Text> : null}
+          {description ? (
+            <Text style={styles.settingDescription}>{description}</Text>
+          ) : null}
         </View>
         <View style={styles.choiceValue}>
           <Text style={styles.choiceText}>{value}</Text>
@@ -166,8 +187,8 @@ const SettingsScreen = ({ navigation }) => {
         </View>
       </TouchableOpacity>
     ),
-    [styles, COLORS.gray],
-  )
+    [styles, COLORS.gray]
+  );
 
   // Thay thế hàm renderActionSetting
   const renderActionSetting = useCallback(
@@ -175,13 +196,15 @@ const SettingsScreen = ({ navigation }) => {
       <TouchableOpacity style={styles.settingItem} onPress={onPress}>
         <View style={styles.settingInfo}>
           <Text style={styles.settingTitle}>{title}</Text>
-          {description ? <Text style={styles.settingDescription}>{description}</Text> : null}
+          {description ? (
+            <Text style={styles.settingDescription}>{description}</Text>
+          ) : null}
         </View>
         <MaterialIcons name={icon} size={24} color={COLORS.primary} />
       </TouchableOpacity>
     ),
-    [styles, COLORS.primary],
-  )
+    [styles, COLORS.primary]
+  );
 
   return (
     <ScrollView style={styles.container}>
@@ -196,21 +219,27 @@ const SettingsScreen = ({ navigation }) => {
 
         {renderChoiceSetting(
           t("settings.multiButtonMode"),
-          userSettings.multiButtonMode === "full" ? t("settings.options.full") : t("settings.options.simple"),
+          userSettings.multiButtonMode === "full"
+            ? t("settings.options.full")
+            : t("settings.options.simple"),
           handleMultiButtonModeChange,
-          t("settings.descriptions.multiButton"),
+          t("settings.descriptions.multiButton")
         )}
 
         {renderChoiceSetting(
           t("settings.firstDayOfWeek"),
-          userSettings.firstDayOfWeek === "Mon" ? t("settings.options.monday") : t("settings.options.sunday"),
-          handleFirstDayOfWeekChange,
+          userSettings.firstDayOfWeek === "Mon"
+            ? t("settings.options.monday")
+            : t("settings.options.sunday"),
+          handleFirstDayOfWeekChange
         )}
 
         {renderChoiceSetting(
           t("settings.timeFormat"),
-          userSettings.timeFormat === "24h" ? t("settings.options.hour24") : t("settings.options.hour12"),
-          handleTimeFormatChange,
+          userSettings.timeFormat === "24h"
+            ? t("settings.options.hour24")
+            : t("settings.options.hour12"),
+          handleTimeFormatChange
         )}
 
         {renderChoiceSetting(
@@ -218,10 +247,10 @@ const SettingsScreen = ({ navigation }) => {
           userSettings.theme === "light"
             ? t("settings.options.light")
             : userSettings.theme === "dark"
-              ? t("settings.options.dark")
-              : t("settings.options.system"),
+            ? t("settings.options.dark")
+            : t("settings.options.system"),
           handleThemeChange,
-          t("settings.descriptions.theme"),
+          t("settings.descriptions.theme")
         )}
         <ThemePreview />
       </View>
@@ -229,17 +258,21 @@ const SettingsScreen = ({ navigation }) => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t("settings.notifications")}</Text>
 
-        {renderSwitchSetting(t("settings.alarmSound"), "alarmSoundEnabled", t("settings.descriptions.alarmSound"))}
+        {renderSwitchSetting(
+          t("settings.alarmSound"),
+          "alarmSoundEnabled",
+          t("settings.descriptions.alarmSound")
+        )}
 
         {renderSwitchSetting(
           t("settings.alarmVibration"),
           "alarmVibrationEnabled",
-          t("settings.descriptions.alarmVibration"),
+          t("settings.descriptions.alarmVibration")
         )}
         {renderSwitchSetting(
           t("settings.hapticFeedback"),
           "hapticFeedbackEnabled",
-          t("settings.descriptions.hapticFeedback"),
+          t("settings.descriptions.hapticFeedback")
         )}
 
         {renderChoiceSetting(
@@ -247,9 +280,9 @@ const SettingsScreen = ({ navigation }) => {
           userSettings.changeShiftReminderMode === "ask_weekly"
             ? t("settings.options.askWeekly")
             : userSettings.changeShiftReminderMode === "rotate"
-              ? t("settings.options.autoRotate")
-              : t("settings.options.disabled"),
-          handleChangeShiftReminderModeChange,
+            ? t("settings.options.autoRotate")
+            : t("settings.options.disabled"),
+          handleChangeShiftReminderModeChange
         )}
       </View>
 
@@ -259,7 +292,7 @@ const SettingsScreen = ({ navigation }) => {
         {renderSwitchSetting(
           t("settings.weatherWarning"),
           "weatherWarningEnabled",
-          t("settings.descriptions.weatherWarning"),
+          t("settings.descriptions.weatherWarning")
         )}
 
         {renderActionSetting(
@@ -267,9 +300,12 @@ const SettingsScreen = ({ navigation }) => {
           "location-on",
           () => {
             // This would typically use geolocation
-            Alert.alert(t("common.notification"), t("settings.descriptions.updateLocation"))
+            Alert.alert(
+              t("common.notification"),
+              t("settings.descriptions.updateLocation")
+            );
           },
-          t("settings.descriptions.updateLocation"),
+          t("settings.descriptions.updateLocation")
         )}
       </View>
 
@@ -280,14 +316,14 @@ const SettingsScreen = ({ navigation }) => {
           t("settings.backupData"),
           "backup",
           handleExportData,
-          t("settings.descriptions.backupData"),
+          t("settings.descriptions.backupData")
         )}
 
         {renderActionSetting(
           t("settings.restoreData"),
           "restore",
           handleImportData,
-          t("settings.descriptions.restoreData"),
+          t("settings.descriptions.restoreData")
         )}
       </View>
 
@@ -296,25 +332,30 @@ const SettingsScreen = ({ navigation }) => {
 
         {renderChoiceSetting(
           t("settings.language"),
-          userSettings.language === "vi" ? t("settings.options.vietnamese") : t("settings.options.english"),
+          userSettings.language === "vi"
+            ? t("settings.options.vietnamese")
+            : t("settings.options.english"),
           () => {
             // Show language options and demo
-            navigation.navigate("TranslationDemo")
+            navigation.navigate("TranslationDemo");
           },
-          t("settings.descriptions.language"),
+          t("settings.descriptions.language")
         )}
 
         {renderActionSetting(t("settings.about"), "info", () => {
-          Alert.alert(t("common.appName"), `Version ${appVersion}\n\nWorkly - Your personal work shift management app.`)
+          Alert.alert(
+            t("common.appName"),
+            `Version ${appVersion}\n\nWorkly - Your personal work shift management app.`
+          );
         })}
       </View>
     </ScrollView>
-  )
-}
+  );
+};
 
 // Mở rộng styles từ createSettingsScreenStyles
 const extendedCreateSettingsScreenStyles = (colors) => {
-  const baseStyles = createSettingsScreenStyles(colors)
+  const baseStyles = createSettingsScreenStyles(colors);
   return {
     ...baseStyles,
     logoContainer: {
@@ -328,7 +369,7 @@ const extendedCreateSettingsScreenStyles = (colors) => {
       marginTop: 5,
       fontSize: 12,
     },
-  }
-}
+  };
+};
 
-export default SettingsScreen
+export default SettingsScreen;

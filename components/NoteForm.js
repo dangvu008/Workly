@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useCallback, useMemo, memo } from "react"
+import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import {
   View,
   Text,
@@ -13,58 +13,66 @@ import {
   Platform,
   KeyboardAvoidingView,
   StyleSheet,
-} from "react-native"
-import { COLORS } from "../constants/colors"
-import { MaterialIcons } from "@expo/vector-icons"
-import { useAppContext } from "../context/AppContext"
-import DateTimePicker from "@react-native-community/datetimepicker"
-import { useTranslation } from "../i18n/useTranslation"
+} from "react-native";
+import { COLORS } from "../constants/colors";
+import { MaterialIcons } from "@expo/vector-icons";
+import { useAppContext } from "../context/AppContext";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { useLocalization } from "../localization/LocalizationContext";
 
 const NoteForm = memo(({ visible, onClose, noteToEdit = null }) => {
-  const { shifts, addNote, updateNote, isNoteDuplicate } = useAppContext()
-  const { t } = useTranslation()
+  const { shifts, addNote, updateNote, isNoteDuplicate } = useAppContext();
+  const { t } = useLocalization();
 
-  const [title, setTitle] = useState("")
-  const [content, setContent] = useState("")
-  const [reminderTime, setReminderTime] = useState("08:00")
-  const [associatedShiftIds, setAssociatedShiftIds] = useState([])
-  const [explicitReminderDays, setExplicitReminderDays] = useState(["Mon", "Tue", "Wed", "Thu", "Fri"])
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [reminderTime, setReminderTime] = useState("08:00");
+  const [associatedShiftIds, setAssociatedShiftIds] = useState([]);
+  const [explicitReminderDays, setExplicitReminderDays] = useState([
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+  ]);
 
-  const [errors, setErrors] = useState({})
-  const [showTimePicker, setShowTimePicker] = useState(false)
+  const [errors, setErrors] = useState({});
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   // Reset form
   const resetForm = useCallback(() => {
-    setTitle("")
-    setContent("")
-    setReminderTime("08:00")
-    setAssociatedShiftIds([])
-    setExplicitReminderDays(["Mon", "Tue", "Wed", "Thu", "Fri"])
-    setErrors({})
-  }, [])
+    setTitle("");
+    setContent("");
+    setReminderTime("08:00");
+    setAssociatedShiftIds([]);
+    setExplicitReminderDays(["Mon", "Tue", "Wed", "Thu", "Fri"]);
+    setErrors({});
+  }, []);
 
   // Khởi tạo form khi mở
   useEffect(() => {
     if (visible) {
       if (noteToEdit) {
         // Chế độ sửa
-        setTitle(noteToEdit.title || "")
-        setContent(noteToEdit.content || "")
-        setReminderTime(noteToEdit.reminderTime || "08:00")
-        setAssociatedShiftIds(noteToEdit.associatedShiftIds || [])
-        setExplicitReminderDays(noteToEdit.explicitReminderDays || ["Mon", "Tue", "Wed", "Thu", "Fri"])
+        setTitle(noteToEdit.title || "");
+        setContent(noteToEdit.content || "");
+        setReminderTime(noteToEdit.reminderTime || "08:00");
+        setAssociatedShiftIds(noteToEdit.associatedShiftIds || []);
+        setExplicitReminderDays(
+          noteToEdit.explicitReminderDays || ["Mon", "Tue", "Wed", "Thu", "Fri"]
+        );
       } else {
         // Chế độ thêm mới
-        resetForm()
+        resetForm();
       }
-      setErrors({})
+      setErrors({});
     }
-  }, [visible, noteToEdit, resetForm])
+  }, [visible, noteToEdit, resetForm]);
 
   // Tối ưu hóa danh sách ca làm việc bằng useMemo
   const availableShifts = useMemo(() => {
-    return shifts.filter((shift) => shift.name && shift.id)
-  }, [shifts])
+    return shifts.filter((shift) => shift.name && shift.id);
+  }, [shifts]);
 
   // Tối ưu hóa danh sách ngày trong tuần bằng useMemo
   const weekDays = useMemo(() => {
@@ -76,54 +84,69 @@ const NoteForm = memo(({ visible, onClose, noteToEdit = null }) => {
       { day: "Fri", label: t("shifts.days.fri") },
       { day: "Sat", label: t("shifts.days.sat") },
       { day: "Sun", label: t("shifts.days.sun") },
-    ]
-  }, [t])
+    ];
+  }, [t]);
 
   // Tối ưu hóa validateForm bằng useMemo
   const formErrors = useMemo(() => {
-    const newErrors = {}
+    const newErrors = {};
 
     // Kiểm tra tiêu đề
     if (!title.trim()) {
-      newErrors.title = t("notes.validation.titleRequired")
+      newErrors.title = t("notes.validation.titleRequired");
     } else if (title.length > 100) {
-      newErrors.title = t("notes.validation.titleRequired")
+      newErrors.title = t("notes.validation.titleRequired");
     }
 
     // Kiểm tra nội dung
     if (!content.trim()) {
-      newErrors.content = t("notes.validation.contentRequired")
+      newErrors.content = t("notes.validation.contentRequired");
     } else if (content.length > 300) {
-      newErrors.content = t("notes.validation.contentRequired")
+      newErrors.content = t("notes.validation.contentRequired");
     }
 
     // Kiểm tra thời gian nhắc nhở
     if (!reminderTime) {
-      newErrors.reminderTime = t("notes.validation.reminderTimeRequired")
+      newErrors.reminderTime = t("notes.validation.reminderTimeRequired");
     }
 
     // Kiểm tra ngày nhắc nhở (nếu không có ca liên kết)
     if (associatedShiftIds.length === 0 && explicitReminderDays.length === 0) {
-      newErrors.explicitReminderDays = t("notes.validation.reminderDaysRequired")
+      newErrors.explicitReminderDays = t(
+        "notes.validation.reminderDaysRequired"
+      );
     }
 
     // Kiểm tra trùng lặp
-    if (title.trim() && content.trim() && isNoteDuplicate(title, content, noteToEdit?.id)) {
-      newErrors.duplicate = t("notes.validation.duplicateNote")
+    if (
+      title.trim() &&
+      content.trim() &&
+      isNoteDuplicate(title, content, noteToEdit?.id)
+    ) {
+      newErrors.duplicate = t("notes.validation.duplicateNote");
     }
 
-    return newErrors
-  }, [title, content, reminderTime, associatedShiftIds, explicitReminderDays, noteToEdit?.id, isNoteDuplicate, t])
+    return newErrors;
+  }, [
+    title,
+    content,
+    reminderTime,
+    associatedShiftIds,
+    explicitReminderDays,
+    noteToEdit?.id,
+    isNoteDuplicate,
+    t,
+  ]);
 
   // Sử dụng formErrors trong validateForm
   const validateForm = useCallback(() => {
-    setErrors(formErrors)
-    return Object.keys(formErrors).length === 0
-  }, [formErrors])
+    setErrors(formErrors);
+    return Object.keys(formErrors).length === 0;
+  }, [formErrors]);
 
   // Xử lý lưu ghi chú
   const handleSave = useCallback(() => {
-    if (!validateForm()) return
+    if (!validateForm()) return;
 
     Alert.alert(t("common.confirm"), t("notes.saveConfirm"), [
       { text: t("common.cancel"), style: "cancel" },
@@ -135,19 +158,20 @@ const NoteForm = memo(({ visible, onClose, noteToEdit = null }) => {
             content: content.trim(),
             reminderTime,
             associatedShiftIds,
-            explicitReminderDays: associatedShiftIds.length > 0 ? [] : explicitReminderDays,
-          }
+            explicitReminderDays:
+              associatedShiftIds.length > 0 ? [] : explicitReminderDays,
+          };
 
           if (noteToEdit) {
-            updateNote(noteToEdit.id, noteData)
+            updateNote(noteToEdit.id, noteData);
           } else {
-            addNote(noteData)
+            addNote(noteData);
           }
 
-          onClose()
+          onClose();
         },
       },
-    ])
+    ]);
   }, [
     validateForm,
     t,
@@ -160,69 +184,71 @@ const NoteForm = memo(({ visible, onClose, noteToEdit = null }) => {
     updateNote,
     addNote,
     onClose,
-  ])
+  ]);
 
   // Tối ưu hóa handleTimeChange
   const handleTimeChange = useCallback((event, selectedTime) => {
-    setShowTimePicker(Platform.OS === "ios")
+    setShowTimePicker(Platform.OS === "ios");
 
     if (selectedTime) {
-      const hours = selectedTime.getHours().toString().padStart(2, "0")
-      const minutes = selectedTime.getMinutes().toString().padStart(2, "0")
-      setReminderTime(`${hours}:${minutes}`)
+      const hours = selectedTime.getHours().toString().padStart(2, "0");
+      const minutes = selectedTime.getMinutes().toString().padStart(2, "0");
+      setReminderTime(`${hours}:${minutes}`);
     }
-  }, [])
+  }, []);
 
   // Tối ưu hóa toggleShift
   const toggleShift = useCallback((shiftId) => {
     setAssociatedShiftIds((prev) => {
       if (prev.includes(shiftId)) {
-        return prev.filter((id) => id !== shiftId)
+        return prev.filter((id) => id !== shiftId);
       } else {
-        return [...prev, shiftId]
+        return [...prev, shiftId];
       }
-    })
-  }, [])
+    });
+  }, []);
 
   // Tối ưu hóa toggleDay
   const toggleDay = useCallback((day) => {
     setExplicitReminderDays((prev) => {
       if (prev.includes(day)) {
-        return prev.filter((d) => d !== day)
+        return prev.filter((d) => d !== day);
       } else {
-        return [...prev, day]
+        return [...prev, day];
       }
-    })
-  }, [])
+    });
+  }, []);
 
   // Tối ưu hóa showTimePickerModal
   const showTimePickerModal = useCallback(() => {
-    setShowTimePicker(true)
-  }, [])
+    setShowTimePicker(true);
+  }, []);
 
   // Tối ưu hóa formatDisplayTime bằng useMemo
   const formattedReminderTime = useMemo(() => {
-    if (!reminderTime) return ""
+    if (!reminderTime) return "";
 
-    const [hours, minutes] = reminderTime.split(":").map(Number)
+    const [hours, minutes] = reminderTime.split(":").map(Number);
 
-    if (isNaN(hours) || isNaN(minutes)) return reminderTime
+    if (isNaN(hours) || isNaN(minutes)) return reminderTime;
 
-    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`
-  }, [reminderTime])
+    return `${hours.toString().padStart(2, "0")}:${minutes
+      .toString()
+      .padStart(2, "0")}`;
+  }, [reminderTime]);
 
   // Tối ưu hóa DateTimePicker
   const timePickerDate = useMemo(() => {
-    const [hours, minutes] = reminderTime.split(":").map(Number)
-    const date = new Date()
-    date.setHours(hours || 0, minutes || 0, 0, 0)
-    return date
-  }, [reminderTime])
+    const [hours, minutes] = reminderTime.split(":").map(Number);
+    const date = new Date();
+    date.setHours(hours || 0, minutes || 0, 0, 0);
+    return date;
+  }, [reminderTime]);
 
   // Tối ưu hóa render danh sách ca làm việc
   const renderShifts = useMemo(() => {
     if (availableShifts.length === 0) {
-      return <Text style={styles.noShiftsText}>{t("shifts.noShifts")}</Text>
+      return <Text style={styles.noShiftsText}>{t("shifts.noShifts")}</Text>;
     }
 
     return availableShifts.map((shift) => (
@@ -232,33 +258,55 @@ const NoteForm = memo(({ visible, onClose, noteToEdit = null }) => {
           value={associatedShiftIds.includes(shift.id)}
           onValueChange={() => toggleShift(shift.id)}
           trackColor={{ false: COLORS.lightGray, true: COLORS.primary }}
-          thumbColor={associatedShiftIds.includes(shift.id) ? COLORS.accent : COLORS.white}
+          thumbColor={
+            associatedShiftIds.includes(shift.id) ? COLORS.accent : COLORS.white
+          }
         />
       </View>
-    ))
-  }, [availableShifts, associatedShiftIds, toggleShift, t])
+    ));
+  }, [availableShifts, associatedShiftIds, toggleShift, t]);
 
   // Tối ưu hóa render danh sách ngày
   const renderDays = useMemo(() => {
     return weekDays.map(({ day, label }) => (
       <TouchableOpacity
         key={day}
-        style={[styles.dayButton, explicitReminderDays.includes(day) ? styles.dayButtonActive : {}]}
+        style={[
+          styles.dayButton,
+          explicitReminderDays.includes(day) ? styles.dayButtonActive : {},
+        ]}
         onPress={() => toggleDay(day)}
       >
-        <Text style={[styles.dayButtonText, explicitReminderDays.includes(day) ? styles.dayButtonTextActive : {}]}>
+        <Text
+          style={[
+            styles.dayButtonText,
+            explicitReminderDays.includes(day)
+              ? styles.dayButtonTextActive
+              : {},
+          ]}
+        >
           {label}
         </Text>
       </TouchableOpacity>
-    ))
-  }, [weekDays, explicitReminderDays, toggleDay])
+    ));
+  }, [weekDays, explicitReminderDays, toggleDay]);
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalContainer}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.modalContainer}
+      >
         <View style={styles.modalContent}>
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>{noteToEdit ? t("notes.editNote") : t("notes.addNote")}</Text>
+            <Text style={styles.headerTitle}>
+              {noteToEdit ? t("notes.editNote") : t("notes.addNote")}
+            </Text>
             <TouchableOpacity onPress={onClose}>
               <MaterialIcons name="close" size={24} color={COLORS.darkGray} />
             </TouchableOpacity>
@@ -279,7 +327,12 @@ const NoteForm = memo(({ visible, onClose, noteToEdit = null }) => {
                 {errors.title ? (
                   <Text style={styles.errorText}>{errors.title}</Text>
                 ) : (
-                  <Text style={styles.charCount}>{t("notes.characterCount", { current: title.length, max: 100 })}</Text>
+                  <Text style={styles.charCount}>
+                    {t("notes.characterCount", {
+                      current: title.length,
+                      max: 100,
+                    })}
+                  </Text>
                 )}
               </View>
             </View>
@@ -288,7 +341,10 @@ const NoteForm = memo(({ visible, onClose, noteToEdit = null }) => {
             <View style={styles.formGroup}>
               <Text style={styles.label}>{t("notes.content")}</Text>
               <TextInput
-                style={[styles.textArea, errors.content ? styles.inputError : null]}
+                style={[
+                  styles.textArea,
+                  errors.content ? styles.inputError : null,
+                ]}
                 value={content}
                 onChangeText={setContent}
                 placeholder={t("notes.content")}
@@ -302,7 +358,10 @@ const NoteForm = memo(({ visible, onClose, noteToEdit = null }) => {
                   <Text style={styles.errorText}>{errors.content}</Text>
                 ) : (
                   <Text style={styles.charCount}>
-                    {t("notes.characterCount", { current: content.length, max: 300 })}
+                    {t("notes.characterCount", {
+                      current: content.length,
+                      max: 300,
+                    })}
                   </Text>
                 )}
               </View>
@@ -312,13 +371,24 @@ const NoteForm = memo(({ visible, onClose, noteToEdit = null }) => {
             <View style={styles.formGroup}>
               <Text style={styles.label}>{t("notes.reminderTime")}</Text>
               <TouchableOpacity
-                style={[styles.timePicker, errors.reminderTime ? styles.inputError : null]}
+                style={[
+                  styles.timePicker,
+                  errors.reminderTime ? styles.inputError : null,
+                ]}
                 onPress={showTimePickerModal}
               >
-                <Text style={styles.timePickerText}>{formattedReminderTime}</Text>
-                <MaterialIcons name="access-time" size={20} color={COLORS.primary} />
+                <Text style={styles.timePickerText}>
+                  {formattedReminderTime}
+                </Text>
+                <MaterialIcons
+                  name="access-time"
+                  size={20}
+                  color={COLORS.primary}
+                />
               </TouchableOpacity>
-              {errors.reminderTime && <Text style={styles.errorText}>{errors.reminderTime}</Text>}
+              {errors.reminderTime && (
+                <Text style={styles.errorText}>{errors.reminderTime}</Text>
+              )}
 
               {showTimePicker && (
                 <DateTimePicker
@@ -346,12 +416,20 @@ const NoteForm = memo(({ visible, onClose, noteToEdit = null }) => {
               <View style={styles.formGroup}>
                 <Text style={styles.label}>{t("notes.reminderDays")}</Text>
                 <View style={styles.daysContainer}>{renderDays}</View>
-                {errors.explicitReminderDays && <Text style={styles.errorText}>{errors.explicitReminderDays}</Text>}
+                {errors.explicitReminderDays && (
+                  <Text style={styles.errorText}>
+                    {errors.explicitReminderDays}
+                  </Text>
+                )}
               </View>
             )}
 
             {/* Lỗi trùng lặp */}
-            {errors.duplicate && <Text style={[styles.errorText, styles.duplicateError]}>{errors.duplicate}</Text>}
+            {errors.duplicate && (
+              <Text style={[styles.errorText, styles.duplicateError]}>
+                {errors.duplicate}
+              </Text>
+            )}
           </ScrollView>
 
           <View style={styles.actions}>
@@ -360,7 +438,10 @@ const NoteForm = memo(({ visible, onClose, noteToEdit = null }) => {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.saveButton, Object.keys(errors).length > 0 ? styles.disabledButton : {}]}
+              style={[
+                styles.saveButton,
+                Object.keys(errors).length > 0 ? styles.disabledButton : {},
+              ]}
               onPress={handleSave}
               disabled={Object.keys(errors).length > 0}
             >
@@ -370,8 +451,8 @@ const NoteForm = memo(({ visible, onClose, noteToEdit = null }) => {
         </View>
       </KeyboardAvoidingView>
     </Modal>
-  )
-})
+  );
+});
 
 const styles = StyleSheet.create({
   modalContainer: {
@@ -540,6 +621,6 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     marginTop: 8,
   },
-})
+});
 
-export default memo(NoteForm)
+export default memo(NoteForm);
