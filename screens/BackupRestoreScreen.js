@@ -1,122 +1,146 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from "react-native"
-import { useAppContext } from "../context/AppContext"
-import { COLORS } from "../constants/colors"
-import { MaterialIcons } from "@expo/vector-icons"
-import * as FileSystem from "expo-file-system"
-import * as Sharing from "expo-sharing"
-import * as DocumentPicker from "expo-document-picker"
+import { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
+import { useAppContext } from "../context/AppContext";
+import { COLORS } from "../constants/colors";
+import { MaterialIcons } from "@expo/vector-icons";
+import * as FileSystem from "expo-file-system";
+import * as Sharing from "expo-sharing";
+import * as DocumentPicker from "expo-document-picker";
+import { useLocalization } from "../localization/LocalizationContext";
 
 const BackupRestoreScreen = () => {
-  const { exportData, importData } = useAppContext()
-  const [loading, setLoading] = useState(false)
+  const { exportData, importData } = useAppContext();
+  const { t } = useLocalization();
+  const [loading, setLoading] = useState(false);
 
   const handleExportData = async () => {
     try {
-      setLoading(true)
-      const data = await exportData()
-      const fileName = `workly_backup_${new Date().toISOString().split("T")[0]}.json`
-      const filePath = `${FileSystem.documentDirectory}${fileName}`
+      setLoading(true);
+      const data = await exportData();
+      const fileName = `workly_backup_${
+        new Date().toISOString().split("T")[0]
+      }.json`;
+      const filePath = `${FileSystem.documentDirectory}${fileName}`;
 
-      await FileSystem.writeAsStringAsync(filePath, data)
+      await FileSystem.writeAsStringAsync(filePath, data);
 
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(filePath)
+        await Sharing.shareAsync(filePath);
       } else {
-        Alert.alert("Chia sẻ không khả dụng", "Thiết bị của bạn không hỗ trợ chia sẻ tệp.")
+        Alert.alert(
+          t("backup.sharingNotAvailable"),
+          t("backup.sharingNotAvailableMessage")
+        );
       }
     } catch (error) {
-      console.error("Error exporting data:", error)
-      Alert.alert("Lỗi", "Không thể xuất dữ liệu. Vui lòng thử lại sau.")
+      console.error("Error exporting data:", error);
+      Alert.alert(t("common.error"), t("backup.exportError"));
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleImportData = async () => {
     try {
-      setLoading(true)
+      setLoading(true);
       const result = await DocumentPicker.getDocumentAsync({
         type: "application/json",
         copyToCacheDirectory: true,
-      })
+      });
 
       if (result.type === "success") {
-        const fileContent = await FileSystem.readAsStringAsync(result.uri)
+        const fileContent = await FileSystem.readAsStringAsync(result.uri);
 
-        Alert.alert("Xác nhận nhập dữ liệu", "Dữ liệu hiện tại sẽ bị ghi đè. Bạn có chắc chắn muốn tiếp tục?", [
-          { text: "Hủy", style: "cancel" },
-          {
-            text: "Nhập",
-            onPress: async () => {
-              try {
-                await importData(fileContent)
-                Alert.alert("Thành công", "Dữ liệu đã được nhập thành công.")
-              } catch (error) {
-                console.error("Error importing data:", error)
-                Alert.alert("Lỗi", "Không thể nhập dữ liệu. Tệp có thể bị hỏng hoặc không đúng định dạng.")
-              } finally {
-                setLoading(false)
-              }
+        Alert.alert(
+          t("backup.confirmRestore"),
+          t("backup.confirmRestoreMessage"),
+          [
+            { text: t("common.cancel"), style: "cancel" },
+            {
+              text: t("backup.importData"),
+              onPress: async () => {
+                try {
+                  await importData(fileContent);
+                  Alert.alert(t("common.success"), t("backup.importSuccess"));
+                } catch (error) {
+                  console.error("Error importing data:", error);
+                  Alert.alert(t("common.error"), t("backup.importError"));
+                } finally {
+                  setLoading(false);
+                }
+              },
             },
-          },
-        ])
+          ]
+        );
       } else {
-        setLoading(false)
+        setLoading(false);
       }
     } catch (error) {
-      console.error("Error picking document:", error)
-      Alert.alert("Lỗi", "Không thể chọn tệp. Vui lòng thử lại sau.")
-      setLoading(false)
+      console.error("Error picking document:", error);
+      Alert.alert(t("common.error"), t("backup.documentPickerError"));
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <View style={styles.container}>
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Đang xử lý...</Text>
+          <Text style={styles.loadingText}>{t("backup.processing")}</Text>
         </View>
       ) : (
         <>
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Sao lưu dữ liệu</Text>
+            <Text style={styles.sectionTitle}>{t("backup.backupData")}</Text>
             <Text style={styles.sectionDescription}>
-              Xuất dữ liệu của bạn để sao lưu hoặc chuyển sang thiết bị khác. Tệp sao lưu sẽ bao gồm tất cả cài đặt, ca
-              làm việc, dữ liệu chấm công và ghi chú.
+              {t("backup.backupDescription")}
             </Text>
-            <TouchableOpacity style={styles.actionButton} onPress={handleExportData}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={handleExportData}
+            >
               <MaterialIcons name="backup" size={24} color={COLORS.white} />
-              <Text style={styles.actionButtonText}>Xuất dữ liệu</Text>
+              <Text style={styles.actionButtonText}>
+                {t("backup.exportData")}
+              </Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Phục hồi dữ liệu</Text>
+            <Text style={styles.sectionTitle}>{t("backup.restoreData")}</Text>
             <Text style={styles.sectionDescription}>
-              Nhập dữ liệu từ tệp sao lưu đã xuất trước đó. Lưu ý: Dữ liệu hiện tại sẽ bị ghi đè khi bạn nhập dữ liệu
-              mới.
+              {t("backup.restoreDescription")}
             </Text>
-            <TouchableOpacity style={[styles.actionButton, styles.restoreButton]} onPress={handleImportData}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.restoreButton]}
+              onPress={handleImportData}
+            >
               <MaterialIcons name="restore" size={24} color={COLORS.white} />
-              <Text style={styles.actionButtonText}>Nhập dữ liệu</Text>
+              <Text style={styles.actionButtonText}>
+                {t("backup.importData")}
+              </Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.warningSection}>
             <MaterialIcons name="warning" size={24} color={COLORS.warning} />
-            <Text style={styles.warningText}>
-              Hãy sao lưu dữ liệu thường xuyên để tránh mất dữ liệu khi thay đổi thiết bị hoặc gỡ cài đặt ứng dụng.
-            </Text>
+            <Text style={styles.warningText}>{t("backup.backupWarning")}</Text>
           </View>
         </>
       )}
     </View>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -182,6 +206,6 @@ const styles = StyleSheet.create({
     color: COLORS.darkGray,
     flex: 1,
   },
-})
+});
 
-export default BackupRestoreScreen
+export default BackupRestoreScreen;

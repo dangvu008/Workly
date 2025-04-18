@@ -27,7 +27,7 @@ const HomeScreen = ({ navigation }) => {
     getNotesForToday,
     getNextReminderDate,
   } = useAppContext();
-  const { t } = useTranslation();
+  const { t } = useLocalization();
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showAlarm, setShowAlarm] = useState(false);
