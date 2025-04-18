@@ -484,7 +484,13 @@ const MultiButton = () => {
       // Use LayoutAnimation for smooth transition
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     },
-    [buttonColorAnim, slideAnim, fadeAnim, triggerHapticFeedback]
+    [
+      buttonColorAnim,
+      slideAnim,
+      fadeAnim,
+      triggerHapticFeedback,
+      getButtonColorValue,
+    ]
   );
 
   // Get button color value for animation - memoized to avoid recalculation

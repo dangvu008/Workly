@@ -109,7 +109,7 @@ const ShiftDetailScreen = memo(({ route, navigation }) => {
         </TouchableOpacity>
       ),
     });
-  }, [isNew, navigation, t, hasErrors, isSubmitting, colors.white]);
+  }, [isNew, navigation, t, hasErrors, isSubmitting, colors.white, handleSave]);
 
   // Tối ưu hóa các hàm validation bằng useCallback
   const validateName = useCallback(

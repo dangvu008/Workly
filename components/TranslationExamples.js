@@ -173,32 +173,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: COLORS.primary,
   },
-  temperature: {
-    fontWeight: "bold",
-    color: COLORS.error,
-  },
-  condition: {
-    fontStyle: "italic",
-    color: COLORS.primary,
-  },
-  buttonName: {
-    fontWeight: "bold",
-    color: COLORS.accent,
-  },
-  count: {
-    fontWeight: "bold",
-    color: COLORS.info,
-  },
-  highlight: {
-    fontWeight: "bold",
-    backgroundColor: COLORS.accent + "30",
-    paddingHorizontal: 4,
-    borderRadius: 4,
-  },
-  duration: {
-    fontWeight: "bold",
-    color: COLORS.primary,
-  },
+  // Các style đã được loại bỏ vì không còn sử dụng
   link: {
     color: COLORS.info,
     textDecorationLine: "underline",

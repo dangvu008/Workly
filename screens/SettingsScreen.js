@@ -187,7 +187,7 @@ const SettingsScreen = ({ navigation }) => {
         </View>
       </TouchableOpacity>
     ),
-    [styles, COLORS.gray]
+    [styles]
   );
 
   // Thay thế hàm renderActionSetting
@@ -203,7 +203,7 @@ const SettingsScreen = ({ navigation }) => {
         <MaterialIcons name={icon} size={24} color={COLORS.primary} />
       </TouchableOpacity>
     ),
-    [styles, COLORS.primary]
+    [styles]
   );
 
   return (

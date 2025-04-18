@@ -1,13 +1,12 @@
-"use client"
+"use client";
 
-import { createContext, useState, useEffect, useContext } from "react"
-import AsyncStorage from "@react-native-async-storage/async-storage"
-import { STORAGE_KEYS } from "../constants/storage"
-// Sửa import i18next
-import i18next from "i18next"
-import { getDayOfWeek } from "../utils/dateUtils"
+import { createContext, useState, useEffect, useContext } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { STORAGE_KEYS } from "../constants/storage";
+// Không cần import i18next nữa
+import { getDayOfWeek } from "../utils/dateUtils";
 
-const AppContext = createContext()
+const AppContext = createContext();
 
 // Add hapticFeedbackEnabled to the defaultUserSettings object
 const defaultUserSettings = {
@@ -22,227 +21,260 @@ const defaultUserSettings = {
   weatherWarningEnabled: true,
   language: "vi",
   weatherLocation: null,
-}
+};
 
 export const AppProvider = ({ children }) => {
-  const [isLoading, setIsLoading] = useState(true)
-  const [userInfo, setUserInfo] = useState(null)
-  const [shifts, setShifts] = useState([])
-  const [attendanceRecords, setAttendanceRecords] = useState([])
-  const [notes, setNotes] = useState([])
-  const [weatherData, setWeatherData] = useState(null)
-  const [userSettings, setUserSettings] = useState(defaultUserSettings)
+  const [isLoading, setIsLoading] = useState(true);
+  const [userInfo, setUserInfo] = useState(null);
+  const [shifts, setShifts] = useState([]);
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [notes, setNotes] = useState([]);
+  const [weatherData, setWeatherData] = useState(null);
+  const [userSettings, setUserSettings] = useState(defaultUserSettings);
   // Thêm vào phần state trong AppProvider
-  const [attendanceLogs, setAttendanceLogs] = useState([])
-  const [dailyWorkStatus, setDailyWorkStatus] = useState({})
-  const [isLoggedIn, setIsLoggedIn] = useState(false) // Added isLoggedIn state
+  const [attendanceLogs, setAttendanceLogs] = useState([]);
+  const [dailyWorkStatus, setDailyWorkStatus] = useState({});
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // Added isLoggedIn state
 
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const storedSettings = await AsyncStorage.getItem(STORAGE_KEYS.USER_SETTINGS)
+        const storedSettings = await AsyncStorage.getItem(
+          STORAGE_KEYS.USER_SETTINGS
+        );
         if (storedSettings) {
-          setUserSettings(JSON.parse(storedSettings))
+          setUserSettings(JSON.parse(storedSettings));
         } else {
           // Save default settings if none exist
-          await AsyncStorage.setItem(STORAGE_KEYS.USER_SETTINGS, JSON.stringify(defaultUserSettings))
-          setUserSettings(defaultUserSettings)
+          await AsyncStorage.setItem(
+            STORAGE_KEYS.USER_SETTINGS,
+            JSON.stringify(defaultUserSettings)
+          );
+          setUserSettings(defaultUserSettings);
         }
       } catch (error) {
-        console.error("Error loading user settings:", error)
+        console.error("Error loading user settings:", error);
       }
-    }
+    };
 
-    loadSettings()
-  }, [])
+    loadSettings();
+  }, []);
 
   useEffect(() => {
     const saveData = async () => {
       try {
-        await AsyncStorage.setItem(STORAGE_KEYS.USER_SETTINGS, JSON.stringify(userSettings))
+        await AsyncStorage.setItem(
+          STORAGE_KEYS.USER_SETTINGS,
+          JSON.stringify(userSettings)
+        );
       } catch (error) {
-        console.error("Error saving user settings:", error)
+        console.error("Error saving user settings:", error);
       }
-    }
+    };
 
     if (!isLoading) {
-      saveData()
+      saveData();
     }
-  }, [userSettings, isLoading])
+  }, [userSettings, isLoading]);
 
   useEffect(() => {
     const loadShifts = async () => {
       try {
-        const storedShifts = await AsyncStorage.getItem(STORAGE_KEYS.SHIFT_LIST)
+        const storedShifts = await AsyncStorage.getItem(
+          STORAGE_KEYS.SHIFT_LIST
+        );
         if (storedShifts) {
-          setShifts(JSON.parse(storedShifts))
+          setShifts(JSON.parse(storedShifts));
         }
       } catch (error) {
-        console.error("Error loading shifts:", error)
+        console.error("Error loading shifts:", error);
       }
-    }
+    };
 
-    loadShifts()
-  }, [])
+    loadShifts();
+  }, []);
 
   useEffect(() => {
     const saveShifts = async () => {
       try {
-        await AsyncStorage.setItem(STORAGE_KEYS.SHIFT_LIST, JSON.stringify(shifts))
+        await AsyncStorage.setItem(
+          STORAGE_KEYS.SHIFT_LIST,
+          JSON.stringify(shifts)
+        );
       } catch (error) {
-        console.error("Error saving shifts:", error)
+        console.error("Error saving shifts:", error);
       }
-    }
+    };
 
     if (!isLoading) {
-      saveShifts()
+      saveShifts();
     }
-  }, [shifts, isLoading])
+  }, [shifts, isLoading]);
 
   useEffect(() => {
     const loadAttendanceRecords = async () => {
       try {
-        const storedRecords = await AsyncStorage.getItem(STORAGE_KEYS.ATTENDANCE_RECORDS)
+        const storedRecords = await AsyncStorage.getItem(
+          STORAGE_KEYS.ATTENDANCE_RECORDS
+        );
         if (storedRecords) {
-          setAttendanceRecords(JSON.parse(storedRecords))
+          setAttendanceRecords(JSON.parse(storedRecords));
         }
       } catch (error) {
-        console.error("Error loading attendance records:", error)
+        console.error("Error loading attendance records:", error);
       }
-    }
+    };
 
-    loadAttendanceRecords()
-  }, [])
+    loadAttendanceRecords();
+  }, []);
 
   useEffect(() => {
     const saveAttendanceRecords = async () => {
       try {
-        await AsyncStorage.setItem(STORAGE_KEYS.ATTENDANCE_RECORDS, JSON.stringify(attendanceRecords))
+        await AsyncStorage.setItem(
+          STORAGE_KEYS.ATTENDANCE_RECORDS,
+          JSON.stringify(attendanceRecords)
+        );
       } catch (error) {
-        console.error("Error saving attendance records:", error)
+        console.error("Error saving attendance records:", error);
       }
-    }
+    };
 
     if (!isLoading) {
-      saveAttendanceRecords()
+      saveAttendanceRecords();
     }
-  }, [attendanceRecords, isLoading])
+  }, [attendanceRecords, isLoading]);
 
   useEffect(() => {
     const loadNotes = async () => {
       try {
-        const storedNotes = await AsyncStorage.getItem(STORAGE_KEYS.NOTES)
+        const storedNotes = await AsyncStorage.getItem(STORAGE_KEYS.NOTES);
         if (storedNotes) {
-          setNotes(JSON.parse(storedNotes))
+          setNotes(JSON.parse(storedNotes));
         }
       } catch (error) {
-        console.error("Error loading notes:", error)
+        console.error("Error loading notes:", error);
       }
-    }
+    };
 
-    loadNotes()
-  }, [])
+    loadNotes();
+  }, []);
 
   useEffect(() => {
     const saveNotes = async () => {
       try {
-        await AsyncStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(notes))
+        await AsyncStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(notes));
       } catch (error) {
-        console.error("Error saving notes:", error)
+        console.error("Error saving notes:", error);
       }
-    }
+    };
 
     if (!isLoading) {
-      saveNotes()
+      saveNotes();
     }
-  }, [notes, isLoading])
+  }, [notes, isLoading]);
 
   useEffect(() => {
     const loadWeatherData = async () => {
       try {
-        const storedData = await AsyncStorage.getItem(STORAGE_KEYS.WEATHER_DATA)
+        const storedData = await AsyncStorage.getItem(
+          STORAGE_KEYS.WEATHER_DATA
+        );
         if (storedData) {
-          setWeatherData(JSON.parse(storedData))
+          setWeatherData(JSON.parse(storedData));
         }
       } catch (error) {
-        console.error("Error loading weather data:", error)
+        console.error("Error loading weather data:", error);
       }
-    }
+    };
 
-    loadWeatherData()
-  }, [])
+    loadWeatherData();
+  }, []);
 
   useEffect(() => {
     const saveWeatherData = async () => {
       try {
-        await AsyncStorage.setItem(STORAGE_KEYS.WEATHER_DATA, JSON.stringify(weatherData))
+        await AsyncStorage.setItem(
+          STORAGE_KEYS.WEATHER_DATA,
+          JSON.stringify(weatherData)
+        );
       } catch (error) {
-        console.error("Error saving weather data:", error)
+        console.error("Error saving weather data:", error);
       }
-    }
+    };
 
     if (!isLoading) {
-      saveWeatherData()
+      saveWeatherData();
     }
-  }, [weatherData, isLoading])
+  }, [weatherData, isLoading]);
 
   // Thêm vào phần useEffect để load data
   useEffect(() => {
     const loadData = async () => {
       try {
-        setIsLoading(true)
+        setIsLoading(true);
 
         // Load các dữ liệu khác...
 
         // Load attendance logs
-        const storedLogs = await AsyncStorage.getItem(STORAGE_KEYS.ATTENDANCE_LOGS)
+        const storedLogs = await AsyncStorage.getItem(
+          STORAGE_KEYS.ATTENDANCE_LOGS
+        );
         if (storedLogs) {
-          setAttendanceLogs(JSON.parse(storedLogs))
+          setAttendanceLogs(JSON.parse(storedLogs));
         }
 
         // Load daily work status
-        const storedDailyStatus = await AsyncStorage.getItem(STORAGE_KEYS.DAILY_WORK_STATUS)
+        const storedDailyStatus = await AsyncStorage.getItem(
+          STORAGE_KEYS.DAILY_WORK_STATUS
+        );
         if (storedDailyStatus) {
-          setDailyWorkStatus(JSON.parse(storedDailyStatus))
+          setDailyWorkStatus(JSON.parse(storedDailyStatus));
         }
       } catch (error) {
-        console.error("Error loading data from AsyncStorage:", error)
+        console.error("Error loading data from AsyncStorage:", error);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    loadData()
-  }, [])
+    loadData();
+  }, []);
 
   // Thêm vào phần useEffect để save data
   useEffect(() => {
     const saveLogs = async () => {
       try {
-        await AsyncStorage.setItem(STORAGE_KEYS.ATTENDANCE_LOGS, JSON.stringify(attendanceLogs))
+        await AsyncStorage.setItem(
+          STORAGE_KEYS.ATTENDANCE_LOGS,
+          JSON.stringify(attendanceLogs)
+        );
       } catch (error) {
-        console.error("Error saving attendance logs to AsyncStorage:", error)
+        console.error("Error saving attendance logs to AsyncStorage:", error);
       }
-    }
+    };
 
     if (!isLoading) {
-      saveLogs()
+      saveLogs();
     }
-  }, [attendanceLogs, isLoading])
+  }, [attendanceLogs, isLoading]);
 
   useEffect(() => {
     const saveDailyStatus = async () => {
       try {
-        await AsyncStorage.setItem(STORAGE_KEYS.DAILY_WORK_STATUS, JSON.stringify(dailyWorkStatus))
+        await AsyncStorage.setItem(
+          STORAGE_KEYS.DAILY_WORK_STATUS,
+          JSON.stringify(dailyWorkStatus)
+        );
       } catch (error) {
-        console.error("Error saving daily work status to AsyncStorage:", error)
+        console.error("Error saving daily work status to AsyncStorage:", error);
       }
-    }
+    };
 
     if (!isLoading) {
-      saveDailyStatus()
+      saveDailyStatus();
     }
-  }, [dailyWorkStatus, isLoading])
+  }, [dailyWorkStatus, isLoading]);
 
   // Add this useEffect to handle theme changes
   useEffect(() => {
@@ -252,47 +284,46 @@ export const AppProvider = ({ children }) => {
     } else {
       // Apply light theme styling if needed
     }
-  }, [userSettings.theme])
+  }, [userSettings.theme]);
 
   const updateSettings = (newSettings) => {
     setUserSettings((prevSettings) => {
-      const updatedSettings = { ...prevSettings, ...newSettings }
+      const updatedSettings = { ...prevSettings, ...newSettings };
 
-      // Nếu ngôn ngữ thay đổi, cập nhật i18next
-      if (newSettings.language && newSettings.language !== prevSettings.language) {
-        try {
-          i18next.changeLanguage(newSettings.language)
-        } catch (error) {
-          console.error("Error changing language:", error)
-        }
-      }
+      // Không cần cập nhật i18next nữa vì đã sử dụng LocalizationContext
 
-      return updatedSettings
-    })
-  }
+      return updatedSettings;
+    });
+  };
 
   const addShift = (shiftData) => {
-    const newShift = { id: `shift_${Date.now()}`, ...shiftData }
-    setShifts((prevShifts) => [...prevShifts, newShift])
-  }
+    const newShift = { id: `shift_${Date.now()}`, ...shiftData };
+    setShifts((prevShifts) => [...prevShifts, newShift]);
+  };
 
   const updateShift = (shiftId, shiftData) => {
-    setShifts((prevShifts) => prevShifts.map((shift) => (shift.id === shiftId ? { ...shift, ...shiftData } : shift)))
-  }
+    setShifts((prevShifts) =>
+      prevShifts.map((shift) =>
+        shift.id === shiftId ? { ...shift, ...shiftData } : shift
+      )
+    );
+  };
 
   const deleteShift = (shiftId) => {
-    setShifts((prevShifts) => prevShifts.filter((shift) => shift.id !== shiftId))
-  }
+    setShifts((prevShifts) =>
+      prevShifts.filter((shift) => shift.id !== shiftId)
+    );
+  };
 
   const addAttendanceRecord = (record) => {
-    const newRecord = { id: `record_${Date.now()}`, ...record }
-    setAttendanceRecords((prevRecords) => [...prevRecords, newRecord])
-  }
+    const newRecord = { id: `record_${Date.now()}`, ...record };
+    setAttendanceRecords((prevRecords) => [...prevRecords, newRecord]);
+  };
 
   const updateWeatherData = (data) => {
-    const newData = { ...data, lastUpdated: new Date().toISOString() }
-    setWeatherData(newData)
-  }
+    const newData = { ...data, lastUpdated: new Date().toISOString() };
+    setWeatherData(newData);
+  };
 
   const addNote = (noteData) => {
     const newNote = {
@@ -300,82 +331,89 @@ export const AppProvider = ({ children }) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       ...noteData,
-    }
-    setNotes((prevNotes) => [...prevNotes, newNote])
-  }
+    };
+    setNotes((prevNotes) => [...prevNotes, newNote]);
+  };
 
   const updateNote = (noteId, noteData) => {
     setNotes((prevNotes) =>
       prevNotes.map((note) =>
-        note.id === noteId ? { ...note, ...noteData, updatedAt: new Date().toISOString() } : note,
-      ),
-    )
-  }
+        note.id === noteId
+          ? { ...note, ...noteData, updatedAt: new Date().toISOString() }
+          : note
+      )
+    );
+  };
 
   const deleteNote = (noteId) => {
-    setNotes((prevNotes) => prevNotes.filter((note) => note.id !== noteId))
-  }
+    setNotes((prevNotes) => prevNotes.filter((note) => note.id !== noteId));
+  };
 
   const getNotesForToday = () => {
-    const today = new Date()
-    const dayOfWeek = getDayOfWeek(today)
+    const today = new Date();
+    const dayOfWeek = getDayOfWeek(today);
 
     return notes.filter((note) => {
       // Nếu có ca làm việc liên kết, kiểm tra xem hôm nay có ca làm việc nào không
       if (note.associatedShiftIds && note.associatedShiftIds.length > 0) {
         const hasShiftToday = shifts.some(
-          (shift) => shift.daysApplied.includes(dayOfWeek) && note.associatedShiftIds.includes(shift.id),
-        )
-        return hasShiftToday
+          (shift) =>
+            shift.daysApplied.includes(dayOfWeek) &&
+            note.associatedShiftIds.includes(shift.id)
+        );
+        return hasShiftToday;
       }
 
       // Nếu không có ca làm việc liên kết, kiểm tra ngày nhắc nhở
-      return note.explicitReminderDays && note.explicitReminderDays.includes(dayOfWeek)
-    })
-  }
+      return (
+        note.explicitReminderDays &&
+        note.explicitReminderDays.includes(dayOfWeek)
+      );
+    });
+  };
 
   const getNextReminderDate = (note) => {
-    const today = new Date()
-    const dayOfWeek = getDayOfWeek(today)
+    const today = new Date();
+    const dayOfWeek = getDayOfWeek(today);
 
     // Nếu có ca làm việc liên kết, không cần tính toán ngày nhắc nhở
     if (note.associatedShiftIds && note.associatedShiftIds.length > 0) {
-      return null
+      return null;
     }
 
     // Nếu không có ngày nhắc nhở cụ thể, trả về null
     if (!note.explicitReminderDays || note.explicitReminderDays.length === 0) {
-      return null
+      return null;
     }
 
     // Tìm ngày nhắc nhở gần nhất trong tương lai
-    let nextReminderDate = null
+    let nextReminderDate = null;
 
     for (let i = 0; i < 7; i++) {
-      const currentDate = new Date(today)
-      currentDate.setDate(today.getDate() + i)
-      const currentDayOfWeek = getDayOfWeek(currentDate)
+      const currentDate = new Date(today);
+      currentDate.setDate(today.getDate() + i);
+      const currentDayOfWeek = getDayOfWeek(currentDate);
 
       if (note.explicitReminderDays.includes(currentDayOfWeek)) {
-        nextReminderDate = currentDate
-        break
+        nextReminderDate = currentDate;
+        break;
       }
     }
 
-    return nextReminderDate
-  }
+    return nextReminderDate;
+  };
 
   const isNoteDuplicate = (title, content, excludeNoteId = null) => {
-    const normalizedTitle = title.trim().toLowerCase()
-    const normalizedContent = content.trim().toLowerCase()
+    const normalizedTitle = title.trim().toLowerCase();
+    const normalizedContent = content.trim().toLowerCase();
 
     return notes.some(
       (note) =>
         note.id !== excludeNoteId &&
         note.title.trim().toLowerCase() === normalizedTitle &&
-        note.content.trim().toLowerCase() === normalizedContent,
-    )
-  }
+        note.content.trim().toLowerCase() === normalizedContent
+    );
+  };
 
   const exportData = async () => {
     const data = {
@@ -386,27 +424,27 @@ export const AppProvider = ({ children }) => {
       weatherData,
       attendanceLogs,
       dailyWorkStatus,
-    }
+    };
 
-    return JSON.stringify(data)
-  }
+    return JSON.stringify(data);
+  };
 
   const importData = async (data) => {
-    const parsedData = JSON.parse(data)
+    const parsedData = JSON.parse(data);
 
-    setUserSettings(parsedData.userSettings || defaultUserSettings)
-    setShifts(parsedData.shifts || [])
-    setAttendanceRecords(parsedData.attendanceRecords || [])
-    setNotes(parsedData.notes || [])
-    setWeatherData(parsedData.weatherData || null)
-    setAttendanceLogs(parsedData.attendanceLogs || [])
-    setDailyWorkStatus(parsedData.dailyWorkStatus || {})
-  }
+    setUserSettings(parsedData.userSettings || defaultUserSettings);
+    setShifts(parsedData.shifts || []);
+    setAttendanceRecords(parsedData.attendanceRecords || []);
+    setNotes(parsedData.notes || []);
+    setWeatherData(parsedData.weatherData || null);
+    setAttendanceLogs(parsedData.attendanceLogs || []);
+    setDailyWorkStatus(parsedData.dailyWorkStatus || {});
+  };
 
   // Thêm các hàm xử lý attendance logs
   const addAttendanceLog = (type, shiftId) => {
-    const now = new Date()
-    const dateStr = now.toISOString().split("T")[0]
+    const now = new Date();
+    const dateStr = now.toISOString().split("T")[0];
 
     const newLog = {
       id: `log_${Date.now()}`,
@@ -414,15 +452,15 @@ export const AppProvider = ({ children }) => {
       shiftId,
       date: now.toISOString(),
       createdAt: now.toISOString(),
-    }
+    };
 
-    setAttendanceLogs((prev) => [...prev, newLog])
+    setAttendanceLogs((prev) => [...prev, newLog]);
 
     // Cập nhật daily work status
-    updateDailyWorkStatus(dateStr, type, shiftId, now)
+    updateDailyWorkStatus(dateStr, type, shiftId, now);
 
-    return newLog
-  }
+    return newLog;
+  };
 
   const updateDailyWorkStatus = (dateStr, type, shiftId, timestamp) => {
     setDailyWorkStatus((prev) => {
@@ -434,63 +472,65 @@ export const AppProvider = ({ children }) => {
         punchTime: null,
         checkOutTime: null,
         completeTime: null,
-      }
+      };
 
-      const newStatus = { ...currentStatus }
+      const newStatus = { ...currentStatus };
 
       // Cập nhật trạng thái dựa trên loại log
       switch (type) {
         case "go_work":
-          newStatus.shiftId = shiftId
-          newStatus.status = "waiting_check_in"
-          newStatus.goWorkTime = timestamp.toISOString()
-          break
+          newStatus.shiftId = shiftId;
+          newStatus.status = "waiting_check_in";
+          newStatus.goWorkTime = timestamp.toISOString();
+          break;
         case "check_in":
-          newStatus.status = "working"
-          newStatus.checkInTime = timestamp.toISOString()
-          break
+          newStatus.status = "working";
+          newStatus.checkInTime = timestamp.toISOString();
+          break;
         case "punch":
-          newStatus.punchTime = timestamp.toISOString()
-          break
+          newStatus.punchTime = timestamp.toISOString();
+          break;
         case "check_out":
-          newStatus.status = "ready_to_complete"
-          newStatus.checkOutTime = timestamp.toISOString()
-          break
+          newStatus.status = "ready_to_complete";
+          newStatus.checkOutTime = timestamp.toISOString();
+          break;
         case "complete":
-          newStatus.status = "completed"
-          newStatus.completeTime = timestamp.toISOString()
-          break
+          newStatus.status = "completed";
+          newStatus.completeTime = timestamp.toISOString();
+          break;
         default:
-          break
+          break;
       }
 
-      return { ...prev, [dateStr]: newStatus }
-    })
-  }
+      return { ...prev, [dateStr]: newStatus };
+    });
+  };
 
   const resetDailyWorkStatus = (date = new Date()) => {
-    const dateStr = date.toISOString().split("T")[0]
+    const dateStr = date.toISOString().split("T")[0];
 
     // Xóa tất cả logs cho ngày hiện tại
-    setAttendanceLogs((prev) => prev.filter((log) => !log.date.startsWith(dateStr)))
+    setAttendanceLogs((prev) =>
+      prev.filter((log) => !log.date.startsWith(dateStr))
+    );
 
     // Reset trạng thái
     setDailyWorkStatus((prev) => {
-      const newStatus = { ...prev }
-      delete newStatus[dateStr]
-      return newStatus
-    })
-  }
+      const newStatus = { ...prev };
+      delete newStatus[dateStr];
+      return newStatus;
+    });
+  };
 
   const getLogsForDate = (date = new Date()) => {
-    const dateStr = date.toISOString().split("T")[0]
+    const dateStr = date.toISOString().split("T")[0];
     return attendanceLogs
       .filter((log) => log.date.startsWith(dateStr))
-      .sort((a, b) => new Date(a.date) - new Date(b.date))
-  }
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+  };
 
   const getDailyStatusForDate = (date = new Date()) => {
-    const dateStr = date.toISOString().split("T")[0]
+    const dateStr = date.toISOString().split("T")[0];
     return (
       dailyWorkStatus[dateStr] || {
         shiftId: null,
@@ -501,8 +541,8 @@ export const AppProvider = ({ children }) => {
         checkOutTime: null,
         completeTime: null,
       }
-    )
-  }
+    );
+  };
 
   // Thêm vào phần value trong return
   const value = {
@@ -534,11 +574,11 @@ export const AppProvider = ({ children }) => {
     getLogsForDate,
     getDailyStatusForDate,
     addAttendanceLog,
-  }
+  };
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>
-}
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+};
 
 export const useAppContext = () => {
-  return useContext(AppContext)
-}
+  return useContext(AppContext);
+};

@@ -351,7 +351,7 @@ const HomeScreen = ({ navigation }) => {
         </View>
       </TouchableOpacity>
     ));
-  }, [activeShifts, t, navigation, homeScreenStyles]);
+  }, [activeShifts, t, navigation]);
 
   // Tối ưu hóa render danh sách todayNotes
   const renderTodayNotes = useMemo(() => {
@@ -379,14 +379,7 @@ const HomeScreen = ({ navigation }) => {
         onDelete={handleDeleteNote}
       />
     ));
-  }, [
-    todayNotes,
-    t,
-    handleAddNote,
-    handleEditNote,
-    handleDeleteNote,
-    homeScreenStyles,
-  ]);
+  }, [todayNotes, t, handleAddNote, handleEditNote, handleDeleteNote]);
 
   // Tối ưu hóa render weather card
   const renderWeatherCard = useMemo(() => {
@@ -423,7 +416,7 @@ const HomeScreen = ({ navigation }) => {
         </View>
       </View>
     );
-  }, [weatherData, userSettings.weatherWarningEnabled, t, homeScreenStyles]);
+  }, [weatherData, userSettings.weatherWarningEnabled, t]);
 
   return (
     <View style={homeScreenStyles.container}>
