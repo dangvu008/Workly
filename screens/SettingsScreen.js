@@ -27,7 +27,7 @@ import { useTheme } from "@react-navigation/native";
 const SettingsScreen = ({ navigation }) => {
   const { userSettings, updateSettings, exportData, importData } =
     useAppContext();
-  const { t } = useLocalization();
+  const { t, changeLanguage } = useLocalization();
   const theme = useTheme();
 
   // Get app version from app.json via Constants
@@ -150,11 +150,14 @@ const SettingsScreen = ({ navigation }) => {
 
   // Handle language change
   const handleLanguageChange = useCallback(
-    (value) => {
+    async (value) => {
       setLanguage(value);
+      // Cập nhật ngôn ngữ trong LocalizationContext
+      await changeLanguage(value);
+      // Cập nhật cài đặt người dùng
       updateSettings({ language: value });
     },
-    [updateSettings]
+    [updateSettings, changeLanguage]
   );
 
   // Handle dark mode toggle

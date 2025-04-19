@@ -516,7 +516,11 @@ const HomeScreen = ({ navigation }) => {
 
   return (
     <View style={homeScreenStyles.container}>
-      <ScrollView>
+      <ScrollView
+        style={homeScreenStyles.scrollView}
+        contentContainerStyle={{ paddingBottom: 60 }} // Padding bottom cho ScrollView
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header with app title and date */}
         <View style={styles.header}>
           <View style={styles.headerRow}>

@@ -100,12 +100,19 @@ export const multiButtonStyles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: SPACING.md,
-    paddingHorizontal: SPACING.sm,
+    marginBottom: SPACING.sm,
+    paddingBottom: SPACING.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.appDarkBorder,
   },
   logsContainer: {
-    marginTop: SPACING.sm,
+    marginTop: SPACING.md,
     alignItems: "flex-start",
+    backgroundColor: COLORS.appDarkLight,
+    borderRadius: RADIUS.md,
+    padding: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.appDarkBorder,
   },
   logsList: {
     paddingBottom: SPACING.sm,
@@ -119,7 +126,7 @@ export const multiButtonStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 6,
-    marginBottom: 4,
+    marginBottom: 8,
   },
   logIconContainer: {
     width: 24,
@@ -219,5 +226,51 @@ export const multiButtonStyles = StyleSheet.create({
   confirmationButtonText: {
     fontWeight: "bold",
     fontSize: FONT_SIZES.sm,
+  },
+
+  // Notes styles
+  notesContainer: {
+    marginTop: SPACING.md,
+    backgroundColor: COLORS.appDarkLight,
+    borderRadius: RADIUS.md,
+    padding: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.appDarkBorder,
+  },
+  notesHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: SPACING.sm,
+    paddingBottom: SPACING.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.appDarkBorder,
+  },
+  notesTitle: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: "bold",
+    color: COLORS.white,
+  },
+  notesScrollView: {
+    maxHeight: 150,
+  },
+  noteItem: {
+    padding: SPACING.sm,
+    marginBottom: SPACING.xs,
+    backgroundColor: COLORS.appDark,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.appDarkBorder,
+  },
+  noteTitle: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: "bold",
+    color: COLORS.white,
+    marginBottom: SPACING.xs,
+  },
+  noteContent: {
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.appDarkTextSecondary,
+    lineHeight: 18,
   },
 });

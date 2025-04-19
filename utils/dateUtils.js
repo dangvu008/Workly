@@ -45,10 +45,13 @@ export const minutesToTime = (minutes) => {
 };
 
 // Get day of week from date
-export const getDayOfWeek = (date) => {
+export const getDayOfWeek = (date, locale = "en") => {
   const d = new Date(date);
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  return days[d.getDay()];
+  const days = {
+    en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    vi: ["CN", "T2", "T3", "T4", "T5", "T6", "T7"],
+  };
+  return (days[locale] || days.en)[d.getDay()];
 };
 
 // Check if a date is today

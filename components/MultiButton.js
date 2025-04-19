@@ -15,12 +15,14 @@ import {
   Platform,
   UIManager,
   Modal,
+  ScrollView,
 } from "react-native";
 import { useAppContext } from "../context/AppContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import { formatDate, timeToMinutes, formatDuration } from "../utils/dateUtils";
 import { useLocalization } from "../localization/LocalizationContext";
 import { multiButtonStyles } from "../styles/components/multiButton";
+import { COLORS } from "../styles/theme/colors";
 import { useTheme } from "../context/ThemeContext";
 // Import Haptics module from Expo
 import * as Haptics from "expo-haptics";
@@ -195,6 +197,7 @@ const MultiButton = () => {
     resetDailyWorkStatus,
     getLogsForDate,
     getDailyStatusForDate,
+    getNotesForToday,
   } = useAppContext();
   const { t } = useLocalization();
   const { colors, isDarkMode } = useTheme();
@@ -208,8 +211,10 @@ const MultiButton = () => {
   const [workDuration, setWorkDuration] = useState(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
-  const [showLogs, setShowLogs] = useState(false);
+  const [showLogs, setShowLogs] = useState(true); // Mặc định hiển thị logs
   const [errorMessage, setErrorMessage] = useState(null);
+  const [todayNotes, setTodayNotes] = useState([]);
+  const [expandedNotes, setExpandedNotes] = useState(false);
 
   // Animation values - memoized to avoid recreating on each render
   const animationValues = useMemo(
@@ -583,18 +588,23 @@ const MultiButton = () => {
 
       setTodayLogs(logs);
 
-      // If we have logs, animate the logs container
-      if (logs.length > 0 && !showLogs) {
-        setTimeout(() => {
-          setShowLogs(true);
-          animateLogsContainer(true);
-        }, 500);
-      }
+      // Luôn hiển thị logs
+      animateLogsContainer(true);
     } catch (error) {
       console.error("Error loading logs:", error);
       setErrorMessage(t("errors.cannotLoadLogs"));
     }
-  }, [getLogsForDate, animateLogsContainer, showLogs, t]);
+  }, [getLogsForDate, animateLogsContainer, t]);
+
+  // Get notes for today
+  useEffect(() => {
+    try {
+      const notes = getNotesForToday(activeShift?.id);
+      setTodayNotes(notes);
+    } catch (error) {
+      console.error("Error loading notes:", error);
+    }
+  }, [getNotesForToday, activeShift]);
 
   // Check if button should be enabled - optimized with useEffect
   useEffect(() => {
@@ -682,14 +692,28 @@ const MultiButton = () => {
     try {
       // Trigger success haptic feedback when going to work
       triggerHapticFeedback(HAPTIC_TYPES.SUCCESS);
-      addAttendanceLog("go_work", activeShift.id);
+      const log = addAttendanceLog("go_work", activeShift.id);
+
+      // Cập nhật logs ngay lập tức
+      setTodayLogs((prev) => [...prev, log]);
+
       setCurrentStatus("waiting_check_in");
+
+      // Hiển thị logs ngay lập tức
+      setShowLogs(true);
+      animateLogsContainer(true);
     } catch (error) {
       console.error("Error handling go work:", error);
       setErrorMessage(t("errors.cannotStartShift"));
       triggerHapticFeedback(HAPTIC_TYPES.ERROR);
     }
-  }, [activeShift, addAttendanceLog, triggerHapticFeedback, t]);
+  }, [
+    activeShift,
+    addAttendanceLog,
+    triggerHapticFeedback,
+    t,
+    animateLogsContainer,
+  ]);
 
   const handleCheckIn = useCallback(() => {
     if (!activeShift) return;
@@ -698,7 +722,11 @@ const MultiButton = () => {
       // Trigger success haptic feedback when checking in
       triggerHapticFeedback(HAPTIC_TYPES.SUCCESS);
       const now = new Date();
-      addAttendanceLog("check_in", activeShift.id);
+      const log = addAttendanceLog("check_in", activeShift.id);
+
+      // Cập nhật logs ngay lập tức
+      setTodayLogs((prev) => [...prev, log]);
+
       setCurrentStatus("working");
       startWorkDurationTimer(now);
     } catch (error) {
@@ -721,7 +749,10 @@ const MultiButton = () => {
       // Trigger medium haptic feedback when punching
       triggerHapticFeedback(HAPTIC_TYPES.MEDIUM);
       animateButtonPress();
-      addAttendanceLog("punch", activeShift.id);
+      const log = addAttendanceLog("punch", activeShift.id);
+
+      // Cập nhật logs ngay lập tức
+      setTodayLogs((prev) => [...prev, log]);
     } catch (error) {
       console.error("Error handling punch:", error);
       setErrorMessage(t("errors.cannotPunch"));
@@ -752,7 +783,11 @@ const MultiButton = () => {
         pulseTimerRef.current = null;
       }
 
-      addAttendanceLog("check_out", activeShift.id);
+      const log = addAttendanceLog("check_out", activeShift.id);
+
+      // Cập nhật logs ngay lập tức
+      setTodayLogs((prev) => [...prev, log]);
+
       setCurrentStatus("ready_to_complete");
       setWorkDuration(null);
     } catch (error) {
@@ -768,7 +803,11 @@ const MultiButton = () => {
     try {
       // Trigger success haptic feedback
       triggerHapticFeedback(HAPTIC_TYPES.SUCCESS);
-      addAttendanceLog("complete", activeShift.id);
+      const log = addAttendanceLog("complete", activeShift.id);
+
+      // Cập nhật logs ngay lập tức
+      setTodayLogs((prev) => [...prev, log]);
+
       setCurrentStatus("completed");
     } catch (error) {
       console.error("Error handling complete:", error);
@@ -1257,20 +1296,27 @@ const MultiButton = () => {
       )}
 
       {/* Working time display */}
-      <Text
-        style={{
-          color: colors.appDarkTextSecondary,
-          textAlign: "center",
-          marginTop: 8,
-        }}
-      >
-        Đã đi làm 22:41
-      </Text>
+      {workDuration > 0 && (
+        <Text
+          style={{
+            color: colors.appDarkTextSecondary,
+            textAlign: "center",
+            marginTop: 8,
+          }}
+        >
+          {t("home.workingTime", { duration: formatDuration(workDuration, t) })}
+        </Text>
+      )}
 
       {/* Logs history - always visible */}
       {todayLogs.length > 0 && (
         <View style={multiButtonStyles.logsContainer}>
-          {todayLogs.slice(0, 3).map((item, index) => (
+          <View style={multiButtonStyles.logsHeader}>
+            <Text style={multiButtonStyles.logsTitle}>
+              {t("attendance.logs")}
+            </Text>
+          </View>
+          {todayLogs.map((item, index) => (
             <LogItem
               key={item.id || index}
               item={item}
@@ -1279,6 +1325,45 @@ const MultiButton = () => {
               formatDate={formatDate}
             />
           ))}
+        </View>
+      )}
+
+      {/* Today's Notes */}
+      {todayNotes.length > 0 && (
+        <View style={multiButtonStyles.notesContainer}>
+          <TouchableOpacity
+            style={multiButtonStyles.notesHeader}
+            onPress={() => setExpandedNotes(!expandedNotes)}
+          >
+            <Text style={multiButtonStyles.notesTitle}>{t("home.notes")}</Text>
+            <MaterialIcons
+              name={expandedNotes ? "expand-less" : "expand-more"}
+              size={24}
+              color={colors.appDarkTextSecondary}
+            />
+          </TouchableOpacity>
+
+          {expandedNotes ? (
+            <ScrollView style={multiButtonStyles.notesScrollView}>
+              {todayNotes.map((note, index) => (
+                <View key={note.id || index} style={multiButtonStyles.noteItem}>
+                  <Text style={multiButtonStyles.noteTitle}>{note.title}</Text>
+                  <Text style={multiButtonStyles.noteContent} numberOfLines={3}>
+                    {note.content}
+                  </Text>
+                </View>
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={multiButtonStyles.noteItem}>
+              <Text style={multiButtonStyles.noteTitle}>
+                {todayNotes[0].title}
+              </Text>
+              <Text style={multiButtonStyles.noteContent} numberOfLines={2}>
+                {todayNotes[0].content}
+              </Text>
+            </View>
+          )}
         </View>
       )}
 

@@ -8,6 +8,9 @@ export const homeScreenStyles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.appDark,
   },
+  scrollView: {
+    flex: 1,
+  },
   header: {
     backgroundColor: COLORS.appDarkLight,
     padding: 20,

@@ -57,6 +57,16 @@ export default {
       "Nhấn 'Đi làm' để bắt đầu ca làm việc, sau đó sử dụng 'Check In' khi bạn đến nơi.",
     reminderNote: "Bạn có {count} lời nhắc được lên lịch cho hôm nay.",
     helpText: "Cần trợ giúp? Truy cập trung tâm trợ giúp hoặc liên hệ hỗ trợ.",
+    activeShift: "Ca làm việc hiện tại",
+    goWork: "Đi làm",
+    checkIn: "Chấm công vào",
+    checkOut: "Chấm công ra",
+    complete: "Hoàn tất",
+    confirmCheckOut: "Xác nhận chấm công ra",
+    confirmCheckOutMessage: "Bạn có chắc muốn chấm công ra bây giờ không?",
+    onlyGoWorkModeActive:
+      "Bạn đang ở chế độ Chỉ Đi Làm. Để sử dụng đầy đủ chức năng, hãy thay đổi cài đặt trong màn hình Cài đặt.",
+    viewAll: "Xem tất cả",
   },
   shifts: {
     shiftList: "Danh sách ca làm việc",
@@ -156,6 +166,20 @@ export default {
       "Bạn có nhiều ca làm việc hôm nay. Vui lòng chọn ca để check-in:",
     multipleCheckInsPrompt:
       "Bạn đã check-in cho nhiều ca làm việc. Vui lòng chọn ca để check-out:",
+    status: "Trạng thái",
+    logs: "Nhật ký chấm công",
+    selectStatus: "Chọn trạng thái",
+    statusComplete: "Đủ công",
+    statusIncomplete: "Thiếu chấm công",
+    statusLeave: "Nghỉ phép",
+    statusSick: "Nghỉ bệnh",
+    statusHoliday: "Nghỉ lễ",
+    statusAbsent: "Vắng không lý do",
+    statusRV: "Vào muộn/ra sớm",
+    statusFuture: "Chưa đến ngày",
+    statusUnknown: "Chưa cập nhật",
+    cannotUpdateFutureDay:
+      "Không thể cập nhật trạng thái này cho ngày trong tương lai",
   },
   weather: {
     currentLocation: "Vị trí hiện tại",

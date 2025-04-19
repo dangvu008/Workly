@@ -180,7 +180,7 @@ export const BottomNav = (props) => {
                 >
                   <MaterialIcons
                     name={tab.icon}
-                    size={24}
+                    size={20}
                     color={
                       isActive ? COLORS.appPurple : COLORS.appDarkTextSecondary
                     }
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flexDirection: "row",
-    height: 70,
+    height: 55, // Giảm chiều cao xuống
     width: "100%",
     backgroundColor: "rgba(15, 23, 42, 0.8)",
     position: "relative",
@@ -240,15 +240,15 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 8,
+    paddingVertical: 4, // Giảm padding
   },
   iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 36, // Giảm kích thước icon
+    height: 36, // Giảm kích thước icon
+    borderRadius: 18, // Giảm border radius tương ứng
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 2,
+    marginBottom: 1, // Giảm margin
     backgroundColor: "transparent",
     position: "relative",
   },
@@ -259,16 +259,16 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: "100%",
     height: "100%",
-    borderRadius: 24,
+    borderRadius: 18, // Giảm border radius tương ứng
     backgroundColor: "transparent",
     shadowColor: COLORS.appPurple,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowRadius: 8, // Giảm shadow radius
+    elevation: 4, // Giảm elevation
   },
   tabLabel: {
-    fontSize: 12,
+    fontSize: 10, // Giảm kích thước font
     fontWeight: "500",
   },
   indicator: {
