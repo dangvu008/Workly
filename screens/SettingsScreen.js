@@ -31,7 +31,11 @@ const SettingsScreen = ({ navigation }) => {
   const theme = useTheme();
 
   // Get app version from app.json via Constants
-  const appVersion = Constants.manifest.version || "1.0.0";
+  // Handle both older and newer versions of Expo Constants
+  const appVersion =
+    Constants.manifest?.version || // older versions of Expo
+    Constants.expoConfig?.version || // newer versions of Expo
+    "1.0.0";
 
   // Local state for settings
   const [darkMode, setDarkMode] = useState(userSettings.theme === "dark");

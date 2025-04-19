@@ -547,8 +547,8 @@ const MultiButton = () => {
     }
 
     // If not, find appropriate shift for today
-    const todayShifts = shifts.filter((shift) =>
-      shift.daysApplied.includes(dayOfWeek)
+    const todayShifts = shifts.filter(
+      (shift) => shift.daysApplied && shift.daysApplied.includes(dayOfWeek)
     );
 
     if (todayShifts.length === 1) {
@@ -570,6 +570,23 @@ const MultiButton = () => {
       });
 
       setActiveShift(todayShifts[0]);
+    } else if (shifts.length > 0) {
+      // If no shifts for today but there are shifts, use the first one as default
+      console.log("No shifts for today, using first available shift");
+      setActiveShift(shifts[0]);
+    } else {
+      // Create a default shift if none exist
+      console.log("No shifts found, creating a default shift");
+      const defaultShift = {
+        id: "default_shift",
+        name: "Default Shift",
+        startTime: "08:00",
+        endTime: "17:00",
+        officeEndTime: "17:00",
+        daysApplied: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+        showPunch: true,
+      };
+      setActiveShift(defaultShift);
     }
   }, [
     shifts,
@@ -610,7 +627,8 @@ const MultiButton = () => {
   // Check if button should be enabled - optimized with useEffect
   useEffect(() => {
     if (!activeShift) {
-      setButtonEnabled(false);
+      // Always enable the button even without an active shift
+      setButtonEnabled(true);
       return;
     }
 
@@ -622,44 +640,31 @@ const MultiButton = () => {
         // Always allow "Go to Work"
         setButtonEnabled(true);
         break;
-      case "waiting_check_in": {
-        // Allow check-in when close to start time (within 30 minutes)
-        const startMinutes = timeToMinutes(activeShift.startTime);
-        setButtonEnabled(Math.abs(currentMinutes - startMinutes) <= 30);
+      case "waiting_check_in":
+        // Always allow check-in regardless of time
+        setButtonEnabled(true);
         break;
-      }
-      case "working": {
-        // Allow check-out when worked minimum time or close to end time
-        const dailyStatus = getDailyStatusForDate(now);
-        if (dailyStatus.checkInTime) {
-          const checkInTime = new Date(dailyStatus.checkInTime);
-          const workingMinutes = Math.floor((now - checkInTime) / 60000);
+      case "working":
+        // Always allow check-out
+        setButtonEnabled(true);
 
-          // Minimum 30 minutes work or close to end time
+        // Start pulsing animation when close to end time
+        if (activeShift.officeEndTime) {
           const officeEndMinutes = timeToMinutes(activeShift.officeEndTime);
-          setButtonEnabled(
-            workingMinutes >= 30 ||
-              Math.abs(currentMinutes - officeEndMinutes) <= 30
-          );
-
-          // Start pulsing animation when close to end time
           if (Math.abs(currentMinutes - officeEndMinutes) <= 15) {
             startPulseAnimation();
           } else {
             stopPulseAnimation();
           }
-        } else {
-          setButtonEnabled(false);
         }
         break;
-      }
       case "ready_to_complete":
         // Always allow completion
         setButtonEnabled(true);
         break;
       case "completed":
-        // Already completed, disable main button
-        setButtonEnabled(false);
+        // For completed status, still enable the button to allow resetting
+        setButtonEnabled(true);
         break;
       default:
         setButtonEnabled(true);
@@ -869,14 +874,24 @@ const MultiButton = () => {
 
   // Handle button press - optimized with useCallback
   const handleButtonPress = useCallback(() => {
-    if (!activeShift) {
-      // Trigger error haptic feedback when there's no active shift
-      triggerHapticFeedback(HAPTIC_TYPES.ERROR);
-      Alert.alert(t("common.error"), t("home.noActiveShift"));
-      return;
-    }
-
+    // Always animate button press for better UX
     animateButtonPress();
+
+    if (!activeShift) {
+      // Create a default shift if none exists
+      console.log("No active shift, creating a temporary one");
+      const defaultShift = {
+        id: "default_shift_" + Date.now(),
+        name: "Default Shift",
+        startTime: "08:00",
+        endTime: "17:00",
+        officeEndTime: "17:00",
+        daysApplied: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+        showPunch: true,
+      };
+      setActiveShift(defaultShift);
+      // Continue with the default shift
+    }
 
     // Nếu đang ở chế độ Chỉ Đi Làm, chỉ cho phép bấm nút Đi Làm
     if (userSettings.onlyGoWorkMode) {
