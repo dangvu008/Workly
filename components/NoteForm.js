@@ -14,7 +14,7 @@ import {
   KeyboardAvoidingView,
   StyleSheet,
 } from "react-native";
-import { COLORS } from "../constants/colors";
+import { COLORS } from "../styles/theme/colors";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAppContext } from "../context/AppContext";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -28,13 +28,9 @@ const NoteForm = memo(({ visible, onClose, noteToEdit = null }) => {
   const [content, setContent] = useState("");
   const [reminderTime, setReminderTime] = useState("08:00");
   const [associatedShiftIds, setAssociatedShiftIds] = useState([]);
-  const [explicitReminderDays, setExplicitReminderDays] = useState([
-    "Mon",
-    "Tue",
-    "Wed",
-    "Thu",
-    "Fri",
-  ]);
+  const [explicitReminderDays, setExplicitReminderDays] = useState([]);
+  const [titleCharCount, setTitleCharCount] = useState(0);
+  const [contentCharCount, setContentCharCount] = useState(0);
 
   const [errors, setErrors] = useState({});
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -45,7 +41,9 @@ const NoteForm = memo(({ visible, onClose, noteToEdit = null }) => {
     setContent("");
     setReminderTime("08:00");
     setAssociatedShiftIds([]);
-    setExplicitReminderDays(["Mon", "Tue", "Wed", "Thu", "Fri"]);
+    setExplicitReminderDays([]);
+    setTitleCharCount(0);
+    setContentCharCount(0);
     setErrors({});
   }, []);
 
@@ -54,13 +52,16 @@ const NoteForm = memo(({ visible, onClose, noteToEdit = null }) => {
     if (visible) {
       if (noteToEdit) {
         // Chế độ sửa
-        setTitle(noteToEdit.title || "");
-        setContent(noteToEdit.content || "");
+        const editTitle = noteToEdit.title || "";
+        const editContent = noteToEdit.content || "";
+
+        setTitle(editTitle);
+        setContent(editContent);
+        setTitleCharCount(editTitle.length);
+        setContentCharCount(editContent.length);
         setReminderTime(noteToEdit.reminderTime || "08:00");
         setAssociatedShiftIds(noteToEdit.associatedShiftIds || []);
-        setExplicitReminderDays(
-          noteToEdit.explicitReminderDays || ["Mon", "Tue", "Wed", "Thu", "Fri"]
-        );
+        setExplicitReminderDays(noteToEdit.explicitReminderDays || []);
       } else {
         // Chế độ thêm mới
         resetForm();
@@ -87,6 +88,18 @@ const NoteForm = memo(({ visible, onClose, noteToEdit = null }) => {
     ];
   }, [t]);
 
+  // Xử lý thay đổi tiêu đề
+  const handleTitleChange = useCallback((text) => {
+    setTitle(text);
+    setTitleCharCount(text.length);
+  }, []);
+
+  // Xử lý thay đổi nội dung
+  const handleContentChange = useCallback((text) => {
+    setContent(text);
+    setContentCharCount(text.length);
+  }, []);
+
   // Tối ưu hóa validateForm bằng useMemo
   const formErrors = useMemo(() => {
     const newErrors = {};
@@ -95,14 +108,14 @@ const NoteForm = memo(({ visible, onClose, noteToEdit = null }) => {
     if (!title.trim()) {
       newErrors.title = t("notes.validation.titleRequired");
     } else if (title.length > 100) {
-      newErrors.title = t("notes.validation.titleRequired");
+      newErrors.title = t("notes.validation.titleTooLong");
     }
 
     // Kiểm tra nội dung
     if (!content.trim()) {
       newErrors.content = t("notes.validation.contentRequired");
     } else if (content.length > 300) {
-      newErrors.content = t("notes.validation.contentRequired");
+      newErrors.content = t("notes.validation.contentTooLong");
     }
 
     // Kiểm tra thời gian nhắc nhở
@@ -319,7 +332,7 @@ const NoteForm = memo(({ visible, onClose, noteToEdit = null }) => {
               <TextInput
                 style={[styles.input, errors.title ? styles.inputError : null]}
                 value={title}
-                onChangeText={setTitle}
+                onChangeText={handleTitleChange}
                 placeholder={t("notes.title")}
                 maxLength={100}
               />
@@ -327,12 +340,7 @@ const NoteForm = memo(({ visible, onClose, noteToEdit = null }) => {
                 {errors.title ? (
                   <Text style={styles.errorText}>{errors.title}</Text>
                 ) : (
-                  <Text style={styles.charCount}>
-                    {t("notes.characterCount", {
-                      current: title.length,
-                      max: 100,
-                    })}
-                  </Text>
+                  <Text style={styles.charCount}>{titleCharCount}/100</Text>
                 )}
               </View>
             </View>
@@ -346,7 +354,7 @@ const NoteForm = memo(({ visible, onClose, noteToEdit = null }) => {
                   errors.content ? styles.inputError : null,
                 ]}
                 value={content}
-                onChangeText={setContent}
+                onChangeText={handleContentChange}
                 placeholder={t("notes.content")}
                 multiline
                 numberOfLines={4}
@@ -357,12 +365,7 @@ const NoteForm = memo(({ visible, onClose, noteToEdit = null }) => {
                 {errors.content ? (
                   <Text style={styles.errorText}>{errors.content}</Text>
                 ) : (
-                  <Text style={styles.charCount}>
-                    {t("notes.characterCount", {
-                      current: content.length,
-                      max: 300,
-                    })}
-                  </Text>
+                  <Text style={styles.charCount}>{contentCharCount}/300</Text>
                 )}
               </View>
             </View>
@@ -459,14 +462,16 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0,0,0,0.7)",
   },
   modalContent: {
-    backgroundColor: COLORS.white,
-    borderRadius: 8,
+    backgroundColor: COLORS.appDarkLight,
+    borderRadius: 12,
     width: "90%",
     maxWidth: 600,
     paddingBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.appDarkBorder,
   },
   header: {
     flexDirection: "row",
@@ -474,12 +479,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.lightGray,
+    borderBottomColor: COLORS.appDarkBorder,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: COLORS.darkGray,
+    color: COLORS.white,
   },
   formContainer: {
     padding: 16,
@@ -490,25 +495,27 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: "500",
-    color: COLORS.gray,
+    color: COLORS.appDarkTextSecondary,
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: COLORS.lightGray,
-    borderRadius: 4,
+    borderColor: COLORS.appDarkBorder,
+    borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    color: COLORS.darkGray,
+    color: COLORS.white,
+    backgroundColor: COLORS.appDark,
   },
   textArea: {
     borderWidth: 1,
-    borderColor: COLORS.lightGray,
-    borderRadius: 4,
+    borderColor: COLORS.appDarkBorder,
+    borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    color: COLORS.darkGray,
+    color: COLORS.white,
     minHeight: 100,
+    backgroundColor: COLORS.appDark,
   },
   inputFooter: {
     flexDirection: "row",
@@ -518,20 +525,21 @@ const styles = StyleSheet.create({
   },
   charCount: {
     fontSize: 12,
-    color: COLORS.gray,
+    color: COLORS.appDarkTextSecondary,
   },
   timePicker: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: COLORS.lightGray,
-    borderRadius: 4,
+    borderColor: COLORS.appDarkBorder,
+    borderRadius: 8,
     padding: 12,
+    backgroundColor: COLORS.appDark,
   },
   timePickerText: {
     fontSize: 16,
-    color: COLORS.darkGray,
+    color: COLORS.white,
   },
   shiftsContainer: {
     marginTop: 8,
@@ -542,13 +550,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: COLORS.light,
-    borderRadius: 4,
+    backgroundColor: COLORS.appDark,
+    borderRadius: 8,
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: COLORS.appDarkBorder,
   },
   shiftName: {
     fontSize: 16,
-    color: COLORS.darkGray,
+    color: COLORS.white,
   },
   daysContainer: {
     flexDirection: "row",
@@ -556,19 +566,22 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   dayButton: {
-    backgroundColor: COLORS.light,
-    borderRadius: 4,
+    backgroundColor: COLORS.appDark,
+    borderRadius: 8,
     paddingVertical: 8,
     paddingHorizontal: 12,
     width: "13%",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: COLORS.appDarkBorder,
   },
   dayButtonActive: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.appPurple,
+    borderColor: COLORS.appPurple,
   },
   dayButtonText: {
     fontSize: 14,
-    color: COLORS.gray,
+    color: COLORS.appDarkTextSecondary,
   },
   dayButtonTextActive: {
     color: COLORS.white,
@@ -579,20 +592,22 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   cancelButton: {
-    backgroundColor: COLORS.lightGray,
-    borderRadius: 4,
+    backgroundColor: COLORS.appDark,
+    borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 24,
     marginRight: 8,
+    borderWidth: 1,
+    borderColor: COLORS.appDarkBorder,
   },
   cancelButtonText: {
     fontSize: 16,
-    color: COLORS.darkGray,
+    color: COLORS.appDarkTextSecondary,
     fontWeight: "500",
   },
   saveButton: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 4,
+    backgroundColor: COLORS.appPurple,
+    borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 24,
   },
@@ -602,14 +617,14 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   disabledButton: {
-    backgroundColor: COLORS.gray,
+    backgroundColor: COLORS.appDarkBorder,
   },
   errorText: {
-    color: COLORS.red,
+    color: COLORS.appStatusError,
     fontSize: 12,
   },
   inputError: {
-    borderColor: COLORS.red,
+    borderColor: COLORS.appStatusError,
   },
   duplicateError: {
     marginTop: 8,
@@ -617,7 +632,7 @@ const styles = StyleSheet.create({
   },
   noShiftsText: {
     fontSize: 16,
-    color: COLORS.gray,
+    color: COLORS.appDarkTextSecondary,
     fontStyle: "italic",
     marginTop: 8,
   },

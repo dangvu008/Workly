@@ -328,9 +328,13 @@ export const AppProvider = ({ children }) => {
   const addNote = (noteData) => {
     const newNote = {
       id: `note_${Date.now()}`,
+      title: noteData.title || "",
+      content: noteData.content || "",
+      reminderTime: noteData.reminderTime || "08:00",
+      associatedShiftIds: noteData.associatedShiftIds || [],
+      explicitReminderDays: noteData.explicitReminderDays || [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      ...noteData,
     };
     setNotes((prevNotes) => [...prevNotes, newNote]);
   };
@@ -349,27 +353,49 @@ export const AppProvider = ({ children }) => {
     setNotes((prevNotes) => prevNotes.filter((note) => note.id !== noteId));
   };
 
-  const getNotesForToday = () => {
+  const getNotesForToday = (activeShiftId = null) => {
     const today = new Date();
     const dayOfWeek = getDayOfWeek(today);
 
-    return notes.filter((note) => {
-      // Nếu có ca làm việc liên kết, kiểm tra xem hôm nay có ca làm việc nào không
-      if (note.associatedShiftIds && note.associatedShiftIds.length > 0) {
-        const hasShiftToday = shifts.some(
-          (shift) =>
-            shift.daysApplied.includes(dayOfWeek) &&
-            note.associatedShiftIds.includes(shift.id)
-        );
-        return hasShiftToday;
+    // Lọc ghi chú theo điều kiện
+    const filteredNotes = notes.filter((note) => {
+      // Điều kiện 1: Ghi chú có associatedShiftIds chứa ID của ca đang hoạt động
+      if (
+        activeShiftId &&
+        note.associatedShiftIds &&
+        note.associatedShiftIds.includes(activeShiftId)
+      ) {
+        return true;
       }
 
-      // Nếu không có ca làm việc liên kết, kiểm tra ngày nhắc nhở
-      return (
+      // Điều kiện 2: Ghi chú có associatedShiftIds rỗng VÀ explicitReminderDays chứa ngày hiện tại
+      if (
+        (!note.associatedShiftIds || note.associatedShiftIds.length === 0) &&
         note.explicitReminderDays &&
         note.explicitReminderDays.includes(dayOfWeek)
-      );
+      ) {
+        return true;
+      }
+
+      return false;
     });
+
+    // Sắp xếp theo thời gian nhắc nhở gần nhất
+    return filteredNotes
+      .sort((a, b) => {
+        const nextReminderA = getNextReminderDate(a);
+        const nextReminderB = getNextReminderDate(b);
+
+        // Nếu không có ngày nhắc nhở, sắp xếp theo updatedAt
+        if (!nextReminderA && !nextReminderB) {
+          return new Date(b.updatedAt) - new Date(a.updatedAt);
+        }
+        if (!nextReminderA) return 1;
+        if (!nextReminderB) return -1;
+
+        return nextReminderA - nextReminderB;
+      })
+      .slice(0, 3); // Chỉ lấy 3 ghi chú đầu tiên
   };
 
   const getNextReminderDate = (note) => {

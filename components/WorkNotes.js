@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalization } from "../localization/LocalizationContext";
-import { COLORS } from "../constants/colors";
+import { COLORS } from "../styles/theme/colors";
 import { formatDate } from "../utils/dateUtils";
 import { BlurView } from "expo-blur";
 
@@ -41,78 +41,65 @@ const WorkNotes = ({
   // Render note item
   const renderNoteItem = ({ item }) => {
     const isExpanded = expandedNote === item.id;
-    const hasReminder =
-      item.reminderDate && new Date(item.reminderDate) > new Date();
 
     return (
-      <TouchableOpacity
-        style={[
-          styles.noteItem,
-          item.important && styles.importantNote,
-          isExpanded && styles.expandedNote,
-        ]}
-        onPress={() => toggleNoteExpansion(item.id)}
-      >
-        <BlurView intensity={20} tint="dark" style={styles.noteContent}>
+      <View style={styles.noteItem}>
+        <View style={styles.noteContent}>
           <View style={styles.noteHeader}>
-            <Text style={styles.noteTitle} numberOfLines={isExpanded ? 0 : 1}>
+            <Text style={styles.noteTitle} numberOfLines={isExpanded ? 0 : 2}>
               {item.title}
             </Text>
-            {item.important && (
-              <MaterialIcons name="star" size={16} color={COLORS.warning} />
-            )}
+            <View style={styles.noteActions}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => onEditNote(item)}
+              >
+                <MaterialIcons
+                  name="edit"
+                  size={18}
+                  color={COLORS.appDarkTextSecondary}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => onDeleteNote(item)}
+              >
+                <MaterialIcons
+                  name="delete"
+                  size={18}
+                  color={COLORS.appStatusError}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {isExpanded && <Text style={styles.noteText}>{item.content}</Text>}
+          <Text style={styles.noteText} numberOfLines={3}>
+            {item.content}
+          </Text>
 
           <View style={styles.noteFooter}>
-            <Text style={styles.noteDate}>
-              {formatDate(new Date(item.updatedAt), "date")}
-            </Text>
-
-            {hasReminder && (
-              <View style={styles.reminderContainer}>
-                <MaterialIcons name="alarm" size={14} color={COLORS.info} />
-                <Text style={styles.reminderText}>
-                  {formatDate(new Date(item.reminderDate), "datetime")}
-                </Text>
-              </View>
-            )}
-
-            {isExpanded && (
-              <View style={styles.noteActions}>
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => onEditNote(item)}
-                >
-                  <MaterialIcons name="edit" size={20} color={COLORS.white} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.deleteButton]}
-                  onPress={() => onDeleteNote(item)}
-                >
-                  <MaterialIcons name="delete" size={20} color={COLORS.white} />
-                </TouchableOpacity>
-              </View>
-            )}
+            <View style={styles.reminderContainer}>
+              <MaterialIcons
+                name="access-time"
+                size={14}
+                color={COLORS.appDarkTextSecondary}
+              />
+              <Text style={styles.reminderText}>{item.reminderTime}</Text>
+            </View>
           </View>
-        </BlurView>
-      </TouchableOpacity>
+        </View>
+      </View>
     );
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>{t("notes.workNotes")}</Text>
-        <View style={styles.headerButtons}>
-          <TouchableOpacity style={styles.viewAllButton} onPress={onViewAll}>
-            <Text style={styles.viewAllText}>{t("common.viewAll")}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.addNoteButton} onPress={onAddNote}>
-            <MaterialIcons name="add" size={24} color={COLORS.white} />
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.title}>{t("home.notes")}</Text>
+        <TouchableOpacity style={styles.addNoteButton} onPress={onAddNote}>
+          <Text style={styles.addNoteButtonText}>{t("home.addNewNote")}</Text>
+          <MaterialIcons name="add" size={20} color={COLORS.white} />
+        </TouchableOpacity>
       </View>
 
       {notes.length === 0 ? (
@@ -138,49 +125,36 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 12,
   },
   title: {
     fontSize: 18,
     fontWeight: "bold",
     color: COLORS.white,
-    textShadowColor: "rgba(0, 0, 0, 0.75)",
-    textShadowOffset: { width: 0.5, height: 0.5 },
-    textShadowRadius: 1,
-  },
-  headerButtons: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  viewAllButton: {
-    marginRight: 8,
-  },
-  viewAllText: {
-    color: COLORS.primary,
-    fontWeight: "bold",
   },
   addNoteButton: {
-    backgroundColor: COLORS.primary,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    backgroundColor: COLORS.appPurple,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  addNoteButtonText: {
+    color: COLORS.white,
+    fontWeight: "bold",
+    marginRight: 4,
+    fontSize: 14,
   },
   notesList: {
     paddingBottom: 8,
   },
   noteItem: {
+    backgroundColor: COLORS.appDarkLight,
     borderRadius: 12,
-    overflow: "hidden",
-    marginBottom: 8,
-  },
-  importantNote: {
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.warning,
-  },
-  expandedNote: {
-    minHeight: 120,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: COLORS.appDarkBorder,
   },
   noteContent: {
     padding: 12,
@@ -188,37 +162,38 @@ const styles = StyleSheet.create({
   noteHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
+    alignItems: "flex-start",
+    marginBottom: 8,
   },
   noteTitle: {
     fontSize: 16,
     fontWeight: "bold",
     color: COLORS.white,
     flex: 1,
+    marginRight: 8,
   },
   noteText: {
     fontSize: 14,
-    color: COLORS.white,
-    marginVertical: 8,
+    color: COLORS.appDarkTextSecondary,
+    marginBottom: 8,
+    lineHeight: 20,
   },
   noteFooter: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
     alignItems: "center",
-    marginTop: 4,
-  },
-  noteDate: {
-    fontSize: 12,
-    color: COLORS.lightGray,
   },
   reminderContainer: {
     flexDirection: "row",
     alignItems: "center",
+    backgroundColor: COLORS.appDarkBorder,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   reminderText: {
     fontSize: 12,
-    color: COLORS.info,
+    color: COLORS.appDarkTextSecondary,
     marginLeft: 4,
   },
   noteActions: {
@@ -228,28 +203,27 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: COLORS.primary,
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: 8,
-  },
-  deleteButton: {
-    backgroundColor: COLORS.danger,
+    marginLeft: 4,
   },
   emptyContainer: {
+    backgroundColor: COLORS.appDarkLight,
     borderRadius: 12,
     padding: 24,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: COLORS.appDarkBorder,
   },
   emptyText: {
     fontSize: 16,
-    color: COLORS.white,
+    color: COLORS.appDarkTextSecondary,
     marginVertical: 8,
     textAlign: "center",
   },
   addButton: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.appPurple,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,

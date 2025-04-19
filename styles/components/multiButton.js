@@ -15,9 +15,9 @@ export const multiButtonStyles = StyleSheet.create({
     position: "relative",
   },
   mainButton: {
-    width: 128,
-    height: 128,
-    borderRadius: 64,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: COLORS.appPurple,
@@ -105,16 +105,7 @@ export const multiButtonStyles = StyleSheet.create({
   },
   logsContainer: {
     marginTop: SPACING.sm,
-    backgroundColor: COLORS.appDarkLight,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    elevation: 1,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
-    borderWidth: 1,
-    borderColor: COLORS.appDarkBorder,
+    alignItems: "flex-start",
   },
   logsList: {
     paddingBottom: SPACING.sm,
@@ -128,8 +119,7 @@ export const multiButtonStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.appDarkBorder,
+    marginBottom: 4,
   },
   logIconContainer: {
     width: 24,
@@ -140,19 +130,28 @@ export const multiButtonStyles = StyleSheet.create({
     justifyContent: "center",
     marginRight: SPACING.sm,
   },
+  logIconContainerGoWork: {
+    backgroundColor: COLORS.appStatusWarning,
+  },
+  logIconContainerCheckIn: {
+    backgroundColor: COLORS.appStatusInfo,
+  },
+  logIconContainerCheckOut: {
+    backgroundColor: COLORS.appStatusError,
+  },
   logContent: {
-    flex: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "flex-start",
   },
   logType: {
-    fontSize: FONT_SIZES.sm,
-    color: COLORS.white,
-  },
-  logTime: {
     fontSize: FONT_SIZES.xs,
     color: COLORS.appDarkTextSecondary,
+  },
+  logTime: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.white,
+    fontWeight: "bold",
   },
   progressBarContainer: {
     height: 4,

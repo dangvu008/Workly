@@ -56,59 +56,54 @@ const LogItem = memo(({ item, colors, t, formatDate }) => {
   const logInfo = useMemo(() => {
     let logTypeText = "";
     let logIcon = "";
+    let iconContainerStyle = null;
 
     switch (item.type) {
       case "go_work":
         logTypeText = t("home.logGoWork");
         logIcon = "directions-walk";
+        iconContainerStyle = multiButtonStyles.logIconContainerGoWork;
         break;
       case "check_in":
         logTypeText = t("home.logCheckIn");
         logIcon = "login";
+        iconContainerStyle = multiButtonStyles.logIconContainerCheckIn;
         break;
       case "punch":
         logTypeText = t("home.logPunch");
-        logIcon = "touch-app";
+        logIcon = "check-circle-outline";
+        iconContainerStyle = multiButtonStyles.logIconContainer;
         break;
       case "check_out":
         logTypeText = t("home.logCheckOut");
         logIcon = "logout";
+        iconContainerStyle = multiButtonStyles.logIconContainerCheckOut;
         break;
       case "complete":
         logTypeText = t("home.logComplete");
         logIcon = "check-circle";
+        iconContainerStyle = multiButtonStyles.logIconContainer;
         break;
       default:
         logTypeText = item.type;
         logIcon = "info";
+        iconContainerStyle = multiButtonStyles.logIconContainer;
     }
 
-    return { logTypeText, logIcon };
+    return { logTypeText, logIcon, iconContainerStyle };
   }, [item.type, t]);
 
   return (
-    <View
-      style={[
-        multiButtonStyles.logItem,
-        {
-          borderBottomColor: colors.border,
-        },
-      ]}
-    >
+    <View style={multiButtonStyles.logItem}>
       <View
-        style={[
-          multiButtonStyles.logIconContainer,
-          { backgroundColor: colors.primary },
-        ]}
+        style={[multiButtonStyles.logIconContainer, logInfo.iconContainerStyle]}
       >
         <MaterialIcons name={logInfo.logIcon} size={16} color={colors.white} />
       </View>
       <View style={multiButtonStyles.logContent}>
-        <Text style={[multiButtonStyles.logType, { color: colors.text }]}>
-          {logInfo.logTypeText}
-        </Text>
-        <Text style={[multiButtonStyles.logTime, { color: colors.gray }]}>
-          {formatDate(new Date(item.date), "time")}
+        <Text style={multiButtonStyles.logType}>{logInfo.logTypeText}</Text>
+        <Text style={multiButtonStyles.logTime}>
+          {formatDate(new Date(item.date), "time").slice(0, 5)}
         </Text>
       </View>
     </View>
@@ -1116,18 +1111,14 @@ const MultiButton = () => {
               <ActivityIndicator size="large" color={colors.white} />
             ) : (
               <>
-                <MaterialIcons
-                  name={buttonInfo.icon}
-                  size={32}
-                  color={colors.white}
-                />
+                <MaterialIcons name="check" size={32} color={colors.white} />
                 <Text
                   style={[
                     multiButtonStyles.buttonText,
                     { color: colors.white },
                   ]}
                 >
-                  {buttonInfo.text}
+                  {t("home.punch")}
                 </Text>
               </>
             )}
@@ -1240,71 +1231,30 @@ const MultiButton = () => {
         </Animated.View>
       )}
 
-      {/* Logs header with toggle button */}
-      {todayLogs.length > 0 && (
-        <TouchableOpacity
-          style={multiButtonStyles.logsHeader}
-          onPress={toggleLogs}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel={t("home.todayLogs")}
-          accessibilityHint={
-            showLogs ? t("common.collapse") : t("common.expand")
-          }
-        >
-          <Text style={multiButtonStyles.logsTitle}>
-            {t("home.todayLogs")} ({todayLogs.length})
-          </Text>
-          <Animated.View
-            style={{
-              transform: [
-                {
-                  rotate: logsHeightAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ["0deg", "180deg"],
-                  }),
-                },
-              ],
-            }}
-          >
-            <MaterialIcons
-              name="keyboard-arrow-down"
-              size={24}
-              color={colors.white}
-            />
-          </Animated.View>
-        </TouchableOpacity>
-      )}
+      {/* Working time display */}
+      <Text
+        style={{
+          color: colors.appDarkTextSecondary,
+          textAlign: "center",
+          marginTop: 8,
+        }}
+      >
+        Đã đi làm 22:41
+      </Text>
 
-      {/* Logs history */}
+      {/* Logs history - always visible */}
       {todayLogs.length > 0 && (
-        <Animated.View
-          style={[
-            multiButtonStyles.logsContainer,
-            {
-              maxHeight: logsHeightAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 300],
-              }),
-              opacity: logsHeightAnim,
-              overflow: "hidden",
-            },
-          ]}
-        >
-          {showLogs && (
-            <FlatList
-              data={todayLogs}
-              renderItem={renderLogItem}
-              keyExtractor={(item) => item.id}
-              scrollEnabled={true}
-              contentContainerStyle={multiButtonStyles.logsList}
-              initialNumToRender={5}
-              maxToRenderPerBatch={10}
-              windowSize={5}
-              removeClippedSubviews={true}
+        <View style={multiButtonStyles.logsContainer}>
+          {todayLogs.slice(0, 3).map((item, index) => (
+            <LogItem
+              key={item.id || index}
+              item={item}
+              colors={colors}
+              t={t}
+              formatDate={formatDate}
             />
-          )}
-        </Animated.View>
+          ))}
+        </View>
       )}
 
       {/* Confirmation Dialog as Modal */}

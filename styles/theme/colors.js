@@ -39,13 +39,13 @@ export const COLORS = {
   darkTextMuted: "#6B7280", // Gray-500
 
   // App specific colors
-  appPurple: "#8B5CF6", // Violet-500
-  appPurpleLight: "#A78BFA", // Violet-400
-  appPurpleDark: "#7C3AED", // Violet-600
+  appPurple: "#9333EA", // Violet-600 (adjusted to match image)
+  appPurpleLight: "#A855F7", // Violet-500 (adjusted to match image)
+  appPurpleDark: "#7E22CE", // Violet-700 (adjusted to match image)
   appBlue: "#3B82F6", // Blue-500
   appBlueLight: "#60A5FA", // Blue-400
   appBlueDark: "#2563EB", // Blue-600
-  appDark: "#111827", // Gray-900
+  appDark: "#0F172A", // Slate-900 (adjusted to match image)
   appDarkLight: "#1F2937", // Gray-800
   appDarkBorder: "#374151", // Gray-700
   appDarkText: "#F9FAFB", // Gray-50

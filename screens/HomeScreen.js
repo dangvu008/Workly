@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { useAppContext } from "../context/AppContext";
-import WeeklyStatusGrid from "../components/WeeklyStatusGrid";
 import AlarmModal from "../components/AlarmModal";
 import WeatherIcon from "../components/WeatherIcon";
 import NoteItem from "../components/NoteItem";
@@ -13,11 +12,13 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalization } from "../localization/LocalizationContext";
 import MultiButton from "../components/MultiButton";
 import { homeScreenStyles } from "../styles/screens/homeScreen";
-import Logo from "../components/Logo";
+import { COLORS } from "../styles/theme/colors";
 import TimeDisplay from "../components/TimeDisplay";
 import ShiftStatus from "../components/ShiftStatus";
 import WeeklySchedule from "../components/WeeklySchedule";
 import WorkNotes from "../components/WorkNotes";
+import ShiftInfo from "../components/ShiftInfo";
+import WeatherForecast from "../components/WeatherForecast";
 
 const HomeScreen = ({ navigation }) => {
   const {
@@ -485,39 +486,41 @@ const HomeScreen = ({ navigation }) => {
     <View style={homeScreenStyles.container}>
       <ScrollView>
         <View style={homeScreenStyles.header}>
-          {/* Add Logo at the top of the header */}
-          <Logo size="small" showText={true} style={{ marginBottom: 8 }} />
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              width: "100%",
+            }}
+          >
+            <Text
+              style={{ color: COLORS.white, fontSize: 24, fontWeight: "bold" }}
+            >
+              Time Manager
+            </Text>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <MaterialIcons name="settings" size={24} color={COLORS.white} />
+              <MaterialIcons name="bar-chart" size={24} color={COLORS.white} />
+            </View>
+          </View>
 
           {/* New TimeDisplay component */}
           <TimeDisplay />
-
-          <Text style={homeScreenStyles.status}>
-            {getTodayAttendanceStatus().text}
-          </Text>
         </View>
 
-        {/* New ShiftStatus component */}
-        <ShiftStatus
-          status={getTodayAttendanceStatus().status}
-          onCheckIn={handleCheckIn}
-          onCheckOut={handleCheckOut}
+        {/* Today's Shift Info */}
+        <ShiftInfo
+          shift={{ name: "Ca Ngày", startTime: "08:00", endTime: "20:00" }}
         />
 
-        {/* Nút Đa Năng */}
+        {/* Main action button */}
         <MultiButton />
 
         <View style={homeScreenStyles.section}>
           <Text style={homeScreenStyles.sectionTitle}>
-            {t("home.weeklySchedule")}
+            {t("home.weeklyStatus")}
           </Text>
           <WeeklySchedule weekData={weeklyData} onDayPress={handleDayPress} />
-        </View>
-
-        <View style={homeScreenStyles.section}>
-          <Text style={homeScreenStyles.sectionTitle}>
-            {t("home.todayShifts")}
-          </Text>
-          {renderActiveShifts}
         </View>
 
         {/* Khu vực ghi chú */}
@@ -529,6 +532,8 @@ const HomeScreen = ({ navigation }) => {
           onViewAll={handleViewAllNotes}
         />
 
+        {/* Weather Forecast */}
+        <WeatherForecast />
         {renderWeatherCard}
       </ScrollView>
 
