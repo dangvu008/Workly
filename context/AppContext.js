@@ -10,17 +10,18 @@ const AppContext = createContext();
 
 // Add hapticFeedbackEnabled to the defaultUserSettings object
 const defaultUserSettings = {
-  multiButtonMode: "full",
+  multiButtonMode: "full", // Options: "full", "go_work_only"
   firstDayOfWeek: "Mon",
   timeFormat: "24h",
   theme: "light", // Options: "light", "dark", "system"
   alarmSoundEnabled: true,
   alarmVibrationEnabled: true,
-  hapticFeedbackEnabled: true, // Add this line
+  hapticFeedbackEnabled: true,
   changeShiftReminderMode: "ask_weekly",
   weatherWarningEnabled: true,
   language: "vi",
   weatherLocation: null,
+  onlyGoWorkMode: false, // Thêm cài đặt cho chế độ Chỉ Đi Làm
 };
 
 export const AppProvider = ({ children }) => {

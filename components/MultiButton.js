@@ -837,6 +837,22 @@ const MultiButton = () => {
 
     animateButtonPress();
 
+    // Nếu đang ở chế độ Chỉ Đi Làm, chỉ cho phép bấm nút Đi Làm
+    if (userSettings.onlyGoWorkMode) {
+      if (currentStatus === "not_started") {
+        executeAction("go_work");
+      } else {
+        // Thông báo cho người dùng biết đang ở chế độ Chỉ Đi Làm
+        Alert.alert(
+          t("common.information"),
+          t("home.onlyGoWorkModeActive") ||
+            "Bạn đang ở chế độ Chỉ Đi Làm. Để sử dụng đầy đủ chức năng, hãy thay đổi cài đặt trong màn hình Cài đặt."
+        );
+      }
+      return;
+    }
+
+    // Chế độ đầy đủ (Full)
     switch (currentStatus) {
       case "not_started":
         executeAction("go_work");
@@ -864,6 +880,7 @@ const MultiButton = () => {
     executeAction,
     triggerHapticFeedback,
     t,
+    userSettings.onlyGoWorkMode,
   ]);
 
   // Handle confirmation dialog - optimized with useCallback
@@ -1114,14 +1131,18 @@ const MultiButton = () => {
               <ActivityIndicator size="large" color={colors.white} />
             ) : (
               <>
-                <MaterialIcons name="check" size={32} color={colors.white} />
+                <MaterialIcons
+                  name={buttonInfo.icon}
+                  size={32}
+                  color={colors.white}
+                />
                 <Text
                   style={[
                     multiButtonStyles.buttonText,
                     { color: colors.white },
                   ]}
                 >
-                  {t("home.punch")}
+                  {buttonInfo.text}
                 </Text>
               </>
             )}

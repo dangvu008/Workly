@@ -57,6 +57,9 @@ const SettingsScreen = ({ navigation }) => {
   const [firstDayOfWeek, setFirstDayOfWeek] = useState(
     userSettings.firstDayOfWeek || "Mon"
   );
+  const [onlyGoWorkMode, setOnlyGoWorkMode] = useState(
+    userSettings.onlyGoWorkMode || false
+  );
 
   // Thay thế hàm handleExportData
   const handleExportData = useCallback(async () => {
@@ -195,6 +198,15 @@ const SettingsScreen = ({ navigation }) => {
     (value) => {
       setMultiButtonMode(value);
       updateSettings({ multiButtonMode: value });
+    },
+    [updateSettings]
+  );
+
+  // Handle only go work mode toggle
+  const handleOnlyGoWorkModeToggle = useCallback(
+    (value) => {
+      setOnlyGoWorkMode(value);
+      updateSettings({ onlyGoWorkMode: value });
     },
     [updateSettings]
   );
@@ -368,6 +380,19 @@ const SettingsScreen = ({ navigation }) => {
           options={buttonModeOptions}
           onValueChange={handleButtonModeChange}
         />
+
+        <View style={newStyles.settingRow}>
+          <View>
+            <Text style={newStyles.settingLabel}>Chế độ Chỉ Đi Làm</Text>
+            <Text style={newStyles.settingDescription}>
+              Chỉ hiển thị và cho phép bấm nút "Đi Làm"
+            </Text>
+          </View>
+          <Switch
+            value={onlyGoWorkMode}
+            onValueChange={handleOnlyGoWorkModeToggle}
+          />
+        </View>
       </View>
 
       {/* Shift Reminder Section */}
