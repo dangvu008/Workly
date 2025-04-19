@@ -58,6 +58,7 @@ export default {
     reminderNote: "Bạn có {count} lời nhắc được lên lịch cho hôm nay.",
     helpText: "Cần trợ giúp? Truy cập trung tâm trợ giúp hoặc liên hệ hỗ trợ.",
     activeShift: "Ca làm việc hiện tại",
+    noShiftSelected: "Chưa chọn ca làm việc",
     goWork: "Đi làm",
     checkIn: "Chấm công vào",
     checkOut: "Chấm công ra",
@@ -67,6 +68,17 @@ export default {
     onlyGoWorkModeActive:
       "Bạn đang ở chế độ Chỉ Đi Làm. Để sử dụng đầy đủ chức năng, hãy thay đổi cài đặt trong màn hình Cài đặt.",
     viewAll: "Xem tất cả",
+    confirmReset: "Xác nhận đặt lại",
+    confirmResetMessage:
+      "Bạn có chắc muốn đặt lại trạng thái làm việc hôm nay không? Hành động này sẽ xóa tất cả các lịch sử chấm công của ngày hôm nay.",
+    resetConfirmation:
+      "Bạn có chắc muốn đặt lại trạng thái làm việc hôm nay không?",
+    goWorkDescription: "Bắt đầu ngày làm việc",
+    waitingCheckIn: "Chờ chấm công vào",
+    waitingCheckInDescription: "Sẵn sàng chấm công vào",
+    completeDescription: "Kết thúc ngày làm việc",
+    completed: "Đã hoàn tất",
+    completedDescription: "Ngày làm việc đã hoàn tất",
   },
   shifts: {
     shiftList: "Danh sách ca làm việc",
@@ -198,7 +210,12 @@ export default {
       lowTemp: "Nhiệt độ thấp, hãy mặc ấm",
       thunderstorm: "Có giông bão, hãy cẩn thận khi di chuyển",
       heavyRain: "Mưa lớn, có thể gây ngập lụt",
+      snow: "Có tuyết rơi, hãy mặc ấm và cẩn thận khi di chuyển",
+      strongWind: "Gió mạnh, hãy cẩn thận khi ra ngoài trời",
     },
+    weatherAlert: "Cảnh báo thời tiết",
+    departureAlert: "Khi đi làm lúc {time}:",
+    returnAlert: "Khi về lúc {time}:",
     forecast: "Dự báo 5 ngày",
     forecastError: "Không thể lấy dữ liệu dự báo",
     today: "Hôm nay",
@@ -298,6 +315,8 @@ export default {
     cannotCheckOut: "Không thể chấm công ra. Vui lòng thử lại sau.",
     cannotCompleteShift:
       "Không thể hoàn tất ca làm việc. Vui lòng thử lại sau.",
+    cannotResetStatus:
+      "Không thể đặt lại trạng thái làm việc. Vui lòng thử lại sau.",
     cannotPerformAction:
       'Không thể thực hiện hành động "{action}". Vui lòng thử lại sau.',
   },

@@ -1,14 +1,34 @@
 "use client";
 
-import { createContext, useState, useEffect, useContext } from "react";
+import {
+  createContext,
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+} from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { STORAGE_KEYS } from "../constants/storage";
-// Không cần import i18next nữa
-import { getDayOfWeek } from "../utils/dateUtils";
+import { getDayOfWeek, timeToMinutes } from "../utils/dateUtils";
+import {
+  isLogValidForShift,
+  calculateAttendanceStatus,
+} from "../utils/attendanceUtils";
+import {
+  checkExtremeWeather,
+  formatWeatherAlertMessage,
+} from "../utils/weatherUtils";
+import {
+  scheduleNotification,
+  cancelNotification,
+  scheduleShiftReminders,
+  scheduleNoteReminders,
+  scheduleWeatherAlert,
+} from "../utils/notificationUtils";
 
 const AppContext = createContext();
 
-// Add hapticFeedbackEnabled to the defaultUserSettings object
+// User settings with defaults
 const defaultUserSettings = {
   multiButtonMode: "full", // Options: "full", "go_work_only"
   firstDayOfWeek: "Mon",
@@ -19,9 +39,10 @@ const defaultUserSettings = {
   hapticFeedbackEnabled: true,
   changeShiftReminderMode: "ask_weekly",
   weatherWarningEnabled: true,
+  shiftReminderEnabled: true,
   language: "vi",
   weatherLocation: null,
-  onlyGoWorkMode: false, // Thêm cài đặt cho chế độ Chỉ Đi Làm
+  onlyGoWorkMode: false, // Setting for Go-Work-Only mode
 };
 
 export const AppProvider = ({ children }) => {
@@ -32,10 +53,13 @@ export const AppProvider = ({ children }) => {
   const [notes, setNotes] = useState([]);
   const [weatherData, setWeatherData] = useState(null);
   const [userSettings, setUserSettings] = useState(defaultUserSettings);
-  // Thêm vào phần state trong AppProvider
   const [attendanceLogs, setAttendanceLogs] = useState([]);
   const [dailyWorkStatus, setDailyWorkStatus] = useState({});
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // Added isLoggedIn state
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [activeShiftId, setActiveShiftId] = useState(null);
+  const [scheduledNotifications, setScheduledNotifications] = useState({});
+  const [weatherAlerts, setWeatherAlerts] = useState({});
+  const [weatherAlertsShown, setWeatherAlertsShown] = useState({});
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -297,20 +321,79 @@ export const AppProvider = ({ children }) => {
     });
   };
 
-  const addShift = (shiftData) => {
+  const addShift = async (shiftData) => {
     const newShift = { id: `shift_${Date.now()}`, ...shiftData };
+
+    // Add the new shift
     setShifts((prevShifts) => [...prevShifts, newShift]);
+
+    // Schedule reminders if this is the active shift
+    if (userSettings.shiftReminderEnabled) {
+      await scheduleShiftReminders(newShift, new Date(), userSettings);
+    }
+
+    return newShift;
   };
 
-  const updateShift = (shiftId, shiftData) => {
-    setShifts((prevShifts) =>
-      prevShifts.map((shift) =>
+  const updateShift = async (shiftId, shiftData) => {
+    // Update the shift
+    setShifts((prevShifts) => {
+      const updatedShifts = prevShifts.map((shift) =>
         shift.id === shiftId ? { ...shift, ...shiftData } : shift
-      )
-    );
+      );
+
+      // Find the updated shift
+      const updatedShift = updatedShifts.find((shift) => shift.id === shiftId);
+
+      // If this is the active shift, reschedule reminders
+      if (
+        updatedShift &&
+        shiftId === activeShiftId &&
+        userSettings.shiftReminderEnabled
+      ) {
+        // Cancel existing reminders
+        if (scheduledNotifications[shiftId]) {
+          scheduledNotifications[shiftId].forEach((id) =>
+            cancelNotification(id)
+          );
+        }
+
+        // Schedule new reminders
+        scheduleShiftReminders(updatedShift, new Date(), userSettings).then(
+          (notificationIds) => {
+            setScheduledNotifications((prev) => ({
+              ...prev,
+              [shiftId]: notificationIds,
+            }));
+          }
+        );
+      }
+
+      return updatedShifts;
+    });
   };
 
-  const deleteShift = (shiftId) => {
+  const deleteShift = async (shiftId) => {
+    // Cancel any scheduled reminders for this shift
+    if (scheduledNotifications[shiftId]) {
+      for (const notificationId of scheduledNotifications[shiftId]) {
+        await cancelNotification(notificationId);
+      }
+
+      // Remove from scheduled notifications
+      setScheduledNotifications((prev) => {
+        const updated = { ...prev };
+        delete updated[shiftId];
+        return updated;
+      });
+    }
+
+    // If this is the active shift, clear it
+    if (shiftId === activeShiftId) {
+      setActiveShiftId(null);
+    }
+
+    // Delete the shift
     setShifts((prevShifts) =>
       prevShifts.filter((shift) => shift.id !== shiftId)
     );
@@ -326,7 +409,7 @@ export const AppProvider = ({ children }) => {
     setWeatherData(newData);
   };
 
-  const addNote = (noteData) => {
+  const addNote = async (noteData) => {
     const newNote = {
       id: `note_${Date.now()}`,
       title: noteData.title || "",
@@ -337,20 +420,81 @@ export const AppProvider = ({ children }) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+
+    // Add the note
     setNotes((prevNotes) => [...prevNotes, newNote]);
+
+    // Schedule reminders if enabled
+    if (userSettings.alarmSoundEnabled) {
+      const notificationIds = await scheduleNoteReminders(
+        newNote,
+        shifts,
+        userSettings
+      );
+
+      // Save notification IDs
+      if (notificationIds.length > 0) {
+        setScheduledNotifications((prev) => ({
+          ...prev,
+          [newNote.id]: notificationIds,
+        }));
+      }
+    }
+
+    return newNote;
   };
 
-  const updateNote = (noteId, noteData) => {
-    setNotes((prevNotes) =>
-      prevNotes.map((note) =>
+  const updateNote = async (noteId, noteData) => {
+    // Cancel existing reminders
+    if (scheduledNotifications[noteId]) {
+      for (const notificationId of scheduledNotifications[noteId]) {
+        await cancelNotification(notificationId);
+      }
+    }
+
+    // Update the note
+    setNotes((prevNotes) => {
+      const updatedNotes = prevNotes.map((note) =>
         note.id === noteId
           ? { ...note, ...noteData, updatedAt: new Date().toISOString() }
           : note
-      )
-    );
+      );
+
+      // Find the updated note
+      const updatedNote = updatedNotes.find((note) => note.id === noteId);
+
+      // Schedule new reminders if enabled
+      if (updatedNote && userSettings.alarmSoundEnabled) {
+        scheduleNoteReminders(updatedNote, shifts, userSettings).then(
+          (notificationIds) => {
+            setScheduledNotifications((prev) => ({
+              ...prev,
+              [noteId]: notificationIds,
+            }));
+          }
+        );
+      }
+
+      return updatedNotes;
+    });
   };
 
-  const deleteNote = (noteId) => {
+  const deleteNote = async (noteId) => {
+    // Cancel any scheduled reminders for this note
+    if (scheduledNotifications[noteId]) {
+      for (const notificationId of scheduledNotifications[noteId]) {
+        await cancelNotification(notificationId);
+      }
+
+      // Remove from scheduled notifications
+      setScheduledNotifications((prev) => {
+        const updated = { ...prev };
+        delete updated[noteId];
+        return updated;
+      });
+    }
+
+    // Delete the note
     setNotes((prevNotes) => prevNotes.filter((note) => note.id !== noteId));
   };
 
@@ -468,10 +612,147 @@ export const AppProvider = ({ children }) => {
     setDailyWorkStatus(parsedData.dailyWorkStatus || {});
   };
 
-  // Thêm các hàm xử lý attendance logs
+  // Set active shift
+  const setActiveShift = async (shiftId) => {
+    // If there's already an active shift, cancel its reminders
+    if (activeShiftId && scheduledNotifications[activeShiftId]) {
+      for (const notificationId of scheduledNotifications[activeShiftId]) {
+        await cancelNotification(notificationId);
+      }
+    }
+
+    // Set the new active shift
+    setActiveShiftId(shiftId);
+
+    // Schedule reminders for the new active shift if enabled
+    if (shiftId && userSettings.shiftReminderEnabled) {
+      const shift = shifts.find((s) => s.id === shiftId);
+      if (shift) {
+        const notificationIds = await scheduleShiftReminders(
+          shift,
+          new Date(),
+          userSettings
+        );
+
+        // Save notification IDs
+        if (notificationIds.length > 0) {
+          setScheduledNotifications((prev) => ({
+            ...prev,
+            [shiftId]: notificationIds,
+          }));
+        }
+
+        // Check for weather alerts if enabled
+        if (userSettings.weatherWarningEnabled && weatherData) {
+          checkWeatherForShift(shift);
+        }
+      }
+    }
+  };
+
+  // Check weather for a shift and show alerts if needed
+  const checkWeatherForShift = useCallback(
+    async (shift) => {
+      if (!shift || !weatherData || !userSettings.weatherWarningEnabled) return;
+
+      try {
+        // Get departure time in minutes
+        const departureTimeMinutes = timeToMinutes(shift.departureTime);
+
+        // Get current time
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        const currentTimeMinutes = currentHour * 60 + currentMinute;
+
+        // Check if we're within 1 hour of departure time
+        const timeUntilDeparture = departureTimeMinutes - currentTimeMinutes;
+
+        // Only check if we're about 1 hour before departure (between 30-90 minutes)
+        if (timeUntilDeparture >= 30 && timeUntilDeparture <= 90) {
+          // Check for extreme weather conditions at departure time
+          const departureAlerts = checkExtremeWeather(weatherData);
+
+          // Check for extreme weather conditions at return time
+          // This would require additional weather forecast data for the return time
+          const returnAlerts = []; // Placeholder - would need forecast data
+
+          // If we have alerts, show them
+          if (
+            (departureAlerts && departureAlerts.length > 0) ||
+            (returnAlerts && returnAlerts.length > 0)
+          ) {
+            // Format alert message
+            const alertMessage = formatWeatherAlertMessage(
+              departureAlerts,
+              returnAlerts,
+              shift
+            );
+
+            // Check if we've already shown an alert for this shift today
+            const today = now.toISOString().split("T")[0];
+            const alertKey = `${shift.id}_${today}`;
+
+            if (!weatherAlertsShown[alertKey]) {
+              // Show notification
+              await scheduleWeatherAlert(alertMessage);
+
+              // Save alert
+              setWeatherAlerts((prev) => ({
+                ...prev,
+                [alertKey]: {
+                  message: alertMessage,
+                  timestamp: now.toISOString(),
+                  departureAlerts,
+                  returnAlerts,
+                  shift,
+                },
+              }));
+
+              // Mark as shown
+              setWeatherAlertsShown((prev) => ({
+                ...prev,
+                [alertKey]: true,
+              }));
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error checking weather for shift:", error);
+      }
+    },
+    [weatherData, userSettings.weatherWarningEnabled, weatherAlertsShown]
+  );
+
+  // Dismiss weather alert
+  const dismissWeatherAlert = (alertKey) => {
+    setWeatherAlerts((prev) => {
+      const updated = { ...prev };
+      delete updated[alertKey];
+      return updated;
+    });
+  };
+
+  // Add attendance log with validation
   const addAttendanceLog = (type, shiftId) => {
     const now = new Date();
     const dateStr = now.toISOString().split("T")[0];
+
+    // Get the shift
+    const shift = shifts.find((s) => s.id === shiftId);
+
+    // Validate log against shift if needed
+    if (shift && type === "check_in") {
+      const isValid = isLogValidForShift(
+        { timestamp: now.toISOString() },
+        shift
+      );
+
+      if (!isValid) {
+        // This could trigger a confirmation dialog in the UI
+        console.warn("Log may not be valid for this shift");
+      }
+    }
 
     const newLog = {
       id: `log_${Date.now()}`,
@@ -483,8 +764,18 @@ export const AppProvider = ({ children }) => {
 
     setAttendanceLogs((prev) => [...prev, newLog]);
 
-    // Cập nhật daily work status
+    // Update daily work status
     updateDailyWorkStatus(dateStr, type, shiftId, now);
+
+    // Calculate attendance status after check-out or complete
+    if (type === "check_out" || type === "complete") {
+      const logs = getLogsForDate(now);
+      if (shift) {
+        const status = calculateAttendanceStatus([...logs, newLog], shift);
+        // This could be used to update UI or trigger notifications
+        console.log("Calculated attendance status:", status);
+      }
+    }
 
     return newLog;
   };
@@ -536,17 +827,40 @@ export const AppProvider = ({ children }) => {
   const resetDailyWorkStatus = (date = new Date()) => {
     const dateStr = date.toISOString().split("T")[0];
 
-    // Xóa tất cả logs cho ngày hiện tại
+    // Delete all logs for the current date
     setAttendanceLogs((prev) =>
       prev.filter((log) => !log.date.startsWith(dateStr))
     );
 
-    // Reset trạng thái
+    // Reset status
     setDailyWorkStatus((prev) => {
       const newStatus = { ...prev };
       delete newStatus[dateStr];
       return newStatus;
     });
+
+    // If there's an active shift, reschedule its reminders
+    if (activeShiftId) {
+      const shift = shifts.find((s) => s.id === activeShiftId);
+      if (shift && userSettings.shiftReminderEnabled) {
+        // Cancel existing reminders
+        if (scheduledNotifications[activeShiftId]) {
+          scheduledNotifications[activeShiftId].forEach((id) =>
+            cancelNotification(id)
+          );
+        }
+
+        // Schedule new reminders
+        scheduleShiftReminders(shift, date, userSettings).then(
+          (notificationIds) => {
+            setScheduledNotifications((prev) => ({
+              ...prev,
+              [activeShiftId]: notificationIds,
+            }));
+          }
+        );
+      }
+    }
   };
 
   const getLogsForDate = (date = new Date()) => {
@@ -571,7 +885,7 @@ export const AppProvider = ({ children }) => {
     );
   };
 
-  // Thêm vào phần value trong return
+  // Context value
   const value = {
     isLoading,
     isLoggedIn,
@@ -583,6 +897,8 @@ export const AppProvider = ({ children }) => {
     userSettings,
     attendanceLogs,
     dailyWorkStatus,
+    activeShiftId,
+    weatherAlerts,
     updateSettings,
     addShift,
     updateShift,
@@ -601,6 +917,9 @@ export const AppProvider = ({ children }) => {
     getLogsForDate,
     getDailyStatusForDate,
     addAttendanceLog,
+    setActiveShift,
+    checkWeatherForShift,
+    dismissWeatherAlert,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

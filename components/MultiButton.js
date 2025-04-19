@@ -215,6 +215,7 @@ const MultiButton = () => {
   const [errorMessage, setErrorMessage] = useState(null);
   const [todayNotes, setTodayNotes] = useState([]);
   const [expandedNotes, setExpandedNotes] = useState(false);
+  const [showResetConfirmation, setShowResetConfirmation] = useState(false);
 
   // Animation values - memoized to avoid recreating on each render
   const animationValues = useMemo(

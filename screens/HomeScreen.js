@@ -28,6 +28,7 @@ import WeeklyStatusGrid from "../components/WeeklyStatusGrid";
 import BottomNav from "../components/BottomNav";
 import NoteItem from "../components/NoteItem";
 import WeatherIcon from "../components/WeatherIcon";
+import WeatherAlert from "../components/WeatherAlert";
 
 const HomeScreen = ({ navigation }) => {
   const {
@@ -40,6 +41,10 @@ const HomeScreen = ({ navigation }) => {
     deleteNote,
     getNotesForToday,
     getNextReminderDate,
+    weatherAlerts,
+    dismissWeatherAlert,
+    activeShiftId,
+    setActiveShift,
   } = useAppContext();
   const { t } = useLocalization();
 
@@ -53,6 +58,7 @@ const HomeScreen = ({ navigation }) => {
   const [showNoteForm, setShowNoteForm] = useState(false);
   const [noteToEdit, setNoteToEdit] = useState(null);
   const [todayNotes, setTodayNotes] = useState([]);
+  const [currentWeatherAlert, setCurrentWeatherAlert] = useState(null);
 
   // Tối ưu hóa triggerAlarm
   const triggerAlarm = useCallback((title, message, alarmSound) => {
@@ -78,6 +84,13 @@ const HomeScreen = ({ navigation }) => {
     const today = getDayOfWeek(new Date());
     return shifts.filter((shift) => shift.daysApplied.includes(today));
   }, [shifts]);
+
+  // Set active shift if not already set
+  useEffect(() => {
+    if (!activeShiftId && activeShifts.length > 0) {
+      setActiveShift(activeShifts[0].id);
+    }
+  }, [activeShiftId, activeShifts, setActiveShift]);
 
   // Lấy danh sách ghi chú cho ngày hôm nay
   useEffect(() => {
@@ -454,6 +467,30 @@ const HomeScreen = ({ navigation }) => {
     ));
   }, [todayNotes, t, handleAddNote, handleEditNote, handleDeleteNote]);
 
+  // Process weather alerts
+  useEffect(() => {
+    if (weatherAlerts && Object.keys(weatherAlerts).length > 0) {
+      // Get the first alert
+      const alertKey = Object.keys(weatherAlerts)[0];
+      const alert = weatherAlerts[alertKey];
+
+      setCurrentWeatherAlert({
+        key: alertKey,
+        message: alert.message,
+      });
+    } else {
+      setCurrentWeatherAlert(null);
+    }
+  }, [weatherAlerts]);
+
+  // Handle weather alert dismissal
+  const handleDismissWeatherAlert = useCallback(() => {
+    if (currentWeatherAlert) {
+      dismissWeatherAlert(currentWeatherAlert.key);
+      setCurrentWeatherAlert(null);
+    }
+  }, [currentWeatherAlert, dismissWeatherAlert]);
+
   // Tối ưu hóa render weather card
   const renderWeatherCard = useMemo(() => {
     if (!weatherData || !userSettings.weatherWarningEnabled) {
@@ -521,6 +558,14 @@ const HomeScreen = ({ navigation }) => {
         contentContainerStyle={{ paddingBottom: 60 }} // Padding bottom cho ScrollView
         showsVerticalScrollIndicator={false}
       >
+        {/* Weather Alert */}
+        {currentWeatherAlert && (
+          <WeatherAlert
+            alert={currentWeatherAlert}
+            onDismiss={handleDismissWeatherAlert}
+          />
+        )}
+
         {/* Header with app title and date */}
         <View style={styles.header}>
           <View style={styles.headerRow}>
@@ -556,7 +601,7 @@ const HomeScreen = ({ navigation }) => {
           <Text style={styles.shiftText}>
             {activeShifts.length > 0
               ? activeShifts[0].name
-              : "Chưa chọn ca làm việc"}
+              : t("home.noShiftSelected")}
           </Text>
         </View>
 
@@ -564,7 +609,9 @@ const HomeScreen = ({ navigation }) => {
         <View style={styles.buttonContainer}>
           <MultiButton />
           <Text style={styles.workingTimeText}>
-            {attendanceRecords.length > 0 ? "Đã đi làm 1:36" : ""}
+            {attendanceRecords.length > 0
+              ? t("home.workingTime", { duration: "1:36" })
+              : ""}
           </Text>
         </View>
 
@@ -576,7 +623,7 @@ const HomeScreen = ({ navigation }) => {
 
         {/* Notes section */}
         <View style={styles.notesSection}>
-          <Text style={styles.sectionTitle}>Ghi chú</Text>
+          <Text style={styles.sectionTitle}>{t("home.notes")}</Text>
           <WorkNotes
             notes={todayNotes}
             onAddNote={handleAddNote}

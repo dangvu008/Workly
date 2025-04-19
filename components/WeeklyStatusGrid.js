@@ -89,7 +89,7 @@ const WeeklyStatusGrid = memo(({ onDayPress }) => {
       };
 
       // Xác định trạng thái dựa trên thông tin trong status
-      if (status.completeTime) {
+      if (status && status.completeTime) {
         // Đủ công - đã hoàn thành đầy đủ
         statusMap[dateStr].type = "complete";
         statusMap[dateStr].iconName = "check-circle";
@@ -101,7 +101,7 @@ const WeeklyStatusGrid = memo(({ onDayPress }) => {
           completeTime: status.completeTime,
           punchTime: status.punchTime,
         };
-      } else if (status.checkInTime && !status.checkOutTime) {
+      } else if (status && status.checkInTime && !status.checkOutTime) {
         // Thiếu chấm công - chỉ có check-in
         statusMap[dateStr].type = "incomplete";
         statusMap[dateStr].iconName = "error";
@@ -110,7 +110,7 @@ const WeeklyStatusGrid = memo(({ onDayPress }) => {
           goWorkTime: status.goWorkTime,
           checkInTime: status.checkInTime,
         };
-      } else if (status.goWorkTime && !status.checkInTime) {
+      } else if (status && status.goWorkTime && !status.checkInTime) {
         // Thiếu chấm công - chỉ có go-work
         statusMap[dateStr].type = "incomplete";
         statusMap[dateStr].iconName = "error";
