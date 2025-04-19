@@ -1,11 +1,16 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  StyleSheet,
+} from "react-native";
 import { useAppContext } from "../context/AppContext";
 import AlarmModal from "../components/AlarmModal";
-import WeatherIcon from "../components/WeatherIcon";
-import NoteItem from "../components/NoteItem";
 import NoteForm from "../components/NoteForm";
 import { formatDate, getDayOfWeek, timeToMinutes } from "../utils/dateUtils";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -13,12 +18,15 @@ import { useLocalization } from "../localization/LocalizationContext";
 import MultiButton from "../components/MultiButton";
 import { homeScreenStyles } from "../styles/screens/homeScreen";
 import { COLORS } from "../styles/theme/colors";
-import TimeDisplay from "../components/TimeDisplay";
-import ShiftStatus from "../components/ShiftStatus";
-import WeeklySchedule from "../components/WeeklySchedule";
+import { FONT_SIZES } from "../styles/theme/typography";
+import { SPACING } from "../styles/theme/spacing";
+import { format } from "date-fns";
+import { vi } from "date-fns/locale";
 import WorkNotes from "../components/WorkNotes";
-import ShiftInfo from "../components/ShiftInfo";
-import WeatherForecast from "../components/WeatherForecast";
+import WeatherForecastHourly from "../components/WeatherForecastHourly";
+import AttendanceLogList from "../components/AttendanceLogList";
+import WeeklyStatusGrid from "../components/WeeklyStatusGrid";
+import BottomNav from "../components/BottomNav";
 
 const HomeScreen = ({ navigation }) => {
   const {
@@ -482,59 +490,96 @@ const HomeScreen = ({ navigation }) => {
     );
   }, [weatherData, userSettings.weatherWarningEnabled, t]);
 
+  // Mock data for 3-hour weather forecast
+  const mockWeatherForecast = [
+    { time: "15:00", temp: 28, condition: "partly-cloudy" },
+    { time: "16:00", temp: 27, condition: "cloudy" },
+    { time: "17:00", temp: 26, condition: "rainy" },
+  ];
+
+  // Mock data for attendance logs
+  const mockAttendanceLogs = [
+    { type: "go_work", time: new Date().toISOString() },
+    { type: "check_in", time: new Date(Date.now() - 5 * 60000).toISOString() },
+    {
+      type: "check_out",
+      time: new Date(Date.now() - 10 * 60000).toISOString(),
+    },
+    { type: "complete", time: new Date(Date.now() - 15 * 60000).toISOString() },
+  ];
+
+  // Format current date and time
+  const currentTime = new Date();
+  const formattedTime = format(currentTime, "HH:mm");
+  const formattedDate = format(currentTime, "EEEE, dd/MM", { locale: vi });
+
   return (
     <View style={homeScreenStyles.container}>
       <ScrollView>
-        <View style={homeScreenStyles.header}>
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              width: "100%",
-            }}
-          >
-            <Text
-              style={{ color: COLORS.white, fontSize: 24, fontWeight: "bold" }}
-            >
-              Time Manager
-            </Text>
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              <MaterialIcons name="settings" size={24} color={COLORS.white} />
-              <MaterialIcons name="bar-chart" size={24} color={COLORS.white} />
+        {/* Header with app title and date */}
+        <View style={styles.header}>
+          <View style={styles.headerRow}>
+            <View>
+              <Text style={styles.appTitle}>Time Manager</Text>
+              <Text style={styles.dateText}>{formattedDate}</Text>
+            </View>
+            <View style={styles.headerIcons}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate("Statistics")}
+              >
+                <MaterialIcons
+                  name="bar-chart"
+                  size={24}
+                  color={COLORS.white}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate("Settings")}>
+                <MaterialIcons name="settings" size={24} color={COLORS.white} />
+              </TouchableOpacity>
             </View>
           </View>
-
-          {/* New TimeDisplay component */}
-          <TimeDisplay />
         </View>
 
-        {/* Today's Shift Info */}
-        <ShiftInfo
-          shift={{ name: "Ca Ngày", startTime: "08:00", endTime: "20:00" }}
-        />
+        {/* Current time */}
+        <Text style={styles.currentTime}>{formattedTime}</Text>
 
-        {/* Main action button */}
-        <MultiButton />
+        {/* Weather forecast for next 3 hours */}
+        <WeatherForecastHourly forecast={mockWeatherForecast} />
 
-        <View style={homeScreenStyles.section}>
-          <Text style={homeScreenStyles.sectionTitle}>
-            {t("home.weeklyStatus")}
+        {/* Shift selection (or "No shift selected" message) */}
+        <View style={styles.shiftSection}>
+          <Text style={styles.shiftText}>
+            {activeShifts.length > 0
+              ? activeShifts[0].name
+              : "Chưa chọn ca làm việc"}
           </Text>
-          <WeeklySchedule weekData={weeklyData} onDayPress={handleDayPress} />
         </View>
 
-        {/* Khu vực ghi chú */}
-        <WorkNotes
-          notes={todayNotes}
-          onAddNote={handleAddNote}
-          onEditNote={handleEditNote}
-          onDeleteNote={handleDeleteNote}
-          onViewAll={handleViewAllNotes}
-        />
+        {/* Multi-function button */}
+        <View style={styles.buttonContainer}>
+          <MultiButton />
+          <Text style={styles.workingTimeText}>
+            {state.todayLogs.length > 0 ? "Đã đi làm 1:36" : ""}
+          </Text>
+        </View>
 
-        {/* Weather Forecast */}
-        <WeatherForecast />
-        {renderWeatherCard}
+        {/* Attendance logs */}
+        <AttendanceLogList logs={mockAttendanceLogs} />
+
+        {/* Weekly status grid */}
+        <WeeklyStatusGrid dailyStatuses={weeklyData} />
+
+        {/* Notes section */}
+        <View style={styles.notesSection}>
+          <Text style={styles.sectionTitle}>Ghi chú</Text>
+          <WorkNotes
+            notes={todayNotes}
+            onAddNote={handleAddNote}
+            onEditNote={handleEditNote}
+            onDeleteNote={handleDeleteNote}
+            onViewAll={handleViewAllNotes}
+          />
+        </View>
       </ScrollView>
 
       <AlarmModal
@@ -554,8 +599,79 @@ const HomeScreen = ({ navigation }) => {
         }}
         noteToEdit={noteToEdit}
       />
+
+      {/* Bottom Navigation */}
+      <BottomNav />
     </View>
   );
 };
+
+// New styles for updated design
+const styles = StyleSheet.create({
+  header: {
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.sm,
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  appTitle: {
+    fontSize: FONT_SIZES.xl,
+    fontWeight: "bold",
+    color: COLORS.white,
+  },
+  dateText: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.appDarkTextSecondary,
+    marginTop: 2,
+  },
+  headerIcons: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  currentTime: {
+    fontSize: FONT_SIZES.xxxl,
+    fontWeight: "bold",
+    color: COLORS.white,
+    textAlign: "center",
+    marginVertical: SPACING.md,
+  },
+  shiftSection: {
+    backgroundColor: COLORS.appDarkLight,
+    borderRadius: 12,
+    padding: SPACING.md,
+    marginHorizontal: SPACING.md,
+    marginVertical: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.appDarkBorder,
+  },
+  shiftText: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.appDarkTextSecondary,
+    textAlign: "center",
+  },
+  buttonContainer: {
+    alignItems: "center",
+    marginVertical: SPACING.md,
+  },
+  workingTimeText: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.appDarkTextSecondary,
+    marginTop: SPACING.sm,
+  },
+  notesSection: {
+    marginHorizontal: SPACING.md,
+    marginVertical: SPACING.md,
+  },
+  sectionTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: "bold",
+    color: COLORS.white,
+    marginBottom: SPACING.sm,
+  },
+});
 
 export default HomeScreen;

@@ -22,6 +22,7 @@ import {
 } from "./localization/LocalizationContext";
 import { View, Text, ActivityIndicator } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
+import BottomNav from "./components/BottomNav";
 // Import the ThemeProvider
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
 // Import SplashScreen
@@ -163,21 +164,21 @@ const TabNav = () => {
       <StatusBar style={isDarkMode ? "light" : "dark"} />
       <Tab.Navigator
         screenOptions={{
-          tabBarActiveTintColor: COLORS.primary,
-          tabBarInactiveTintColor: COLORS.gray,
+          tabBarActiveTintColor: COLORS.appPurple,
+          tabBarInactiveTintColor: COLORS.appDarkTextSecondary,
           tabBarStyle: {
-            backgroundColor: COLORS.white,
-            borderTopWidth: 1,
-            borderTopColor: COLORS.lightGray,
-            height: 60,
-            paddingBottom: 8,
-            paddingTop: 8,
+            position: "absolute",
+            backgroundColor: "transparent",
+            borderTopWidth: 0,
+            elevation: 0,
+            height: 70,
           },
           tabBarLabelStyle: {
             fontSize: 12,
           },
           headerShown: false,
         }}
+        tabBar={(props) => <BottomNav {...props} />}
       >
         <Tab.Screen
           name="Home"
@@ -205,7 +206,7 @@ const TabNav = () => {
           options={{
             tabBarLabel: t("notes.notes"),
             tabBarIcon: ({ color, size }) => (
-              <MaterialIcons name="note" size={size} color={color} />
+              <MaterialIcons name="event-note" size={size} color={color} />
             ),
             headerStyle: {
               backgroundColor: COLORS.primary,
@@ -224,7 +225,7 @@ const TabNav = () => {
           options={{
             tabBarLabel: t("weather.weather"),
             tabBarIcon: ({ color, size }) => (
-              <MaterialIcons name="cloud" size={size} color={color} />
+              <MaterialIcons name="wb-cloudy" size={size} color={color} />
             ),
             headerStyle: {
               backgroundColor: COLORS.primary,
