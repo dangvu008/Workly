@@ -26,6 +26,8 @@ import WeatherForecastHourly from "../components/WeatherForecastHourly";
 import AttendanceLogList from "../components/AttendanceLogList";
 import WeeklyStatusGrid from "../components/WeeklyStatusGrid";
 import BottomNav from "../components/BottomNav";
+import NoteItem from "../components/NoteItem";
+import WeatherIcon from "../components/WeatherIcon";
 
 const HomeScreen = ({ navigation }) => {
   const {
@@ -558,7 +560,7 @@ const HomeScreen = ({ navigation }) => {
         <View style={styles.buttonContainer}>
           <MultiButton />
           <Text style={styles.workingTimeText}>
-            {state.todayLogs.length > 0 ? "Đã đi làm 1:36" : ""}
+            {attendanceRecords.length > 0 ? "Đã đi làm 1:36" : ""}
           </Text>
         </View>
 

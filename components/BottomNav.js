@@ -116,7 +116,7 @@ export const BottomNav = (props) => {
       friction: 7,
       useNativeDriver: true,
     }).start();
-  }, [state?.index, tabs, tabAnimations, indicatorPosition, tabWidth]);
+  }, [state, tabs, tabAnimations, indicatorPosition, tabWidth]);
 
   // Handle tab press
   const handleTabPress = (tabName, index) => {

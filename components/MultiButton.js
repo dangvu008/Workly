@@ -711,6 +711,7 @@ const MultiButton = () => {
     addAttendanceLog,
     triggerHapticFeedback,
     startWorkDurationTimer,
+    t,
   ]);
 
   const handlePunch = useCallback(() => {
