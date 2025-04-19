@@ -29,9 +29,9 @@ const TabIndicator = ({ position, width }) => {
   );
 };
 
-export const BottomNav = () => {
-  const navigation = useNavigation();
-  const route = useRoute();
+export const BottomNav = (props) => {
+  // Sử dụng props từ Tab.Navigator thay vì useNavigation và useRoute
+  const { state, navigation } = props;
 
   // Define tabs with useMemo to prevent re-creation on each render
   const tabs = useMemo(
@@ -56,18 +56,14 @@ export const BottomNav = () => {
 
   // Calculate indicator position
   const tabWidth = 100 / tabs.length;
-  const currentTabIndex = tabs.findIndex(
-    (tab) => tab.name === route.name.split("-")[0]
-  );
+  const currentTabIndex = state ? state.index : 0;
   const indicatorPosition = useRef(
     new Animated.Value(currentTabIndex * tabWidth)
   ).current;
 
   // Update animations when route changes
   useEffect(() => {
-    const activeIndex = tabs.findIndex(
-      (tab) => tab.name === route.name.split("-")[0]
-    );
+    const activeIndex = state ? state.index : 0;
 
     // Animate all tabs
     tabs.forEach((_, index) => {
@@ -120,15 +116,24 @@ export const BottomNav = () => {
       friction: 7,
       useNativeDriver: true,
     }).start();
-  }, [route.name, tabs, tabAnimations, indicatorPosition, tabWidth]);
+  }, [state?.index, tabs, tabAnimations, indicatorPosition, tabWidth]);
 
   // Handle tab press
-  const handleTabPress = (tabName) => {
+  const handleTabPress = (tabName, index) => {
     // Trigger haptic feedback
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    // Navigate to the tab
-    navigation.navigate(tabName);
+    // Navigate to the tab using the navigation prop from Tab.Navigator
+    const isFocused = state.index === index;
+    const event = navigation.emit({
+      type: "tabPress",
+      target: tabName,
+      canPreventDefault: true,
+    });
+
+    if (!isFocused && !event.defaultPrevented) {
+      navigation.navigate(tabName);
+    }
   };
 
   return (
@@ -146,13 +151,13 @@ export const BottomNav = () => {
 
           {/* Tab buttons */}
           {tabs.map((tab, index) => {
-            const isActive = route.name.split("-")[0] === tab.name;
+            const isActive = state ? state.index === index : false;
 
             return (
               <TouchableOpacity
                 key={tab.name}
                 style={styles.tab}
-                onPress={() => handleTabPress(tab.name)}
+                onPress={() => handleTabPress(tab.name, index)}
                 activeOpacity={0.7}
               >
                 <Animated.View
