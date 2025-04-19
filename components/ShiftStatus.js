@@ -17,19 +17,25 @@ const ShiftStatus = ({ status, onCheckIn, onCheckOut }) => {
   const [animation] = useState(new Animated.Value(0));
   const [pulseAnimation] = useState(new Animated.Value(1));
 
-  // Status colors
-  const statusColors = {
-    notCheckedIn: COLORS.appPurple,
-    checkedIn: COLORS.appStatusSuccess,
-    checkedOut: COLORS.appDarkTextSecondary,
-  };
+  // Status colors - memoized to avoid re-creation on each render
+  const statusColors = React.useMemo(
+    () => ({
+      notCheckedIn: COLORS.appPurple,
+      checkedIn: COLORS.appStatusSuccess,
+      checkedOut: COLORS.appDarkTextSecondary,
+    }),
+    []
+  );
 
-  // Status icons
-  const statusIcons = {
-    notCheckedIn: "login",
-    checkedIn: "timer",
-    checkedOut: "check-circle",
-  };
+  // Status icons - memoized to avoid re-creation on each render
+  const statusIcons = React.useMemo(
+    () => ({
+      notCheckedIn: "login",
+      checkedIn: "timer",
+      checkedOut: "check-circle",
+    }),
+    []
+  );
 
   // Get current status color
   const getStatusColor = useCallback(() => {

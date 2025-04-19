@@ -10,6 +10,7 @@ import { AppProvider } from "./context/AppContext";
 import HomeScreen from "./screens/HomeScreen";
 import ShiftListScreen from "./screens/ShiftListScreen";
 import ShiftDetailScreen from "./screens/ShiftDetailScreen";
+import ShiftFormScreen from "./screens/ShiftFormScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import CheckInOutScreen from "./screens/CheckInOutScreen";
 import WeatherScreen from "./screens/WeatherScreen";
@@ -114,6 +115,16 @@ const ShiftsStack = () => {
           title: route.params?.isNew
             ? t("shifts.addShift")
             : t("shifts.shiftDetails"),
+        })}
+      />
+      <Stack.Screen
+        name="ShiftForm"
+        component={ShiftFormScreen}
+        options={({ route }) => ({
+          title: route.params?.shiftId
+            ? t("shifts.editShift")
+            : t("shifts.addShift"),
+          headerShown: false,
         })}
       />
     </Stack.Navigator>

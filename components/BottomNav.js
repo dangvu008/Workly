@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useMemo } from "react";
 import {
   View,
   TouchableOpacity,
@@ -33,14 +33,17 @@ export const BottomNav = () => {
   const navigation = useNavigation();
   const route = useRoute();
 
-  // Define tabs
-  const tabs = [
-    { name: "Home", icon: "home", label: "Trang chủ" },
-    { name: "Shifts", icon: "work", label: "Ca làm việc" },
-    { name: "Notes", icon: "event-note", label: "Ghi chú" },
-    { name: "Weather", icon: "wb-cloudy", label: "Thời tiết" },
-    { name: "Settings", icon: "settings", label: "Cài đặt" },
-  ];
+  // Define tabs with useMemo to prevent re-creation on each render
+  const tabs = useMemo(
+    () => [
+      { name: "Home", icon: "home", label: "Trang chủ" },
+      { name: "Shifts", icon: "work", label: "Ca làm việc" },
+      { name: "Notes", icon: "event-note", label: "Ghi chú" },
+      { name: "Weather", icon: "wb-cloudy", label: "Thời tiết" },
+      { name: "Settings", icon: "settings", label: "Cài đặt" },
+    ],
+    []
+  );
 
   // Animation values for each tab
   const tabAnimations = useRef(

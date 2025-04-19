@@ -509,9 +509,9 @@ const HomeScreen = ({ navigation }) => {
   ];
 
   // Format current date and time
-  const currentTime = new Date();
-  const formattedTime = format(currentTime, "HH:mm");
-  const formattedDate = format(currentTime, "EEEE, dd/MM", { locale: vi });
+  const now = new Date();
+  const formattedTime = format(now, "HH:mm");
+  const formattedDate = format(now, "EEEE, dd/MM", { locale: vi });
 
   return (
     <View style={homeScreenStyles.container}>

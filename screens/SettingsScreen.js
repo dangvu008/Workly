@@ -4,24 +4,23 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Switch,
   Alert,
+  StyleSheet,
 } from "react-native";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
 import { useAppContext } from "../context/AppContext";
-import { COLORS } from "../constants/colors";
+import { COLORS } from "../styles/theme/colors";
+import { FONT_SIZES, FONT_WEIGHTS } from "../styles/theme/typography";
+import { SPACING } from "../styles/theme/spacing";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import * as DocumentPicker from "expo-document-picker";
 import { useLocalization } from "../localization/LocalizationContext";
-// Import the useThemedStyles hook and createSettingsScreenStyles
-import { useThemedStyles } from "../hooks/useThemedStyles";
-import { createSettingsScreenStyles } from "../styles/screens/settingsScreenThemed";
-// Import the ThemePreview component
-import ThemePreview from "../components/ThemePreview";
-import Logo from "../components/Logo"; // Import the Logo component
+// Import UI components
+import { Switch } from "../components/ui/Switch";
+import { Dropdown } from "../components/ui/Dropdown";
 import Constants from "expo-constants"; // Import Constants to get app version
 import { useTheme } from "@react-navigation/native";
 
@@ -29,63 +28,35 @@ const SettingsScreen = ({ navigation }) => {
   const { userSettings, updateSettings, exportData, importData } =
     useAppContext();
   const { t } = useLocalization();
-  const { colors } = useTheme();
+  const theme = useTheme();
 
   // Get app version from app.json via Constants
   const appVersion = Constants.manifest.version || "1.0.0";
 
-  // Add this inside the SettingsScreen component, before the return statement:
-  const styles = useThemedStyles(extendedCreateSettingsScreenStyles);
-
-  // Tối ưu hóa các hàm xử lý sự kiện bằng useCallback
-  // Thay thế hàm toggleSetting
-  const toggleSetting = useCallback(
-    (key) => {
-      updateSettings({ [key]: !userSettings[key] });
-    },
-    [updateSettings, userSettings]
+  // Local state for settings
+  const [darkMode, setDarkMode] = useState(userSettings.theme === "dark");
+  const [language, setLanguage] = useState(userSettings.language || "vi");
+  const [notificationSound, setNotificationSound] = useState(
+    userSettings.alarmSoundEnabled || true
   );
-
-  // Thay thế hàm handleMultiButtonModeChange
-  const handleMultiButtonModeChange = useCallback(() => {
-    const newMode = userSettings.multiButtonMode === "full" ? "simple" : "full";
-    updateSettings({ multiButtonMode: newMode });
-  }, [userSettings.multiButtonMode, updateSettings]);
-
-  // Thay thế hàm handleFirstDayOfWeekChange
-  const handleFirstDayOfWeekChange = useCallback(() => {
-    const newDay = userSettings.firstDayOfWeek === "Mon" ? "Sun" : "Mon";
-    updateSettings({ firstDayOfWeek: newDay });
-  }, [userSettings.firstDayOfWeek, updateSettings]);
-
-  // Thay thế hàm handleTimeFormatChange
-  const handleTimeFormatChange = useCallback(() => {
-    const newFormat = userSettings.timeFormat === "24h" ? "12h" : "24h";
-    updateSettings({ timeFormat: newFormat });
-  }, [userSettings.timeFormat, updateSettings]);
-
-  // Thay thế hàm handleChangeShiftReminderModeChange
-  const handleChangeShiftReminderModeChange = useCallback(() => {
-    const modes = ["ask_weekly", "rotate", "disabled"];
-    const currentIndex = modes.indexOf(userSettings.changeShiftReminderMode);
-    const newIndex = (currentIndex + 1) % modes.length;
-    updateSettings({ changeShiftReminderMode: modes[newIndex] });
-  }, [userSettings.changeShiftReminderMode, updateSettings]);
-
-  // Thay thế hàm handleLanguageChange
-  const handleLanguageChange = useCallback(() => {
-    const newLanguage = userSettings.language === "vi" ? "en" : "vi";
-    updateSettings({ language: newLanguage });
-  }, [userSettings.language, updateSettings]);
-
-  // Thay thế hàm handleThemeChange
-  const handleThemeChange = useCallback(() => {
-    // Cycle through theme options: light -> dark -> system -> light
-    const themeOptions = ["light", "dark", "system"];
-    const currentIndex = themeOptions.indexOf(userSettings.theme);
-    const nextIndex = (currentIndex + 1) % themeOptions.length;
-    updateSettings({ theme: themeOptions[nextIndex] });
-  }, [userSettings.theme, updateSettings]);
+  const [notificationVibration, setNotificationVibration] = useState(
+    userSettings.alarmVibrationEnabled || true
+  );
+  const [weatherAlerts, setWeatherAlerts] = useState(
+    userSettings.weatherWarningEnabled || true
+  );
+  const [multiButtonMode, setMultiButtonMode] = useState(
+    userSettings.multiButtonMode || "full"
+  );
+  const [shiftReminderMode, setShiftReminderMode] = useState(
+    userSettings.changeShiftReminderMode || "ask_weekly"
+  );
+  const [timeFormat, setTimeFormat] = useState(
+    userSettings.timeFormat || "24h"
+  );
+  const [firstDayOfWeek, setFirstDayOfWeek] = useState(
+    userSettings.firstDayOfWeek || "Mon"
+  );
 
   // Thay thế hàm handleExportData
   const handleExportData = useCallback(async () => {
@@ -149,227 +120,418 @@ const SettingsScreen = ({ navigation }) => {
     }
   }, [t, importData]);
 
-  // Tối ưu hóa các hàm render bằng useCallback
-  // Thay thế hàm renderSwitchSetting
-  const renderSwitchSetting = useCallback(
-    (title, key, description = "") => (
-      <View style={styles.settingItem}>
-        <View style={styles.settingInfo}>
-          <Text style={styles.settingTitle}>{title}</Text>
-          {description ? (
-            <Text style={styles.settingDescription}>{description}</Text>
-          ) : null}
-        </View>
-        <Switch
-          value={userSettings[key]}
-          onValueChange={() => toggleSetting(key)}
-          trackColor={{ false: colors.lightGray, true: colors.primary }}
-          thumbColor={userSettings[key] ? colors.accent : colors.white}
-        />
-      </View>
-    ),
-    [userSettings, toggleSetting, styles, colors]
+  // Language options
+  const languageOptions = [
+    { label: "Tiếng Việt", value: "vi" },
+    { label: "English", value: "en" },
+  ];
+
+  // Multi-button mode options
+  const buttonModeOptions = [
+    { label: "Đầy đủ", value: "full" },
+    { label: "Đơn giản", value: "simple" },
+  ];
+
+  // Shift reminder mode options
+  const reminderModeOptions = [
+    { label: "Hỏi hàng tuần", value: "ask_weekly" },
+    { label: "Tự động xoay ca", value: "rotate" },
+    { label: "Tắt", value: "disabled" },
+  ];
+
+  // First day of week options
+  const weekStartOptions = [
+    { label: "Thứ 2", value: "Mon" },
+    { label: "Chủ nhật", value: "Sun" },
+  ];
+
+  // Handle language change
+  const handleLanguageChange = useCallback(
+    (value) => {
+      setLanguage(value);
+      updateSettings({ language: value });
+    },
+    [updateSettings]
   );
 
-  // Thay thế hàm renderChoiceSetting
-  const renderChoiceSetting = useCallback(
-    (title, value, onPress, description = "") => (
-      <TouchableOpacity style={styles.settingItem} onPress={onPress}>
-        <View style={styles.settingInfo}>
-          <Text style={styles.settingTitle}>{title}</Text>
-          {description ? (
-            <Text style={styles.settingDescription}>{description}</Text>
-          ) : null}
-        </View>
-        <View style={styles.choiceValue}>
-          <Text style={styles.choiceText}>{value}</Text>
-          <MaterialIcons name="chevron-right" size={24} color={COLORS.gray} />
-        </View>
-      </TouchableOpacity>
-    ),
-    [styles]
+  // Handle dark mode toggle
+  const handleDarkModeToggle = useCallback(
+    (value) => {
+      setDarkMode(value);
+      updateSettings({ theme: value ? "dark" : "light" });
+    },
+    [updateSettings]
   );
 
-  // Thay thế hàm renderActionSetting
-  const renderActionSetting = useCallback(
-    (title, icon, onPress, description = "") => (
-      <TouchableOpacity style={styles.settingItem} onPress={onPress}>
-        <View style={styles.settingInfo}>
-          <Text style={styles.settingTitle}>{title}</Text>
-          {description ? (
-            <Text style={styles.settingDescription}>{description}</Text>
-          ) : null}
-        </View>
-        <MaterialIcons name={icon} size={24} color={COLORS.primary} />
-      </TouchableOpacity>
-    ),
-    [styles]
+  // Handle notification sound toggle
+  const handleNotificationSoundToggle = useCallback(
+    (value) => {
+      setNotificationSound(value);
+      updateSettings({ alarmSoundEnabled: value });
+    },
+    [updateSettings]
   );
+
+  // Handle notification vibration toggle
+  const handleNotificationVibrationToggle = useCallback(
+    (value) => {
+      setNotificationVibration(value);
+      updateSettings({ alarmVibrationEnabled: value });
+    },
+    [updateSettings]
+  );
+
+  // Handle weather alerts toggle
+  const handleWeatherAlertsToggle = useCallback(
+    (value) => {
+      setWeatherAlerts(value);
+      updateSettings({ weatherWarningEnabled: value });
+    },
+    [updateSettings]
+  );
+
+  // Handle multi-button mode change
+  const handleButtonModeChange = useCallback(
+    (value) => {
+      setMultiButtonMode(value);
+      updateSettings({ multiButtonMode: value });
+    },
+    [updateSettings]
+  );
+
+  // Handle shift reminder mode change
+  const handleReminderModeChange = useCallback(
+    (value) => {
+      setShiftReminderMode(value);
+      updateSettings({ changeShiftReminderMode: value });
+    },
+    [updateSettings]
+  );
+
+  // Handle time format toggle
+  const handleTimeFormatToggle = useCallback(
+    (value) => {
+      const newFormat = value ? "24h" : "12h";
+      setTimeFormat(newFormat);
+      updateSettings({ timeFormat: newFormat });
+    },
+    [updateSettings]
+  );
+
+  // Handle first day of week change
+  const handleWeekStartChange = useCallback(
+    (value) => {
+      setFirstDayOfWeek(value);
+      updateSettings({ firstDayOfWeek: value });
+    },
+    [updateSettings]
+  );
+
+  // Navigate to location settings
+  const navigateToLocationSettings = useCallback(() => {
+    // TODO: Implement location settings screen
+    Alert.alert(
+      t("common.notification"),
+      t("settings.descriptions.updateLocation")
+    );
+  }, [t]);
+
+  // Navigate to weather threshold settings
+  const navigateToWeatherThresholds = useCallback(() => {
+    // TODO: Implement weather threshold settings screen
+    Alert.alert(t("common.notification"), "Tính năng đang phát triển");
+  }, [t]);
+
+  // Navigate to shift management
+  const navigateToShiftManagement = useCallback(() => {
+    navigation.navigate("ShiftList");
+  }, [navigation]);
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Add app logo and version at the top */}
-      <View style={styles.logoContainer}>
-        <Logo size="medium" showText={true} />
-        <Text style={styles.versionText}>Version {appVersion}</Text>
+    <ScrollView style={newStyles.container}>
+      <View style={newStyles.header}>
+        <Text style={newStyles.headerTitle}>Cài đặt chung</Text>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t("settings.interface")}</Text>
-
-        {renderChoiceSetting(
-          t("settings.multiButtonMode"),
-          userSettings.multiButtonMode === "full"
-            ? t("settings.options.full")
-            : t("settings.options.simple"),
-          handleMultiButtonModeChange,
-          t("settings.descriptions.multiButton")
-        )}
-
-        {renderChoiceSetting(
-          t("settings.firstDayOfWeek"),
-          userSettings.firstDayOfWeek === "Mon"
-            ? t("settings.options.monday")
-            : t("settings.options.sunday"),
-          handleFirstDayOfWeekChange
-        )}
-
-        {renderChoiceSetting(
-          t("settings.timeFormat"),
-          userSettings.timeFormat === "24h"
-            ? t("settings.options.hour24")
-            : t("settings.options.hour12"),
-          handleTimeFormatChange
-        )}
-
-        {renderChoiceSetting(
-          t("settings.theme"),
-          userSettings.theme === "light"
-            ? t("settings.options.light")
-            : userSettings.theme === "dark"
-            ? t("settings.options.dark")
-            : t("settings.options.system"),
-          handleThemeChange,
-          t("settings.descriptions.theme")
-        )}
-        <ThemePreview />
+      {/* Theme Section */}
+      <View style={newStyles.section}>
+        <Text style={newStyles.sectionTitle}>Chế độ tối</Text>
+        <View style={newStyles.settingRow}>
+          <View>
+            <Text style={newStyles.settingLabel}>Bật chế độ tối</Text>
+            <Text style={newStyles.settingDescription}>
+              Để có trải nghiệm xem tốt hơn trong điều kiện ánh sáng yếu
+            </Text>
+          </View>
+          <Switch value={darkMode} onValueChange={handleDarkModeToggle} />
+        </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t("settings.notifications")}</Text>
-
-        {renderSwitchSetting(
-          t("settings.alarmSound"),
-          "alarmSoundEnabled",
-          t("settings.descriptions.alarmSound")
-        )}
-
-        {renderSwitchSetting(
-          t("settings.alarmVibration"),
-          "alarmVibrationEnabled",
-          t("settings.descriptions.alarmVibration")
-        )}
-        {renderSwitchSetting(
-          t("settings.hapticFeedback"),
-          "hapticFeedbackEnabled",
-          t("settings.descriptions.hapticFeedback")
-        )}
-
-        {renderChoiceSetting(
-          t("settings.shiftChangeReminder"),
-          userSettings.changeShiftReminderMode === "ask_weekly"
-            ? t("settings.options.askWeekly")
-            : userSettings.changeShiftReminderMode === "rotate"
-            ? t("settings.options.autoRotate")
-            : t("settings.options.disabled"),
-          handleChangeShiftReminderModeChange
-        )}
+      {/* Language Section */}
+      <View style={newStyles.section}>
+        <Text style={newStyles.sectionTitle}>Ngôn ngữ</Text>
+        <Dropdown
+          value={language}
+          options={languageOptions}
+          onValueChange={handleLanguageChange}
+        />
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t("settings.weather")}</Text>
+      {/* Notifications Section */}
+      <View style={newStyles.section}>
+        <Text style={newStyles.sectionTitle}>Thông báo</Text>
 
-        {renderSwitchSetting(
-          t("settings.weatherWarning"),
-          "weatherWarningEnabled",
-          t("settings.descriptions.weatherWarning")
-        )}
+        <View style={newStyles.settingRow}>
+          <View>
+            <Text style={newStyles.settingLabel}>Âm thanh thông báo</Text>
+            <Text style={newStyles.settingDescription}>
+              Phát âm thanh khi có thông báo
+            </Text>
+          </View>
+          <Switch
+            value={notificationSound}
+            onValueChange={handleNotificationSoundToggle}
+          />
+        </View>
 
-        {renderActionSetting(
-          t("settings.updateLocation"),
-          "location-on",
-          () => {
-            // This would typically use geolocation
-            Alert.alert(
-              t("common.notification"),
-              t("settings.descriptions.updateLocation")
-            );
-          },
-          t("settings.descriptions.updateLocation")
-        )}
+        <View style={newStyles.settingRow}>
+          <View>
+            <Text style={newStyles.settingLabel}>Rung thông báo</Text>
+            <Text style={newStyles.settingDescription}>
+              Rung khi có thông báo
+            </Text>
+          </View>
+          <Switch
+            value={notificationVibration}
+            onValueChange={handleNotificationVibrationToggle}
+          />
+        </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t("settings.data")}</Text>
+      {/* Weather Alerts Section */}
+      <View style={newStyles.section}>
+        <Text style={newStyles.sectionTitle}>Cảnh báo thời tiết</Text>
 
-        {renderActionSetting(
-          t("settings.backupData"),
-          "backup",
-          handleExportData,
-          t("settings.descriptions.backupData")
-        )}
+        <View style={newStyles.settingRow}>
+          <View>
+            <Text style={newStyles.settingLabel}>
+              Nhận cảnh báo về thời tiết
+            </Text>
+            <Text style={newStyles.settingDescription}>
+              Nhận cảnh báo về thời tiết cực đoan có thể ảnh hưởng đến lịch làm
+              việc
+            </Text>
+          </View>
+          <Switch
+            value={weatherAlerts}
+            onValueChange={handleWeatherAlertsToggle}
+          />
+        </View>
 
-        {renderActionSetting(
-          t("settings.restoreData"),
-          "restore",
-          handleImportData,
-          t("settings.descriptions.restoreData")
+        {weatherAlerts && (
+          <>
+            <TouchableOpacity
+              style={newStyles.actionButton}
+              onPress={navigateToLocationSettings}
+            >
+              <Text style={newStyles.actionButtonText}>Cài đặt vị trí</Text>
+              <MaterialIcons
+                name="chevron-right"
+                size={24}
+                color={COLORS.appDarkTextSecondary}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={newStyles.actionButton}
+              onPress={navigateToWeatherThresholds}
+            >
+              <Text style={newStyles.actionButtonText}>
+                Cài đặt ngưỡng cảnh báo
+              </Text>
+              <MaterialIcons
+                name="chevron-right"
+                size={24}
+                color={COLORS.appDarkTextSecondary}
+              />
+            </TouchableOpacity>
+          </>
         )}
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t("settings.other")}</Text>
+      {/* Multi-function Button Section */}
+      <View style={newStyles.section}>
+        <Text style={newStyles.sectionTitle}>Nút đa năng</Text>
+        <Text style={newStyles.settingLabel}>Chế độ nút đa năng</Text>
+        <Dropdown
+          value={multiButtonMode}
+          options={buttonModeOptions}
+          onValueChange={handleButtonModeChange}
+        />
+      </View>
 
-        {renderChoiceSetting(
-          t("settings.language"),
-          userSettings.language === "vi"
-            ? t("settings.options.vietnamese")
-            : t("settings.options.english"),
-          () => {
-            // Show language options and demo
-            navigation.navigate("TranslationDemo");
-          },
-          t("settings.descriptions.language")
-        )}
+      {/* Shift Reminder Section */}
+      <View style={newStyles.section}>
+        <Text style={newStyles.sectionTitle}>Nhắc nhở ca làm việc</Text>
+        <Text style={newStyles.settingLabel}>Chế độ nhắc nhở đổi ca</Text>
+        <Dropdown
+          value={shiftReminderMode}
+          options={reminderModeOptions}
+          onValueChange={handleReminderModeChange}
+        />
 
-        {renderActionSetting(t("settings.about"), "info", () => {
-          Alert.alert(
-            t("common.appName"),
-            `Version ${appVersion}\n\nWorkly - Your personal work shift management app.`
-          );
-        })}
+        <TouchableOpacity
+          style={newStyles.actionButton}
+          onPress={navigateToShiftManagement}
+        >
+          <Text style={newStyles.actionButtonText}>Quản lý ca làm việc</Text>
+          <MaterialIcons
+            name="chevron-right"
+            size={24}
+            color={COLORS.appDarkTextSecondary}
+          />
+        </TouchableOpacity>
+      </View>
+
+      {/* Display Settings Section */}
+      <View style={newStyles.section}>
+        <Text style={newStyles.sectionTitle}>Hiển thị</Text>
+
+        <View style={newStyles.settingRow}>
+          <View>
+            <Text style={newStyles.settingLabel}>Định dạng 24 giờ</Text>
+            <Text style={newStyles.settingDescription}>
+              Hiển thị giờ theo định dạng 24 giờ (13:00) thay vì 12 giờ (1:00
+              PM)
+            </Text>
+          </View>
+          <Switch
+            value={timeFormat === "24h"}
+            onValueChange={handleTimeFormatToggle}
+          />
+        </View>
+
+        <Text style={newStyles.settingLabel}>Ngày bắt đầu tuần</Text>
+        <Dropdown
+          value={firstDayOfWeek}
+          options={weekStartOptions}
+          onValueChange={handleWeekStartChange}
+        />
+      </View>
+
+      {/* Backup & Restore Section */}
+      <View style={newStyles.section}>
+        <Text style={newStyles.sectionTitle}>Sao lưu & Khôi phục</Text>
+        <TouchableOpacity
+          style={newStyles.actionButton}
+          onPress={handleExportData}
+        >
+          <Text style={newStyles.actionButtonText}>Sao lưu dữ liệu</Text>
+          <MaterialIcons
+            name="backup"
+            size={24}
+            color={COLORS.appDarkTextSecondary}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={newStyles.actionButton}
+          onPress={handleImportData}
+        >
+          <Text style={newStyles.actionButtonText}>Khôi phục dữ liệu</Text>
+          <MaterialIcons
+            name="restore"
+            size={24}
+            color={COLORS.appDarkTextSecondary}
+          />
+        </TouchableOpacity>
+      </View>
+
+      {/* App Info Section */}
+      <View style={newStyles.section}>
+        <Text style={newStyles.sectionTitle}>Thông tin ứng dụng</Text>
+        <View style={newStyles.infoRow}>
+          <Text style={newStyles.infoLabel}>Phiên bản</Text>
+          <Text style={newStyles.infoValue}>{appVersion}</Text>
+        </View>
       </View>
     </ScrollView>
   );
 };
 
-// Mở rộng styles từ createSettingsScreenStyles
-const extendedCreateSettingsScreenStyles = (colors) => {
-  const baseStyles = createSettingsScreenStyles(colors);
-  return {
-    ...baseStyles,
-    logoContainer: {
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 20,
-      marginBottom: 10,
-    },
-    versionText: {
-      color: colors.gray,
-      marginTop: 5,
-      fontSize: 12,
-    },
-  };
-};
+// New styles for updated design
+const newStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.appDark,
+  },
+  header: {
+    padding: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.appDarkBorder,
+  },
+  headerTitle: {
+    fontSize: FONT_SIZES.xl,
+    fontWeight: FONT_WEIGHTS.bold,
+    color: COLORS.white,
+  },
+  section: {
+    padding: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.appDarkBorder,
+  },
+  sectionTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: FONT_WEIGHTS.bold,
+    color: COLORS.white,
+    marginBottom: SPACING.sm,
+  },
+  settingRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginVertical: SPACING.sm,
+  },
+  settingLabel: {
+    fontSize: FONT_SIZES.md,
+    fontWeight: FONT_WEIGHTS.medium,
+    color: COLORS.white,
+    marginBottom: SPACING.xs,
+  },
+  settingDescription: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.appDarkTextSecondary,
+    maxWidth: "90%",
+  },
+  actionButton: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: COLORS.appDarkLight,
+    borderRadius: 8,
+    padding: SPACING.sm,
+    marginVertical: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.appDarkBorder,
+  },
+  actionButtonText: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.white,
+  },
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginVertical: SPACING.xs,
+  },
+  infoLabel: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.white,
+  },
+  infoValue: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.appDarkTextSecondary,
+  },
+});
 
 export default SettingsScreen;

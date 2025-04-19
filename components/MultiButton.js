@@ -570,6 +570,7 @@ const MultiButton = () => {
     getDailyStatusForDate,
     animateStatusChange,
     startWorkDurationTimer,
+    currentStatus,
   ]);
 
   // Get logs for today - optimized with useEffect
@@ -593,7 +594,7 @@ const MultiButton = () => {
       console.error("Error loading logs:", error);
       setErrorMessage(t("errors.cannotLoadLogs"));
     }
-  }, [getLogsForDate, animateLogsContainer, showLogs]);
+  }, [getLogsForDate, animateLogsContainer, showLogs, t]);
 
   // Check if button should be enabled - optimized with useEffect
   useEffect(() => {
@@ -688,7 +689,7 @@ const MultiButton = () => {
       setErrorMessage(t("errors.cannotStartShift"));
       triggerHapticFeedback(HAPTIC_TYPES.ERROR);
     }
-  }, [activeShift, addAttendanceLog, triggerHapticFeedback]);
+  }, [activeShift, addAttendanceLog, triggerHapticFeedback, t]);
 
   const handleCheckIn = useCallback(() => {
     if (!activeShift) return;
@@ -730,6 +731,7 @@ const MultiButton = () => {
     animateButtonPress,
     addAttendanceLog,
     triggerHapticFeedback,
+    t,
   ]);
 
   const handleCheckOut = useCallback(() => {
@@ -757,7 +759,7 @@ const MultiButton = () => {
       setErrorMessage(t("errors.cannotCheckOut"));
       triggerHapticFeedback(HAPTIC_TYPES.ERROR);
     }
-  }, [activeShift, addAttendanceLog, triggerHapticFeedback]);
+  }, [activeShift, addAttendanceLog, triggerHapticFeedback, t]);
 
   const handleComplete = useCallback(() => {
     if (!activeShift) return;
@@ -772,7 +774,7 @@ const MultiButton = () => {
       setErrorMessage(t("errors.cannotCompleteShift"));
       triggerHapticFeedback(HAPTIC_TYPES.ERROR);
     }
-  }, [activeShift, addAttendanceLog, triggerHapticFeedback]);
+  }, [activeShift, addAttendanceLog, triggerHapticFeedback, t]);
 
   // Execute action after confirmation - optimized with useCallback
   const executeAction = useCallback(
@@ -820,6 +822,7 @@ const MultiButton = () => {
       handleComplete,
       handlePunch,
       triggerHapticFeedback,
+      t,
     ]
   );
 
