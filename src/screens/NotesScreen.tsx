@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, Alert, FlatList } from 'react-native';
 import {
   Text,
   Card,
-  IconButton,
+
   useTheme,
   FAB,
   Menu,
@@ -13,6 +13,7 @@ import {
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { format } from 'date-fns';
+import { WorklyIconButton, COMMON_ICONS } from '../components/WorklyIcon';
 import { vi, enUS } from 'date-fns/locale';
 import { useApp } from '../contexts/AppContext';
 import { Note } from '../types';
@@ -185,12 +186,11 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
               </View>
 
               <View style={styles.noteActions}>
-                <IconButton
-                  icon="delete"
+                <WorklyIconButton
+                  name={COMMON_ICONS.delete}
                   size={20}
-                  iconColor={theme.colors.error}
-                  onPress={(e) => {
-                    e.stopPropagation();
+                  color={theme.colors.error}
+                  onPress={() => {
                     handleDeleteNote(note);
                   }}
                 />

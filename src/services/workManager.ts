@@ -6,7 +6,7 @@
 import { format, parseISO, addDays, differenceInMinutes, differenceInSeconds, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { storageService } from './storage';
-import { notificationService } from './notifications';
+import { notificationScheduler } from './notificationScheduler';
 import { 
   AttendanceLog, 
   ButtonState, 
@@ -159,6 +159,16 @@ class WorkManager {
             const durationSeconds = differenceInSeconds(checkOutTime, checkInTime);
 
             if (durationSeconds < settings.rapidPressThresholdSeconds) {
+              // ✅ FIX: Kiểm tra xem đã có complete log chưa để tránh trigger lại rapid press detection
+              const logs = await storageService.getAttendanceLogsForDate(today);
+              const hasCompleteLog = logs.some(log => log.type === 'complete');
+
+              if (hasCompleteLog) {
+                console.log('🚀 WorkManager: Complete log already exists, skipping rapid press detection');
+                // Đã có complete log, không cần rapid press detection nữa
+                return;
+              }
+
               // Throw exception để UI xử lý confirmation dialog
               // Đây KHÔNG phải lỗi - đây là flow bình thường để yêu cầu xác nhận từ user
               console.log('🚀 WorkManager: Rapid press detected, throwing RapidPressDetectedException for UI confirmation');
@@ -188,6 +198,10 @@ class WorkManager {
       // Tính toán và lưu daily work status
       await this.calculateAndSaveDailyWorkStatus(today);
 
+      // ✅ FIX: Đảm bảo trạng thái được cập nhật ngay lập tức
+      console.log('🔄 WorkManager: Force recalculating status after button press to ensure consistency');
+      await this.recalculateFromAttendanceLogs(today);
+
     } catch (error) {
       if (error instanceof RapidPressDetectedException) {
         throw error; // Re-throw để UI xử lý
@@ -210,8 +224,8 @@ class WorkManager {
 
       console.log(`📝 WorkManager: Added ${type} log at ${time}`);
 
-      // ✅ Tự động hủy thông báo tương ứng khi người dùng thực hiện hành động
-      await this.cancelRelatedNotification(type, date);
+      // ✅ Tự động hủy alarm tương ứng khi người dùng thực hiện hành động
+      await this.cancelRelatedAlarm(type, date);
 
     } catch (error) {
       console.error('Error adding attendance log:', error);
@@ -220,38 +234,41 @@ class WorkManager {
   }
 
   /**
-   * ✅ Hủy thông báo liên quan khi người dùng thực hiện hành động
+   * ✅ Hủy alarm liên quan khi người dùng thực hiện hành động (tự động hủy)
    */
-  private async cancelRelatedNotification(action: AttendanceLog['type'], date: string): Promise<void> {
+  private async cancelRelatedAlarm(action: AttendanceLog['type'], date: string): Promise<void> {
     try {
-      const { notificationService } = await import('./notifications');
       const activeShiftId = await storageService.getActiveShiftId();
 
       if (!activeShiftId) return;
 
-      // Map action to notification type (đúng với tên identifier trong NotificationService)
-      let notificationType: 'go_work' | 'check_in' | 'check_out' | null = null;
+      // Map action to alarm type
+      let alarmAction: 'go_work' | 'check_in' | 'punch' | 'check_out' | null = null;
 
       switch (action) {
         case 'go_work':
-          notificationType = 'go_work'; // Maps to 'departure_' identifier
+          alarmAction = 'go_work'; // Maps to 'departure-' alarm
           break;
         case 'check_in':
-          notificationType = 'check_in'; // Maps to 'checkin_' identifier
+          alarmAction = 'check_in'; // Maps to 'checkin-' alarm
+          break;
+        case 'punch':
+          alarmAction = 'punch'; // Maps to 'punch-' alarm
           break;
         case 'check_out':
-          notificationType = 'check_out'; // Maps to 'checkout_' identifier
+          alarmAction = 'check_out'; // Maps to 'checkout-' alarm
           break;
         default:
-          return; // Không hủy thông báo cho các action khác
+          return; // Không hủy alarm cho các action khác
       }
 
-      if (notificationType) {
-        await notificationService.cancelReminderAfterAction(notificationType, activeShiftId, date);
-        console.log(`🔕 WorkManager: Đã hủy thông báo ${notificationType} sau khi thực hiện ${action}`);
+      if (alarmAction) {
+        const { alarmService } = await import('./alarmService');
+        await alarmService.cancelAlarmAfterAction(alarmAction, activeShiftId, date);
+        console.log(`🔕 WorkManager: Đã hủy alarm ${alarmAction} sau khi thực hiện ${action}`);
       }
     } catch (error) {
-      console.error('❌ WorkManager: Lỗi hủy thông báo liên quan:', error);
+      console.error('❌ WorkManager: Lỗi hủy alarm liên quan:', error);
       // Không throw error để không ảnh hưởng đến việc ghi log chính
     }
   }
@@ -297,8 +314,11 @@ class WorkManager {
         date,
         status: status.status,
         hasCompleteLog: logs.some(log => log.type === 'complete'),
+        hasCheckOutLog: logs.some(log => log.type === 'check_out'),
         totalLogs: logs.length,
-        logTypes: logs.map(log => log.type)
+        logTypes: logs.map(log => log.type),
+        standardHours: status.standardHours,
+        totalHours: status.totalHours
       });
 
     } catch (error) {
@@ -316,15 +336,20 @@ class WorkManager {
       const checkOutLog = logs.find(log => log.type === 'check_out');
       const completeLog = logs.find(log => log.type === 'complete');
 
-      // Xác định trạng thái dựa trên logs
+      // ✅ Xác định trạng thái dựa trên logs - Complete log có ưu tiên cao nhất
       let status: DailyWorkStatusNew['status'] = 'CHUA_DI';
 
-      if (!goWorkLog) {
+      // ✅ QUAN TRỌNG: Complete log có ưu tiên cao nhất, kiểm tra đầu tiên
+      if (completeLog) {
+        status = 'DU_CONG';
+        console.log(`🎯 WorkManager: Found complete log, setting status to DU_CONG for ${date}`);
+      } else if (!goWorkLog) {
         status = 'CHUA_DI';
       } else if (!checkInLog) {
         status = 'DA_DI_CHUA_VAO';
       } else if (!checkOutLog) {
         status = 'CHUA_RA';
+        console.log(`⏰ WorkManager: Missing check-out log, setting status to CHUA_RA for ${date}`);
       } else {
         // Có đủ check-in và check-out, kiểm tra thời gian
         const checkInTime = new Date(checkInLog.time);
@@ -340,9 +365,7 @@ class WorkManager {
         const isLate = checkInTime > shiftStartTime;
         const isEarly = checkOutTime < shiftEndTime;
 
-        if (completeLog) {
-          status = 'DU_CONG'; // Complete log có ưu tiên cao nhất
-        } else if (isLate && isEarly) {
+        if (isLate && isEarly) {
           status = 'DI_MUON_VE_SOM';
         } else if (isLate) {
           status = 'DI_MUON';
@@ -351,6 +374,8 @@ class WorkManager {
         } else {
           status = 'DU_CONG';
         }
+
+        console.log(`📊 WorkManager: Calculated status based on timing for ${date}: ${status}`);
       }
 
       // Tính toán giờ làm việc
@@ -418,6 +443,28 @@ class WorkManager {
         nightHours: shift.isNightShift ? standardHours : 0,
         isHolidayWork
       };
+    }
+
+    // ✅ FIX: Nếu trạng thái là CHUA_RA (chưa check out) nhưng đã check in
+    // Tính giờ làm việc dựa trên thời gian đã làm việc cho đến hiện tại
+    if (status === 'CHUA_RA') {
+      const checkInLog = logs.find(log => log.type === 'check_in');
+      if (checkInLog) {
+        const checkInTime = new Date(checkInLog.time);
+        const currentTime = new Date();
+        const totalMinutes = differenceInMinutes(currentTime, checkInTime);
+        const workMinutes = Math.max(0, totalMinutes - (shift.breakMinutes || 0));
+        const totalHours = Math.max(0, workMinutes / 60);
+
+        return {
+          standardHours: Math.min(totalHours, 8),
+          otHours: Math.max(0, totalHours - 8),
+          totalHours,
+          sundayHours: isSunday ? totalHours : 0,
+          nightHours: shift.isNightShift ? totalHours : 0,
+          isHolidayWork
+        };
+      }
     }
 
     // Các trạng thái khác tính theo thời gian thực tế (nếu có)
@@ -883,6 +930,11 @@ class WorkManager {
         const nextIndex = (currentRotationIndex + 1) % rotationShifts.length;
         const nextShiftId = rotationShifts[nextIndex];
 
+        // Get shift names for notification
+        const shifts = await storageService.getShifts();
+        const oldShift = shifts.find(s => s.id === settings.activeShiftId);
+        const newShift = shifts.find(s => s.id === nextShiftId);
+
         // Apply rotation
         await storageService.setActiveShiftId(nextShiftId);
 
@@ -898,7 +950,14 @@ class WorkManager {
           rotationConfig: updatedConfig
         });
 
-        console.log(`✅ WorkManager: Rotated to shift ${nextShiftId}`);
+        // CHỈ gửi thông báo rotation MỘT LẦN, không lập lịch thêm gì
+        if (oldShift && newShift) {
+          await notificationScheduler.scheduleShiftRotationNotification(oldShift.name, newShift.name);
+          console.log(`✅ WorkManager: Rotated from ${oldShift?.name} to ${newShift?.name} - Notification sent`);
+        }
+
+        // KHÔNG lập lịch thông báo ở đây - để AppContext xử lý
+        console.log(`✅ WorkManager: Shift rotation completed - letting AppContext handle scheduling`);
       }
 
     } catch (error) {
@@ -907,18 +966,26 @@ class WorkManager {
   }
 
   /**
-   * Lập lịch nhắc nhở hàng tuần
+   * Lập lịch nhắc nhở hàng tuần - CHỈ khi thực sự cần
    */
   async scheduleWeeklyReminder(): Promise<void> {
     try {
-      console.log('📅 WorkManager: Scheduling weekly reminder');
+      console.log('📅 WorkManager: Checking weekly reminder...');
 
       const settings = await storageService.getUserSettings();
 
       if (settings.changeShiftReminderMode !== 'ask_weekly') {
         console.log('⏭️ WorkManager: Weekly reminder disabled');
         // ✅ Cancel existing reminders khi tắt tính năng
-        await notificationService.cancelWeeklyReminders();
+        await notificationScheduler.cancelWeeklyReminders();
+        return;
+      }
+
+      // ✅ KIỂM TRA xem đã có weekly reminder chưa để tránh trùng lặp
+      const allScheduled = await notificationScheduler.getAllScheduledNotifications();
+      const existingReminders = allScheduled.filter((n: any) => n.identifier.startsWith('weekly_reminder_'));
+      if (existingReminders.length > 0) {
+        console.log(`📅 WorkManager: Already have ${existingReminders.length} weekly reminders, skipping`);
         return;
       }
 
@@ -982,11 +1049,34 @@ class WorkManager {
       }
 
       console.log(`📅 WorkManager: Final Saturday reminder time: ${saturday.toISOString()}`);
-      await notificationService.scheduleWeeklyShiftReminder(saturday);
+      await notificationScheduler.scheduleWeeklyShiftReminder(saturday);
       console.log(`✅ WorkManager: Weekly reminder scheduled for ${saturday.toISOString()}`);
 
     } catch (error) {
       console.error('Error scheduling weekly reminder:', error);
+    }
+  }
+
+  /**
+   * Debug function để kiểm tra trạng thái hiện tại
+   */
+  async debugCurrentStatus(date: string): Promise<void> {
+    try {
+      console.log('🔍 === DEBUG CURRENT STATUS ===');
+      console.log(`📅 Date: ${date}`);
+
+      const logs = await storageService.getAttendanceLogsForDate(date);
+      const status = await storageService.getDailyWorkStatusForDate(date);
+      const buttonState = await this.getCurrentButtonState(date);
+
+      console.log('📋 Attendance Logs:', logs.map(log => `${log.type} at ${format(parseISO(log.time), 'HH:mm:ss')}`));
+      console.log('📊 Current Status:', status?.status || 'No status');
+      console.log('🔘 Button State:', buttonState);
+      console.log('⏰ Standard Hours:', status?.standardHoursScheduled || 0);
+      console.log('🔍 === END DEBUG ===');
+
+    } catch (error) {
+      console.error('❌ Debug error:', error);
     }
   }
 

@@ -57,7 +57,8 @@
           "sounds": []
         }
       ],
-      "expo-audio"
+      "expo-audio",
+      "expo-font"
     ],
     "notification": {
       "icon": "./assets/notification-icon.png",

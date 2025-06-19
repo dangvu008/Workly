@@ -13,7 +13,7 @@ import {
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { FastIcon } from '../components/WorklyIcon';
 import { WorklyBackground } from '../components/WorklyBackground';
 import { useApp } from '../contexts/AppContext';
 import { Shift } from '../types';
@@ -21,6 +21,7 @@ import { RootStackParamList } from '../types';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { t } from '../i18n';
 import { getDayNamesMapping } from '../services/sampleShifts';
+import { SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../constants/themes';
 
 type AddEditShiftScreenNavigationProp = StackNavigationProp<RootStackParamList, 'AddEditShift'>;
 
@@ -71,6 +72,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
     remindBeforeStart: '',
     remindAfterEnd: '',
     departureTime: '',
+    officeEndTime: '', // ✅ Thêm validation cho giờ tan ca
   });
 
   // Status messages
@@ -188,6 +190,8 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
         const isNight = isNightShiftTime(prev.startTime, timeString);
         return { ...newData, isNightShift: isNight };
       });
+      // ✅ Clear error khi thay đổi
+      setErrors(prev => ({ ...prev, officeEndTime: '' }));
     }
   };
 
@@ -196,6 +200,8 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
     if (selectedDate) {
       const timeString = dateToTimeString(selectedDate);
       setFormData(prev => ({ ...prev, officeEndTime: timeString }));
+      // ✅ Clear error khi thay đổi
+      setErrors(prev => ({ ...prev, officeEndTime: '' }));
     }
   };
 
@@ -265,7 +271,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
         {label}
       </Text>
       <View style={styles.timePickerContent}>
-        <MaterialCommunityIcons
+        <FastIcon
           name="clock-outline"
           size={20}
           color={theme.colors.onSurfaceVariant}
@@ -274,7 +280,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
         <Text style={[styles.timePickerValue, { color: theme.colors.onSurface }]}>
           {value}
         </Text>
-        <MaterialCommunityIcons
+        <FastIcon
           name="chevron-down"
           size={20}
           color={theme.colors.onSurfaceVariant}
@@ -282,6 +288,12 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
       </View>
     </TouchableOpacity>
   );
+
+  // ✅ Helper function để chuyển đổi thời gian thành phút
+  const timeToMinutes = (timeString: string): number => {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
 
   const validateForm = (): boolean => {
     const newErrors = {
@@ -291,6 +303,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
       remindBeforeStart: '',
       remindAfterEnd: '',
       departureTime: '',
+      officeEndTime: '',
     };
 
     let isValid = true;
@@ -326,11 +339,26 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
     }
 
     // Departure time validation - should be before start time
-    const departureMinutes = parseInt(formData.departureTime.split(':')[0]) * 60 + parseInt(formData.departureTime.split(':')[1]);
-    const startMinutes = parseInt(formData.startTime.split(':')[0]) * 60 + parseInt(formData.startTime.split(':')[1]);
+    const departureMinutes = timeToMinutes(formData.departureTime);
+    const startMinutes = timeToMinutes(formData.startTime);
     if (departureMinutes >= startMinutes) {
       newErrors.departureTime = t(currentLanguage, 'shifts.validation.departureTimeInvalid');
       isValid = false;
+    }
+
+    // ✅ End Time validation - phải >= officeEndTime và nếu > thì phải là bội số của 15 phút
+    const endMinutes = timeToMinutes(formData.endTime);
+    const officeEndMinutes = timeToMinutes(formData.officeEndTime);
+
+    if (endMinutes < officeEndMinutes) {
+      newErrors.officeEndTime = 'Thời gian tan ca phải bằng hoặc sau giờ kết thúc giờ hành chính';
+      isValid = false;
+    } else if (endMinutes > officeEndMinutes) {
+      const diffMinutes = endMinutes - officeEndMinutes;
+      if (diffMinutes % 15 !== 0) {
+        newErrors.officeEndTime = 'Thời gian chênh lệch giữa tan ca và kết thúc giờ hành chính phải là bội số của 15 phút (15, 30, 45, 60...)';
+        isValid = false;
+      }
     }
 
     setErrors(newErrors);
@@ -342,6 +370,9 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
 
     try {
       setStatusMessage({ type: '', message: '' }); // Clear previous status
+
+      // ✅ Tự động tính toán isNightShift dựa trên thời gian
+      const autoDetectedNightShift = isNightShiftTime(formData.startTime, formData.endTime);
 
       const shiftData: Shift = {
         id: isEditing ? shiftId! : `shift_${Date.now()}`,
@@ -355,7 +386,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
         remindAfterEnd: formData.remindAfterEnd,
         showPunch: formData.showPunch,
         breakMinutes: formData.breakMinutes,
-        isNightShift: formData.isNightShift,
+        isNightShift: autoDetectedNightShift, // ✅ Sử dụng auto-detection
         workDays: formData.workDays,
         createdAt: isEditing ? existingShift?.createdAt || new Date().toISOString() : new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -492,18 +523,38 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
                 style={styles.halfInput}
               />
               <TimePickerField
-                label={t(currentLanguage, 'shifts.endTime')}
-                value={formData.endTime}
-                onPress={() => setShowEndTimePicker(true)}
+                label={t(currentLanguage, 'shifts.officeEndTime')}
+                value={formData.officeEndTime}
+                onPress={() => setShowOfficeEndTimePicker(true)}
                 style={styles.halfInput}
+                error={!!errors.officeEndTime}
               />
             </View>
+            <HelperText type="error" visible={!!errors.officeEndTime}>
+              {errors.officeEndTime}
+            </HelperText>
 
             <TimePickerField
-              label={t(currentLanguage, 'shifts.officeEndTime')}
-              value={formData.officeEndTime}
-              onPress={() => setShowOfficeEndTimePicker(true)}
+              label={t(currentLanguage, 'shifts.endTime')}
+              value={formData.endTime}
+              onPress={() => setShowEndTimePicker(true)}
             />
+
+            {/* Hiển thị trạng thái ca đêm/ca ngày (read-only) */}
+            <View style={styles.shiftTypeIndicator}>
+              <Text style={[styles.shiftTypeLabel, { color: theme.colors.onSurfaceVariant }]}>
+                Loại ca:
+              </Text>
+              <Text style={[
+                styles.shiftTypeValue,
+                {
+                  color: formData.isNightShift ? theme.colors.primary : theme.colors.secondary,
+                  backgroundColor: formData.isNightShift ? theme.colors.primaryContainer : theme.colors.secondaryContainer,
+                }
+              ]}>
+                {formData.isNightShift ? '🌙 Ca đêm' : '☀️ Ca ngày'}
+              </Text>
+            </View>
 
             <TextInput
               label={t(currentLanguage, 'shifts.breakMinutes')}
@@ -599,15 +650,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
               {t(currentLanguage, 'shifts.options')}
             </Text>
 
-            <View style={styles.switchRow}>
-              <Text style={[styles.switchLabel, { color: theme.colors.onSurface }]}>
-                {t(currentLanguage, 'shifts.night')}
-              </Text>
-              <Switch
-                value={formData.isNightShift}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, isNightShift: value }))}
-              />
-            </View>
+
 
             <View style={styles.switchRow}>
               <Text style={[styles.switchLabel, { color: theme.colors.onSurface }]}>
@@ -812,5 +855,26 @@ const styles = StyleSheet.create({
   },
   timeIcon: {
     marginRight: 8,
+  },
+  shiftTypeIndicator: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginVertical: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+    borderRadius: BORDER_RADIUS.sm,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  shiftTypeLabel: {
+    ...TYPOGRAPHY.bodyMedium,
+    fontWeight: '500',
+  },
+  shiftTypeValue: {
+    ...TYPOGRAPHY.bodyMedium,
+    fontWeight: 'bold',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.xs,
   },
 });

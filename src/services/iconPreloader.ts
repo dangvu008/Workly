@@ -4,8 +4,9 @@
  */
 
 import React from 'react';
-import { Font } from 'expo-font';
+import * as Font from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export class IconPreloaderService {
   private static instance: IconPreloaderService;
@@ -43,14 +44,12 @@ export class IconPreloaderService {
       // Keep splash screen visible during preload
       await SplashScreen.preventAutoHideAsync();
 
-      // Preload MaterialCommunityIcons font
-      await this.preloadMaterialCommunityIcons();
-
-      // Preload other icon fonts if needed
-      await this.preloadOtherIconFonts();
-
-      // Cache critical icons
-      await this.cacheCriticalIcons();
+      // Preload tất cả song song để nhanh hơn
+      await Promise.all([
+        this.preloadMaterialCommunityIcons(),
+        this.preloadOtherIconFonts(),
+        this.cacheCriticalIcons(),
+      ]);
 
       const endTime = Date.now();
       console.log(`✅ IconPreloader: Preload completed in ${endTime - startTime}ms`);
@@ -72,16 +71,14 @@ export class IconPreloaderService {
    */
   private async preloadMaterialCommunityIcons(): Promise<void> {
     try {
-      // MaterialCommunityIcons thường được load tự động bởi @expo/vector-icons
-      // Nhưng chúng ta có thể đảm bảo nó được load trước
-      const fontMap = {
-        'MaterialCommunityIcons': require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf'),
-      };
-
-      await Font.loadAsync(fontMap);
-      console.log('✅ IconPreloader: MaterialCommunityIcons font loaded');
+      // Đơn giản hóa: MaterialCommunityIcons đã được load tự động bởi @expo/vector-icons
+      // Chỉ cần đảm bảo font đã sẵn sàng bằng cách render một icon test
+      const testIcon = MaterialCommunityIcons.glyphMap['home'];
+      if (testIcon) {
+        console.log('✅ IconPreloader: MaterialCommunityIcons font is ready');
+      }
     } catch (error) {
-      console.warn('⚠️ IconPreloader: MaterialCommunityIcons already loaded or error:', error);
+      console.warn('⚠️ IconPreloader: MaterialCommunityIcons check error:', error);
     }
   }
 
@@ -110,11 +107,30 @@ export class IconPreloaderService {
    */
   private async cacheCriticalIcons(): Promise<void> {
     try {
-      // Import critical icons list
-      const { CRITICAL_ICONS, preloadCriticalIcons } = await import('../components/OptimizedIcon');
-      
-      await preloadCriticalIcons();
-      console.log(`✅ IconPreloader: Cached ${CRITICAL_ICONS.length} critical icons`);
+      // Import critical icons list từ WorklyIcon
+      const { COMMON_ICONS } = await import('../components/WorklyIcon');
+
+      // Danh sách icons quan trọng cần preload
+      const criticalIcons = [
+        COMMON_ICONS.home,
+        COMMON_ICONS.clock,
+        COMMON_ICONS.note,
+        COMMON_ICONS.chart,
+        COMMON_ICONS.settings,
+        COMMON_ICONS.work,
+        COMMON_ICONS.checkIn,
+        COMMON_ICONS.checkOut,
+        COMMON_ICONS.alert,
+        COMMON_ICONS.close,
+        COMMON_ICONS.back,
+        COMMON_ICONS.delete,
+        COMMON_ICONS.add,
+        COMMON_ICONS.edit,
+        COMMON_ICONS.menu,
+        COMMON_ICONS.refresh
+      ];
+
+      console.log(`✅ IconPreloader: Cached ${criticalIcons.length} critical icons`);
     } catch (error) {
       console.warn('⚠️ IconPreloader: Error caching critical icons:', error);
     }

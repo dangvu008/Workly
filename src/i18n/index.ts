@@ -210,6 +210,7 @@ export interface TranslationKeys {
     business: string;
     review: string;
     sufficient: string;
+    dayOff: string;
   };
 
   // Button States
@@ -595,6 +596,7 @@ export const vi: TranslationKeys = {
     business: 'Công tác',
     review: 'Cần xem lại',
     sufficient: 'Đủ công',
+    dayOff: 'Ngày nghỉ thông thường',
   },
 
   buttonStates: {
@@ -969,6 +971,7 @@ export const en: TranslationKeys = {
     business: 'Business trip',
     review: 'Review',
     sufficient: 'Sufficient',
+    dayOff: 'Regular day off',
   },
 
   buttonStates: {

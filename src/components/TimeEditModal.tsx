@@ -3,7 +3,7 @@ import { View, StyleSheet, Alert, Platform, TouchableOpacity } from 'react-nativ
 import { Modal, Text, Button, useTheme, IconButton, Card } from 'react-native-paper';
 import { format, parseISO, isValid, addMinutes, differenceInMinutes } from 'date-fns';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { FastIcon } from './WorklyIcon';
 import { Shift } from '../types';
 import { SPACING, BORDER_RADIUS } from '../constants/themes';
 
@@ -206,7 +206,7 @@ export function TimeEditModal({
             ]}
             onPress={() => setShowCheckInPicker(true)}
           >
-            <MaterialCommunityIcons
+            <FastIcon
               name="login"
               size={20}
               color={theme.colors.onSurfaceVariant}
@@ -215,7 +215,7 @@ export function TimeEditModal({
             <Text style={[styles.timeText, { color: theme.colors.onSurface }]}>
               {dateToTimeString(checkInDate)}
             </Text>
-            <MaterialCommunityIcons
+            <FastIcon
               name="clock-outline"
               size={20}
               color={theme.colors.onSurfaceVariant}
@@ -243,7 +243,7 @@ export function TimeEditModal({
             ]}
             onPress={() => setShowCheckOutPicker(true)}
           >
-            <MaterialCommunityIcons
+            <FastIcon
               name="logout"
               size={20}
               color={theme.colors.onSurfaceVariant}
@@ -252,7 +252,7 @@ export function TimeEditModal({
             <Text style={[styles.timeText, { color: theme.colors.onSurface }]}>
               {dateToTimeString(checkOutDate)}
             </Text>
-            <MaterialCommunityIcons
+            <FastIcon
               name="clock-outline"
               size={20}
               color={theme.colors.onSurfaceVariant}

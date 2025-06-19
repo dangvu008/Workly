@@ -3,7 +3,7 @@ import { View, StyleSheet, Alert, ScrollView } from 'react-native';
 import { Modal, Portal, Text, Button, useTheme, Menu, TouchableRipple, Card, Divider } from 'react-native-paper';
 import { format, parseISO, isToday, isPast, isFuture } from 'date-fns';
 import { vi, enUS } from 'date-fns/locale';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { FastIcon } from './WorklyIcon';
 import { DailyWorkStatus, Shift, AttendanceLog } from '../types';
 import { WEEKLY_STATUS } from '../constants';
 import { TimeEditModal } from './TimeEditModal';
@@ -184,6 +184,7 @@ export function ManualStatusUpdateModal({
     if (dateType === 'future') {
       // Ngày tương lai: chỉ các trạng thái nghỉ
       return [
+        { key: 'day_off', ...WEEKLY_STATUS.day_off },
         { key: 'NGHI_PHEP', ...WEEKLY_STATUS.NGHI_PHEP },
         { key: 'NGHI_BENH', ...WEEKLY_STATUS.NGHI_BENH },
         { key: 'NGHI_LE', ...WEEKLY_STATUS.NGHI_LE },
@@ -198,6 +199,7 @@ export function ManualStatusUpdateModal({
         { key: 'DI_MUON', ...WEEKLY_STATUS.DI_MUON },
         { key: 'VE_SOM', ...WEEKLY_STATUS.VE_SOM },
         { key: 'DI_MUON_VE_SOM', ...WEEKLY_STATUS.DI_MUON_VE_SOM },
+        { key: 'day_off', ...WEEKLY_STATUS.day_off },
         { key: 'NGHI_PHEP', ...WEEKLY_STATUS.NGHI_PHEP },
         { key: 'NGHI_BENH', ...WEEKLY_STATUS.NGHI_BENH },
         { key: 'NGHI_LE', ...WEEKLY_STATUS.NGHI_LE },
@@ -217,7 +219,7 @@ export function ManualStatusUpdateModal({
     
     // Logic kích hoạt sửa giờ
     const workStatuses = ['TINH_THEO_CHAM_CONG', 'DU_CONG', 'DI_MUON', 'VE_SOM', 'DI_MUON_VE_SOM', 'THIEU_LOG'];
-    const leaveStatuses = ['NGHI_PHEP', 'NGHI_BENH', 'NGHI_LE', 'VANG_MAT', 'CONG_TAC'];
+    const leaveStatuses = ['day_off', 'NGHI_PHEP', 'NGHI_BENH', 'NGHI_LE', 'VANG_MAT', 'CONG_TAC'];
     
     if (workStatuses.includes(newStatus)) {
       // Kích hoạt chỉnh sửa giờ cho trạng thái làm việc
@@ -381,7 +383,7 @@ export function ManualStatusUpdateModal({
         <Card style={[styles.infoCard, { backgroundColor: theme.colors.surfaceVariant }]}>
           <Card.Content>
             <View style={styles.infoRow}>
-              <MaterialCommunityIcons
+              <FastIcon
                 name="loading"
                 size={20}
                 color={theme.colors.onSurfaceVariant}
@@ -403,7 +405,7 @@ export function ManualStatusUpdateModal({
               🕐 Dữ liệu chấm công thực tế
             </Text>
             <View style={styles.infoRow}>
-              <MaterialCommunityIcons
+              <FastIcon
                 name="clock-outline"
                 size={20}
                 color={theme.colors.onSurfaceVariant}
@@ -434,7 +436,7 @@ export function ManualStatusUpdateModal({
 
           {attendanceLogs.map((log, index) => (
             <View key={index} style={styles.infoRow}>
-              <MaterialCommunityIcons
+              <FastIcon
                 name="clock-check"
                 size={20}
                 color={theme.colors.primary}

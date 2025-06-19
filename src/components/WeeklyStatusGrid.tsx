@@ -2,7 +2,7 @@ import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Text, useTheme, Menu } from 'react-native-paper';
 import { format, addDays, startOfWeek, isFuture, isToday, isPast } from 'date-fns';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { StatusIcon } from './WorklyIcon';
 import { useApp } from '../contexts/AppContext';
 import { WEEKLY_STATUS } from '../constants';
 import { DailyWorkStatus } from '../types';
@@ -10,7 +10,7 @@ import { storageService } from '../services/storage';
 import { workManager } from '../services/workManager';
 import { ManualStatusUpdateModal } from './ManualStatusUpdateModal';
 import { t } from '../i18n';
-import { getDayNamesMapping } from '../services/sampleShifts';
+import { getWeeklyGridDayNames } from '../services/sampleShifts';
 
 interface WeeklyStatusGridProps {
   onDayPress?: (date: string) => void;
@@ -42,6 +42,12 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
     const dateString = format(date, 'yyyy-MM-dd');
     return state.weeklyStatus[dateString] || null;
   };
+
+  // ✅ Force refresh khi có refreshTrigger thay đổi
+  React.useEffect(() => {
+    // Trigger re-render khi refreshTrigger thay đổi
+    console.log('📊 WeeklyStatusGrid: Refresh triggered');
+  }, [state.refreshTrigger]);
 
   const getStatusIcon = (date: Date): string => {
     const status = getStatusForDate(date);
@@ -193,7 +199,7 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
   };
 
   // Legacy handler for old menu (keep for backward compatibility)
-  const handleManualStatusUpdate = async (date: string, status: 'manual_present' | 'manual_absent' | 'manual_holiday' | 'manual_completed' | 'manual_review') => {
+  const handleManualStatusUpdate = async (date: string, status: 'manual_present' | 'manual_absent' | 'manual_holiday' | 'manual_completed' | 'manual_review' | 'day_off') => {
     try {
       const manualStatus: DailyWorkStatus = {
         status,
@@ -205,6 +211,7 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
         lateMinutes: 0,
         earlyMinutes: 0,
         isHolidayWork: status === 'manual_holiday',
+        isManualOverride: status !== 'day_off', // day_off không phải là manual override
       };
 
       await storageService.setDailyWorkStatusForDate(date, manualStatus);
@@ -217,6 +224,7 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
         manual_holiday: t(currentLanguage, 'workStatus.holiday'),
         manual_completed: t(currentLanguage, 'workStatus.completed'),
         manual_review: t(currentLanguage, 'workStatus.review'),
+        day_off: t(currentLanguage, 'workStatus.dayOff'),
       }[status];
 
       Alert.alert(t(currentLanguage, 'common.success'), `${t(currentLanguage, 'common.success')}: ${format(new Date(date), 'dd/MM')} - "${statusText}"`);
@@ -228,8 +236,8 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
   const renderDayItem = (date: Date, index: number) => {
     const dateString = format(date, 'yyyy-MM-dd');
     const language = state.settings?.language || 'vi';
-    const dayNames = getDayNamesMapping(language);
-    const dayName = dayNames[index as keyof typeof dayNames];
+    const weeklyDayNames = getWeeklyGridDayNames(language);
+    const dayName = weeklyDayNames[index]; // index 0 = Thứ 2, index 6 = Chủ Nhật
     const dayNumber = format(date, 'd');
     const statusIcon = getStatusIcon(date);
     const statusColor = getStatusColor(date);
@@ -268,10 +276,10 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
           {dayNumber}
         </Text>
 
-        <MaterialCommunityIcons
-          name={statusIcon as any}
-          size={20}
+        <StatusIcon
+          icon={statusIcon as any}
           color={statusColor}
+          size={20}
           style={styles.statusIcon}
         />
 
@@ -306,6 +314,11 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
               onPress={() => handleManualStatusUpdate(dateString, 'manual_review')}
               title={`${t(currentLanguage, 'workStatus.review')} (RV)`}
               leadingIcon="eye-check"
+            />
+            <Menu.Item
+              onPress={() => handleManualStatusUpdate(dateString, 'day_off')}
+              title={`${t(currentLanguage, 'workStatus.dayOff')} (OFF)`}
+              leadingIcon="calendar-remove"
             />
           </Menu>
         )}

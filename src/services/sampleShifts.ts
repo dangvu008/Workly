@@ -160,7 +160,7 @@ export const isSampleShift = (shiftId: string): boolean => {
 };
 
 /**
- * ✅ Lấy mapping ngày trong tuần theo ngôn ngữ
+ * ✅ Lấy mapping ngày trong tuần theo ngôn ngữ (JavaScript standard: 0 = Sunday)
  * @param language - Ngôn ngữ hiện tại
  * @returns Object mapping day numbers to localized day names
  */
@@ -189,6 +189,19 @@ export const getDayNamesMapping = (language: string) => {
 };
 
 /**
+ * ✅ Lấy mapping ngày trong tuần cho Weekly Grid (bắt đầu từ thứ Hai)
+ * @param language - Ngôn ngữ hiện tại
+ * @returns Array tên ngày theo thứ tự: [Thứ 2, Thứ 3, ..., Chủ Nhật]
+ */
+export const getWeeklyGridDayNames = (language: string) => {
+  if (language === 'vi') {
+    return ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']; // Thứ 2 -> Chủ Nhật
+  } else {
+    return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']; // Monday -> Sunday
+  }
+};
+
+/**
  * ✅ Chuyển đổi workDays array thành chuỗi hiển thị theo ngôn ngữ
  * @param workDays - Array các ngày làm việc (0-6)
  * @param language - Ngôn ngữ hiện tại
@@ -207,5 +220,6 @@ export const sampleShiftsService = {
   updateShiftNamesForLanguage,
   isSampleShift,
   getDayNamesMapping,
+  getWeeklyGridDayNames,
   formatWorkDays
 };

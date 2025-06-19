@@ -10,8 +10,12 @@ import {
 import { storageService } from '../services/storage';
 import { workManager } from '../services/workManager';
 import { weatherService } from '../services/weather';
-import { notificationService } from '../services/notifications';
+import { extremeWeatherService } from '../services/extremeWeatherService';
+import { notificationScheduler } from '../services/notificationScheduler';
 import { alarmService } from '../services/alarmService';
+import { dayOffService } from '../services/dayOffService';
+import { ShiftDebugLogger } from '../utils/shiftDebugLogger';
+
 import { format, addDays, startOfWeek } from 'date-fns';
 
 // State interface
@@ -32,6 +36,8 @@ interface AppState {
     timeUntilNextReset: number;
     currentPhase: 'before_work' | 'work_time' | 'after_work' | 'inactive';
   } | null;
+  // ✅ Thêm refresh trigger để force update UI
+  refreshTrigger: number;
 }
 
 // Action types
@@ -66,6 +72,7 @@ const initialState: AppState = {
   todayStatus: null,
   weeklyStatus: {},
   timeDisplayInfo: null,
+  refreshTrigger: 0,
 };
 
 // Reducer
@@ -149,6 +156,9 @@ function appReducer(state: AppState, action: AppAction): AppState {
         notes: state.notes.filter(note => note.id !== action.payload),
       };
 
+    case 'TRIGGER_REFRESH':
+      return { ...state, refreshTrigger: state.refreshTrigger + 1 };
+
     default:
       return state;
   }
@@ -175,6 +185,8 @@ interface AppContextType {
     refreshButtonState: () => Promise<void>;
     refreshWeeklyStatus: () => Promise<void>;
     refreshTimeDisplayInfo: () => Promise<void>;
+    forceRefreshAllStatus: () => Promise<void>;
+    triggerRefresh: () => void;
   };
 }
 
@@ -193,8 +205,8 @@ export function AppProvider({ children }: AppProviderProps) {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
 
-      // Initialize notification service and alarm service
-      await notificationService.initialize();
+      // Initialize notification scheduler and alarm service
+      await notificationScheduler.initialize();
       await alarmService.initialize();
 
       // Load all data
@@ -240,27 +252,66 @@ export function AppProvider({ children }: AppProviderProps) {
         dispatch({ type: 'SET_WEATHER_DATA', payload: weatherData });
       }
 
-      // ✅ Dọn dẹp toàn bộ thông báo cũ khi khởi động app để tránh trùng lặp
-      console.log('🧹 AppContext: Bắt đầu dọn dẹp thông báo cũ khi khởi động app...');
+      // ✅ REMINDER SYSTEM: Khởi tạo hệ thống nhắc nhở 3 loại
+      ShiftDebugLogger.info('notification', 'Khởi tạo Reminder System...');
 
-      // Hủy tất cả shift reminders cũ
-      await notificationService.cancelAllShiftReminders();
-      console.log('🧹 AppContext: Đã hủy tất cả shift reminders cũ');
+      // Khởi tạo notification handler để xử lý responses
+      const { notificationHandler } = await import('../services/notificationHandler');
+      await notificationHandler.initialize();
 
-      // Hủy tất cả weekly reminders cũ
-      await notificationService.cancelWeeklyReminders();
-      console.log('🧹 AppContext: Đã hủy tất cả weekly reminders cũ');
+      // Dọn dẹp HOÀN TOÀN tất cả alarms và notifications cũ
+      await alarmService.cancelAllAlarms();
+      await notificationScheduler.cleanupAllNotifications();
+      ShiftDebugLogger.success('cleanup', 'Đã cleanup tất cả reminders cũ');
 
-      // Check for shift rotation and schedule reminders
+      // Check for shift rotation (KHÔNG lập lịch gì trong này)
       await workManager.checkAndRotateShifts();
 
-      // Chỉ lập lịch weekly reminder nếu có active shift
-      // Tránh hiển thị thông báo fallback ngay khi khởi động app
-      if (activeShiftId) {
+      // Lập lịch cho active shift với hệ thống mới
+      if (activeShiftId && activeShift) {
+        ShiftDebugLogger.info('notification', `Lập lịch reminders cho ca ${activeShift.name}...`);
+
+        // ✅ 1. Báo thức (Alarm) - Độ ưu tiên cao nhất
+        await alarmService.scheduleShiftReminder(activeShift);
+
+        // ✅ 2. Cảnh báo Thời tiết - Thông báo ưu tiên cao (1 giờ trước departure)
+        // Cleanup weather warnings trước khi lập lịch mới
+        await notificationScheduler.cancelAllWeatherWarnings();
+        await extremeWeatherService.cancelAllExtremeWeatherChecks();
+
+        const today = new Date();
+        let scheduledCount = 0;
+
+        // ✅ Chỉ lập lịch cho 3 ngày tới thay vì 7 ngày để giảm spam
+        for (let i = 0; i < 3; i++) {
+          const workdayDate = new Date(today);
+          workdayDate.setDate(today.getDate() + i);
+          const dayOfWeek = workdayDate.getDay();
+
+          if (activeShift.workDays.includes(dayOfWeek)) {
+            await notificationScheduler.scheduleWeatherWarning(activeShift, workdayDate);
+            scheduledCount++;
+            // ❌ DISABLED: Extreme weather check tạm thời vô hiệu hóa để tránh spam
+            // await extremeWeatherService.scheduleExtremeWeatherCheck(activeShift, workdayDate);
+          }
+        }
+
+        ShiftDebugLogger.info('weather', `Scheduled ${scheduledCount} weather warnings for next 3 days`);
+
+        // ✅ 3. Nhắc nhở Đổi ca - Thông báo tiêu chuẩn
         await workManager.scheduleWeeklyReminder();
+
+        ShiftDebugLogger.success('notification', `Hoàn thành lập lịch reminders cho ca ${activeShift.name}`);
+      } else {
+        ShiftDebugLogger.info('notification', 'Không có ca hoạt động, bỏ qua lập lịch');
       }
 
-      console.log('✅ AppContext: Hoàn thành dọn dẹp và lập lịch lại thông báo');
+      ShiftDebugLogger.success('notification', 'Hoàn thành khởi tạo Reminder System');
+
+      // ✅ Khởi tạo ngày nghỉ thông thường (tự động đặt Chủ Nhật là ngày nghỉ)
+      console.log('🔄 AppContext: Khởi tạo ngày nghỉ thông thường...');
+      await dayOffService.initializeDayOffs();
+      console.log('✅ AppContext: Hoàn thành khởi tạo ngày nghỉ thông thường');
 
     } catch (error) {
       console.error('Error loading initial data:', error);
@@ -288,6 +339,17 @@ export function AppProvider({ children }: AppProviderProps) {
   // Set active shift
   const setActiveShift = async (shiftId: string | null) => {
     try {
+      // Debug shift application
+      const oldShift = state.activeShift;
+      const newShift = shiftId ? state.shifts.find(s => s.id === shiftId) || null : null;
+      ShiftDebugLogger.debugShiftApplication(oldShift, newShift);
+
+      // ✅ Tránh duplicate scheduling nếu shift không thay đổi
+      if (oldShift?.id === newShift?.id) {
+        ShiftDebugLogger.info('shift_change', 'Same shift selected, skipping notification rescheduling');
+        return;
+      }
+
       await storageService.setActiveShiftId(shiftId);
       const activeShift = shiftId ? state.shifts.find(s => s.id === shiftId) || null : null;
       dispatch({ type: 'SET_ACTIVE_SHIFT', payload: activeShift });
@@ -312,23 +374,57 @@ export function AppProvider({ children }: AppProviderProps) {
         }
       }
 
-      // ✅ Dọn dẹp và lập lịch lại thông báo cho ca mới
-      console.log('🔄 AppContext: Bắt đầu cập nhật thông báo cho ca mới...');
+      // ✅ REMINDER SYSTEM: Cleanup và reschedule cho ca mới
+      ShiftDebugLogger.info('shift_change', 'Starting reminder system cleanup and reschedule');
 
-      // Hủy tất cả thông báo cũ trước
-      await notificationService.cancelAllShiftReminders();
-      await alarmService.cancelShiftReminders();
-      await notificationService.cancelWeeklyReminders();
-      console.log('🧹 AppContext: Đã hủy tất cả thông báo cũ');
+      // Cleanup hoàn toàn
+      await alarmService.cancelAllAlarms();
+      await notificationScheduler.cleanupAllNotifications();
+      ShiftDebugLogger.success('shift_change', 'Cleanup completed');
 
-      // Lập lịch thông báo mới nếu có active shift
+      // Đợi một chút để đảm bảo cleanup hoàn tất
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Lập lịch cho ca mới
       if (activeShift) {
-        await notificationService.scheduleShiftReminders(activeShift);
+        ShiftDebugLogger.info('shift_change', `Scheduling reminders for new shift: ${activeShift.name}`);
+
+        // ✅ 1. Báo thức (Alarm) - Độ ưu tiên cao nhất
         await alarmService.scheduleShiftReminder(activeShift);
+
+        // ✅ 2. Cảnh báo Thời tiết - Thông báo ưu tiên cao
+        // Cleanup weather warnings trước khi lập lịch mới
+        await notificationScheduler.cancelAllWeatherWarnings();
+        await extremeWeatherService.cancelAllExtremeWeatherChecks();
+
+        // ✅ Delay nhỏ để đảm bảo cleanup hoàn tất
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        const today = new Date();
+        let scheduledCount = 0;
+
+        // ✅ Chỉ lập lịch cho 3 ngày tới thay vì 7 ngày để giảm spam
+        for (let i = 0; i < 3; i++) {
+          const workdayDate = new Date(today);
+          workdayDate.setDate(today.getDate() + i);
+          const dayOfWeek = workdayDate.getDay();
+
+          if (activeShift.workDays.includes(dayOfWeek)) {
+            await notificationScheduler.scheduleWeatherWarning(activeShift, workdayDate);
+            scheduledCount++;
+            // ❌ DISABLED: Extreme weather check tạm thời vô hiệu hóa để tránh spam
+            // await extremeWeatherService.scheduleExtremeWeatherCheck(activeShift, workdayDate);
+          }
+        }
+
+        ShiftDebugLogger.info('weather', `Scheduled ${scheduledCount} weather warnings for next 3 days`);
+
+        // ✅ 3. Nhắc nhở Đổi ca - Thông báo tiêu chuẩn
         await workManager.scheduleWeeklyReminder();
-        console.log(`✅ AppContext: Đã lập lịch thông báo cho ca ${activeShift.name}`);
+
+        ShiftDebugLogger.success('shift_change', `Completed scheduling for shift: ${activeShift.name}`);
       } else {
-        console.log('ℹ️ AppContext: Không có ca hoạt động, bỏ qua lập lịch thông báo');
+        ShiftDebugLogger.info('shift_change', 'No active shift - skipping reminder scheduling');
       }
 
       // Refresh button state and time display info
@@ -361,10 +457,51 @@ export function AppProvider({ children }: AppProviderProps) {
       await storageService.updateShift(shiftId, updates);
       dispatch({ type: 'UPDATE_SHIFT', payload: { id: shiftId, updates } });
 
-      // If this is the active shift, reschedule reminders
+      // If this is the active shift, reschedule reminders với cleanup trước
       if (state.activeShift?.id === shiftId) {
+        ShiftDebugLogger.info('shift_change', 'Updating active shift - cleanup và reschedule reminders...');
+
+        // ✅ Cleanup hoàn toàn trước khi reschedule
+        await alarmService.cancelAllAlarms();
+        await notificationScheduler.cleanupAllNotifications();
+
+        // Đợi một chút để đảm bảo cleanup hoàn tất
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        // Reschedule với shift đã update
         const updatedShift = { ...state.activeShift, ...updates };
-        await notificationService.scheduleShiftReminders(updatedShift);
+
+        // ✅ 1. Báo thức (Alarm)
+        await alarmService.scheduleShiftReminder(updatedShift);
+
+        // ✅ 2. Cảnh báo Thời tiết
+        // Cleanup weather warnings trước khi lập lịch mới
+        await notificationScheduler.cancelAllWeatherWarnings();
+        await extremeWeatherService.cancelAllExtremeWeatherChecks();
+
+        // ✅ Delay nhỏ để đảm bảo cleanup hoàn tất
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        const today = new Date();
+        let scheduledCount = 0;
+
+        // ✅ Chỉ lập lịch cho 3 ngày tới thay vì 7 ngày để giảm spam
+        for (let i = 0; i < 3; i++) {
+          const workdayDate = new Date(today);
+          workdayDate.setDate(today.getDate() + i);
+          const dayOfWeek = workdayDate.getDay();
+
+          if (updatedShift.workDays.includes(dayOfWeek)) {
+            await notificationScheduler.scheduleWeatherWarning(updatedShift, workdayDate);
+            scheduledCount++;
+            // ❌ DISABLED: Extreme weather check tạm thời vô hiệu hóa để tránh spam
+            // await extremeWeatherService.scheduleExtremeWeatherCheck(updatedShift, workdayDate);
+          }
+        }
+
+        ShiftDebugLogger.info('weather', `Scheduled ${scheduledCount} weather warnings for next 3 days`);
+
+        ShiftDebugLogger.success('shift_change', `Đã reschedule reminders cho shift ${updatedShift.name}`);
       }
     } catch (error) {
       console.error('Error updating shift:', error);
@@ -381,7 +518,7 @@ export function AppProvider({ children }: AppProviderProps) {
       // If this was the active shift, clear it
       if (state.activeShift?.id === shiftId) {
         await storageService.setActiveShiftId(null);
-        await notificationService.cancelShiftReminders();
+        await notificationScheduler.cleanupAllNotifications();
       }
     } catch (error) {
       console.error('Error deleting shift:', error);
@@ -395,11 +532,11 @@ export function AppProvider({ children }: AppProviderProps) {
       await storageService.addNote(note);
       dispatch({ type: 'ADD_NOTE', payload: note });
 
-      // Schedule reminder if set (both notifications and alarms)
+      // Schedule reminder if set (chỉ alarms vì note reminders chưa implement trong notificationScheduler)
       // Hỗ trợ cả specific datetime và shift-based reminders
       if (note.reminderDateTime || (note.associatedShiftIds && note.associatedShiftIds.length > 0)) {
-        await notificationService.scheduleNoteReminder(note);
         await alarmService.scheduleNoteReminder(note);
+        // TODO: Implement note reminders trong notificationScheduler nếu cần
       }
     } catch (error) {
       console.error('Error adding note:', error);
@@ -413,8 +550,7 @@ export function AppProvider({ children }: AppProviderProps) {
       await storageService.updateNote(noteId, updates);
       dispatch({ type: 'UPDATE_NOTE', payload: { id: noteId, updates } });
 
-      // Update reminder (both notifications and alarms)
-      await notificationService.cancelNoteReminder(noteId);
+      // Update reminder (chỉ alarms)
       await alarmService.cancelNoteReminder(noteId);
 
       const updatedNote = state.notes.find(n => n.id === noteId);
@@ -422,8 +558,8 @@ export function AppProvider({ children }: AppProviderProps) {
         const newNote = { ...updatedNote, ...updates } as Note;
         // Hỗ trợ cả specific datetime và shift-based reminders
         if (newNote.reminderDateTime || (newNote.associatedShiftIds && newNote.associatedShiftIds.length > 0)) {
-          await notificationService.scheduleNoteReminder(newNote);
           await alarmService.scheduleNoteReminder(newNote);
+          // TODO: Implement note reminders trong notificationScheduler nếu cần
         }
       }
     } catch (error) {
@@ -438,8 +574,7 @@ export function AppProvider({ children }: AppProviderProps) {
       await storageService.deleteNote(noteId);
       dispatch({ type: 'DELETE_NOTE', payload: noteId });
 
-      // Cancel reminder (both notifications and alarms)
-      await notificationService.cancelNoteReminder(noteId);
+      // Cancel reminder (chỉ alarms)
       await alarmService.cancelNoteReminder(noteId);
     } catch (error) {
       console.error('Error deleting note:', error);
@@ -484,6 +619,9 @@ export function AppProvider({ children }: AppProviderProps) {
       dispatch({ type: 'SET_BUTTON_STATE', payload: newButtonState });
       dispatch({ type: 'SET_TODAY_STATUS', payload: todayStatus });
       dispatch({ type: 'SET_WEEKLY_STATUS', payload: weeklyStatus });
+
+      // ✅ Trigger refresh để force update tất cả UI components
+      dispatch({ type: 'TRIGGER_REFRESH' });
 
     } catch (error) {
       // Chỉ log error nếu không phải RapidPressDetectedException
@@ -541,13 +679,18 @@ export function AppProvider({ children }: AppProviderProps) {
       console.log('🚀 AppContext: Saving status to storage');
       await storageService.setDailyWorkStatusNewForDate(today, status);
 
-      // Refresh state
-      console.log('🚀 AppContext: Refreshing states');
-      await refreshButtonState();
-      await refreshWeeklyStatus();
+      // ✅ FIX: Refresh state KHÔNG gọi refreshButtonState() để tránh trigger lại rapid press detection
+      // Thay vào đó, set trực tiếp button state thành 'completed_day'
+      console.log('🚀 AppContext: Setting button state to completed_day after rapid press confirmation');
+      dispatch({ type: 'SET_BUTTON_STATE', payload: 'completed_day' });
 
+      // Chỉ refresh weekly status và today status
+      await refreshWeeklyStatus();
       const todayStatus = await storageService.getDailyWorkStatusForDate(today);
       dispatch({ type: 'SET_TODAY_STATUS', payload: todayStatus });
+
+      // ✅ Trigger refresh để force update tất cả UI components
+      dispatch({ type: 'TRIGGER_REFRESH' });
 
       console.log('✅ AppContext: Đã xử lý xác nhận bấm nhanh thành công');
     } catch (error) {
@@ -566,15 +709,24 @@ export function AppProvider({ children }: AppProviderProps) {
 
       console.log('🔄 AppContext: Reset completed, refreshing states');
 
-      // Force refresh button state immediately
-      const newButtonState = await workManager.getCurrentButtonState(today);
+      // ✅ Force refresh tất cả states để đảm bảo UI được cập nhật
+      const [newButtonState, todayStatus] = await Promise.all([
+        workManager.getCurrentButtonState(today),
+        storageService.getDailyWorkStatusForDate(today) // Sẽ trả về null sau khi reset
+      ]);
+
+      // ✅ Batch update tất cả states cùng lúc
       dispatch({ type: 'SET_BUTTON_STATE', payload: newButtonState });
+      dispatch({ type: 'SET_TODAY_STATUS', payload: todayStatus });
 
-      // Clear today status
-      dispatch({ type: 'SET_TODAY_STATUS', payload: null });
+      // ✅ Refresh weekly status và time display info
+      await Promise.all([
+        refreshWeeklyStatus(),
+        refreshTimeDisplayInfo()
+      ]);
 
-      // Refresh other states
-      await refreshWeeklyStatus();
+      // ✅ Trigger refresh để force update tất cả UI components
+      dispatch({ type: 'TRIGGER_REFRESH' });
 
       console.log(`✅ AppContext: Reset daily status completed, new button state: ${newButtonState}`);
     } catch (error) {
@@ -642,6 +794,40 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   };
 
+  // ✅ Force refresh tất cả trạng thái - dùng cho debug
+  const forceRefreshAllStatus = async () => {
+    try {
+      console.log('🔄 AppContext: Force refreshing all status...');
+
+      const today = format(new Date(), 'yyyy-MM-dd');
+
+      // Force tính lại trạng thái từ logs
+      await workManager.recalculateFromAttendanceLogs(today);
+
+      // Đợi một chút để đảm bảo storage được cập nhật
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Refresh tất cả state
+      await Promise.all([
+        refreshButtonState(),
+        refreshWeeklyStatus(),
+        refreshTimeDisplayInfo()
+      ]);
+
+      console.log('✅ AppContext: Force refresh completed');
+
+    } catch (error) {
+      console.error('❌ AppContext: Error force refreshing status:', error);
+    }
+  };
+
+  // ✅ Trigger refresh để force update UI components
+  const triggerRefresh = () => {
+    dispatch({ type: 'TRIGGER_REFRESH' });
+  };
+
+
+
   // Initialize app on mount
   useEffect(() => {
     loadInitialData();
@@ -706,6 +892,9 @@ export function AppProvider({ children }: AppProviderProps) {
       refreshButtonState,
       refreshWeeklyStatus,
       refreshTimeDisplayInfo,
+      forceRefreshAllStatus,
+      triggerRefresh,
+
     },
   };
 

@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Card, useTheme, Divider } from 'react-native-paper';
 import { format, parseISO } from 'date-fns';
 import { vi, enUS } from 'date-fns/locale';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { FastIcon } from './WorklyIcon';
 import { useApp } from '../contexts/AppContext';
 import { AttendanceLog } from '../types';
 import { BUTTON_STATES } from '../constants';
@@ -24,17 +24,26 @@ export function AttendanceHistory({ visible = true }: AttendanceHistoryProps) {
 
   useEffect(() => {
     loadTodayLogs();
-  }, [state.currentButtonState]); // Refresh when button state changes
+  }, [state.currentButtonState, state.todayStatus, state.weeklyStatus, state.refreshTrigger]); // ✅ Refresh khi có bất kỳ thay đổi nào
 
   const loadTodayLogs = async () => {
     try {
       const today = format(new Date(), 'yyyy-MM-dd');
       const logs = await storageService.getAttendanceLogsForDate(today);
+      console.log(`📊 AttendanceHistory: Loaded ${logs.length} logs for ${today}`);
       setTodayLogs(logs);
     } catch (error) {
       console.error('Error loading today logs:', error);
+      setTodayLogs([]); // ✅ Reset về empty array khi có lỗi
     }
   };
+
+  // ✅ Force refresh logs khi component mount hoặc visible thay đổi
+  useEffect(() => {
+    if (visible) {
+      loadTodayLogs();
+    }
+  }, [visible]);
 
   const getActionText = (type: AttendanceLog['type']): string => {
     const actionMap = {
@@ -99,7 +108,7 @@ export function AttendanceHistory({ visible = true }: AttendanceHistoryProps) {
           <View key={`${log.type}-${log.time}-${index}`}>
             <View style={styles.logItem}>
               <View style={styles.logIcon}>
-                <MaterialCommunityIcons
+                <FastIcon
                   name={getActionIcon(log.type) as any}
                   size={20}
                   color={getActionColor(log.type)}

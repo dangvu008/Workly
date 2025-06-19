@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, Text } from 'react-native';
+
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { PaperProvider, ActivityIndicator } from 'react-native-paper';
+import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppProvider, useApp } from './src/contexts/AppContext';
@@ -12,8 +12,7 @@ import { lightTheme, darkTheme } from './src/constants/themes';
 import { t } from './src/i18n';
 import { RootStackParamList, TabParamList } from './src/types';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
-import { TabBarIcon } from './src/components/OptimizedIconButton';
-import { initializeIconPreloader } from './src/services/iconPreloader';
+import { TabIcon } from './src/components/WorklyIcon';
 
 // Screens
 import { HomeScreen } from './src/screens/HomeScreen';
@@ -24,6 +23,7 @@ import { NotesScreen } from './src/screens/NotesScreen';
 import { NoteDetailScreen } from './src/screens/NoteDetailScreen';
 import { StatisticsScreen } from './src/screens/StatisticsScreen';
 import { WeatherDetailScreen } from './src/screens/WeatherDetailScreen';
+
 
 const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -60,8 +60,8 @@ function MainTabs() {
               iconName = 'circle';
           }
 
-          // ✅ Sử dụng TabBarIcon được tối ưu thay vì MaterialCommunityIcons trực tiếp
-          return <TabBarIcon focused={focused} color={color} size={size} iconName={iconName} />;
+          // ✅ Sử dụng TabIcon đơn giản thay vì TabBarIcon phức tạp
+          return <TabIcon focused={focused} color={color} size={size} iconName={iconName} />;
         },
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
@@ -139,51 +139,19 @@ function AppNavigator() {
           <Stack.Screen name="AddEditShift" component={AddEditShiftScreen} />
           <Stack.Screen name="NoteDetail" component={NoteDetailScreen} />
           <Stack.Screen name="WeatherDetail" component={WeatherDetailScreen} />
+
         </Stack.Navigator>
       </NavigationContainer>
     </PaperProvider>
   );
 }
 
-/**
- * ✅ Loading Screen component hiển thị khi đang preload icons
- */
-function LoadingScreen() {
-  return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
-      <ActivityIndicator size="large" color="#6200ee" />
-      <Text style={{ marginTop: 16, fontSize: 16, color: '#666' }}>
-        Đang tải icons...
-      </Text>
-    </View>
-  );
-}
+
 
 /**
- * ✅ App with Icon Preloader
+ * ✅ App đơn giản không cần icon preloader phức tạp
  */
-function AppWithPreloader() {
-  const [isIconsReady, setIsIconsReady] = useState(false);
-
-  useEffect(() => {
-    const preloadIcons = async () => {
-      try {
-        await initializeIconPreloader();
-        setIsIconsReady(true);
-      } catch (error) {
-        console.error('❌ Error preloading icons:', error);
-        // Vẫn cho phép app chạy ngay cả khi preload thất bại
-        setIsIconsReady(true);
-      }
-    };
-
-    preloadIcons();
-  }, []);
-
-  if (!isIconsReady) {
-    return <LoadingScreen />;
-  }
-
+function SimpleApp() {
   return <AppNavigator />;
 }
 
@@ -192,7 +160,7 @@ export default function App() {
     <ErrorBoundary>
       <SafeAreaProvider>
         <AppProvider>
-          <AppWithPreloader />
+          <SimpleApp />
         </AppProvider>
       </SafeAreaProvider>
     </ErrorBoundary>

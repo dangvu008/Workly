@@ -9,8 +9,8 @@ import {
   Divider,
   useTheme,
   Menu,
-  IconButton
 } from 'react-native-paper';
+import { WorklyIconButton, COMMON_ICONS } from '../components/WorklyIcon';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../contexts/AppContext';
 import { LANGUAGES } from '../constants';
@@ -20,6 +20,7 @@ import { CompositeNavigationProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { t } from '../i18n';
 import { WorklyBackground } from '../components/WorklyBackground';
+import { NotificationDebugPanel } from '../components/NotificationDebugPanel';
 
 
 type SettingsScreenNavigationProp = CompositeNavigationProp<
@@ -184,8 +185,8 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                   visible={languageMenuVisible}
                   onDismiss={() => setLanguageMenuVisible(false)}
                   anchor={
-                    <IconButton
-                      icon="chevron-down"
+                    <WorklyIconButton
+                      name={COMMON_ICONS.chevronDown}
                       onPress={() => setLanguageMenuVisible(true)}
                     />
                   }
@@ -227,8 +228,8 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                   visible={modeMenuVisible}
                   onDismiss={() => setModeMenuVisible(false)}
                   anchor={
-                    <IconButton
-                      icon="chevron-down"
+                    <WorklyIconButton
+                      name={COMMON_ICONS.chevronDown}
                       onPress={() => setModeMenuVisible(true)}
                     />
                   }
@@ -343,6 +344,11 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
           </Card.Content>
         </Card>
 
+        {/* Notification Debug Panel - Chỉ hiển thị trong development */}
+        {__DEV__ && (
+          <NotificationDebugPanel />
+        )}
+
         {/* Developer/Debug */}
         <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
           <Card.Content>
@@ -380,6 +386,8 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
               description={t(currentLanguage, 'settings.version')}
               left={(props) => <List.Icon {...props} icon="information" />}
             />
+
+
           </Card.Content>
         </Card>
 

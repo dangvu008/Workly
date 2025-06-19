@@ -151,6 +151,15 @@ export const WEEKLY_STATUS = {
       en: 'Review (manual)',
     },
   },
+  // ✅ Trạng thái ngày nghỉ thông thường (mặc định cho Chủ Nhật)
+  day_off: {
+    icon: 'calendar-remove',
+    color: '#9C27B0',
+    text: {
+      vi: 'Ngày nghỉ thông thường',
+      en: 'Regular day off',
+    },
+  },
   pending: {
     icon: 'help-circle',
     color: '#9E9E9E',
@@ -294,7 +303,7 @@ export const WEEKLY_STATUS = {
     icon: 'briefcase',
     color: '#9C27B0',
     text: {
-      vi: 'Chưa Ra',
+      vi: 'Chưa chấm công ra',
       en: 'Not Checked Out',
     },
   },
@@ -335,10 +344,16 @@ export const LANGUAGES = {
   en: 'English',
 } as const;
 
-// Days of week
+// Days of week (JavaScript standard: 0 = Sunday)
 export const DAYS_OF_WEEK = {
   vi: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'],
   en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+} as const;
+
+// Days of week for Weekly Grid (Monday first)
+export const WEEKLY_GRID_DAYS = {
+  vi: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'], // Thứ 2 -> Chủ Nhật
+  en: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], // Monday -> Sunday
 } as const;
 
 // Months

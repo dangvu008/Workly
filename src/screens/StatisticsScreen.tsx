@@ -11,7 +11,7 @@ import {
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WorklyBackground } from '../components/WorklyBackground';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { StatusIcon } from '../components/WorklyIcon';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subWeeks, subMonths } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { useApp } from '../contexts/AppContext';
@@ -337,10 +337,10 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
                     {item.otHoursScheduled.toFixed(1)}
                   </DataTable.Cell>
                   <DataTable.Cell style={styles.statusColumn}>
-                    <MaterialCommunityIcons
-                      name={getStatusIcon(item.status) as any}
-                      size={20}
+                    <StatusIcon
+                      icon={getStatusIcon(item.status) as any}
                       color={getStatusColor(item.status)}
+                      size={20}
                     />
                   </DataTable.Cell>
                 </DataTable.Row>
