@@ -53,6 +53,20 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
   // Check if there are attendance logs for today
   useEffect(() => {
     checkTodayLogs();
+  }, [state.currentButtonState, state.refreshTrigger]); // ✅ Refresh khi có thay đổi button state hoặc refresh trigger
+
+  // ✅ Reset trạng thái punch button khi button state thay đổi
+  useEffect(() => {
+    // Reset punch button khi:
+    // 1. Hoàn tất ngày làm việc (completed_day)
+    // 2. Reset về trạng thái ban đầu (go_work)
+    // 3. Không còn trong trạng thái check_in hoặc check_out
+    if (state.currentButtonState === 'completed_day' ||
+        state.currentButtonState === 'go_work' ||
+        (state.currentButtonState !== 'check_in' && state.currentButtonState !== 'check_out')) {
+      console.log('🔄 MultiFunctionButton: Resetting punch button state due to button state change:', state.currentButtonState);
+      setPunchButtonPressed(false);
+    }
   }, [state.currentButtonState]);
 
   const checkTodayLogs = async () => {
@@ -60,15 +74,16 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
       const today = format(new Date(), 'yyyy-MM-dd');
       const logs = await storageService.getAttendanceLogsForDate(today);
       setHasTodayLogs(logs.length > 0);
-
-      // ✅ Reset trạng thái punch button khi hoàn tất hoặc reset
-      if (state.currentButtonState === 'completed_day' || state.currentButtonState === 'go_work') {
-        setPunchButtonPressed(false);
-      }
     } catch (error) {
       console.error('Error checking today logs:', error);
       setHasTodayLogs(false);
     }
+  };
+
+  // ✅ Hàm tiện ích để force reset punch button state
+  const resetPunchButtonState = () => {
+    console.log('🔄 MultiFunctionButton: Force resetting punch button state');
+    setPunchButtonPressed(false);
   };
 
   // Kiểm tra xem có cần xác nhận không (bấm không đúng thời gian)
@@ -145,8 +160,53 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
               await checkTodayLogs();
               onPress?.();
             } catch (error) {
-              console.error('Error in confirmed button press:', error);
-              Alert.alert(t(currentLanguage, 'common.error'), t(currentLanguage, 'common.error') + ': Có lỗi xảy ra. Vui lòng thử lại.');
+              // ✅ Xử lý RapidPressDetectedException trong confirmation dialog
+              if ((error as any)?.name === 'RapidPressDetectedException') {
+                console.log('🚀 showConfirmationDialog: Detected RapidPressDetectedException in confirmation');
+                const rapidError = error as any;
+
+                const durationText = rapidError.actualDurationSeconds < 60
+                  ? `${Math.round(rapidError.actualDurationSeconds)} ${t(currentLanguage, 'time.seconds')}`
+                  : `${Math.round(rapidError.actualDurationSeconds / 60 * 10) / 10} ${t(currentLanguage, 'time.minutes')}`;
+
+                Alert.alert(
+                  t(currentLanguage, 'modals.rapidPressDetected'),
+                  t(currentLanguage, 'modals.rapidPressConfirmMessage').replace('{duration}', durationText),
+                  [
+                    {
+                      text: t(currentLanguage, 'common.cancel'),
+                      style: 'cancel'
+                    },
+                    {
+                      text: t(currentLanguage, 'common.confirm'),
+                      style: 'default',
+                      onPress: async () => {
+                        try {
+                          await actions.handleRapidPressConfirmed(
+                            rapidError.checkInTime,
+                            rapidError.checkOutTime
+                          );
+                          Alert.alert(
+                            t(currentLanguage, 'modals.rapidPressSuccess'),
+                            t(currentLanguage, 'modals.rapidPressSuccessMessage'),
+                            [{ text: t(currentLanguage, 'common.ok') }]
+                          );
+                          onPress?.();
+                        } catch (confirmError) {
+                          console.error('❌ Error confirming rapid press in confirmation dialog:', confirmError);
+                          Alert.alert(
+                            t(currentLanguage, 'common.error'),
+                            t(currentLanguage, 'common.error') + ': Không thể xác nhận. Vui lòng thử lại.'
+                          );
+                        }
+                      }
+                    }
+                  ]
+                );
+              } else {
+                console.error('Error in confirmed button press:', error);
+                Alert.alert(t(currentLanguage, 'common.error'), t(currentLanguage, 'common.error') + ': Có lỗi xảy ra. Vui lòng thử lại.');
+              }
             } finally {
               setIsPressed(false);
               setIsProcessing(false);
@@ -290,14 +350,22 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
 
               console.log('🔄 MultiFunctionButton: Refreshing all states after reset');
 
-              // Refresh tất cả state liên quan - tuần tự để đảm bảo
-              await checkTodayLogs();
-              await actions.refreshButtonState();
-              await actions.refreshWeeklyStatus();
-              await actions.refreshTimeDisplayInfo();
+              // ✅ Reset trạng thái punch button ngay lập tức
+              setPunchButtonPressed(false);
 
-              // Đợi thêm một chút để UI cập nhật
-              await new Promise(resolve => setTimeout(resolve, 100));
+              // ✅ Refresh tất cả state liên quan - song song để nhanh hơn
+              await Promise.all([
+                checkTodayLogs(),
+                actions.refreshButtonState(),
+                actions.refreshWeeklyStatus(),
+                actions.refreshTimeDisplayInfo()
+              ]);
+
+              // ✅ Trigger refresh để force update UI
+              actions.triggerRefresh();
+
+              // Đợi thêm một chút để UI cập nhật hoàn toàn
+              await new Promise(resolve => setTimeout(resolve, 200));
 
               console.log(`✅ MultiFunctionButton: Manual reset completed, current button state: ${state.currentButtonState}`);
               Alert.alert(t(currentLanguage, 'common.success'), t(currentLanguage, 'common.success') + ': Đã reset trạng thái chấm công hôm nay.');
@@ -375,6 +443,21 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
             onPress={handleReset}
           />
         )}
+
+        {/* ✅ Debug button để reset punch button state - chỉ hiển thị khi có punch button pressed và KHÔNG có reset button chính */}
+        {__DEV__ && punchButtonPressed && !showResetButton && (
+          <IconButton
+            icon="refresh"
+            size={16}
+            iconColor={theme.colors.error}
+            style={styles.debugResetButton}
+            onPress={() => {
+              console.log('🔧 Debug: Force resetting punch button state');
+              resetPunchButtonState();
+              Alert.alert('Debug', 'Đã reset trạng thái nút ký công');
+            }}
+          />
+        )}
       </View>
 
       {/* ✅ Nút ký công thiết kế mới với icon đẹp và logic ẩn sau khi ấn */}
@@ -406,6 +489,10 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
                     type: 'punch',
                     time: new Date().toISOString(),
                   });
+
+                  // ✅ Trigger refresh để cập nhật UI sau khi ký công
+                  actions.triggerRefresh();
+                  await checkTodayLogs(); // Refresh attendance history
 
                   Alert.alert(
                     t(currentLanguage, 'modals.punchSuccess'),
@@ -510,6 +597,14 @@ const styles = StyleSheet.create({
     top: -10,
     right: -10,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    elevation: 4,
+    borderRadius: BORDER_RADIUS.round,
+  },
+  debugResetButton: {
+    position: 'absolute',
+    top: -10,
+    right: -10,
+    backgroundColor: 'rgba(255, 0, 0, 0.1)',
     elevation: 4,
     borderRadius: BORDER_RADIUS.round,
   },

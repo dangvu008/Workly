@@ -303,7 +303,7 @@ export const WEEKLY_STATUS = {
     icon: 'briefcase',
     color: '#9C27B0',
     text: {
-      vi: 'Chưa Ra',
+      vi: 'Chưa chấm công ra',
       en: 'Not Checked Out',
     },
   },

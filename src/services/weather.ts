@@ -3,43 +3,531 @@ import { WeatherData, WeatherLocation } from '../types';
 import { API_ENDPOINTS, WEATHER_WARNINGS } from '../constants';
 import { storageService } from './storage';
 
-// Note: You'll need to get a free API key from OpenWeatherMap
-const WEATHER_API_KEY = 'YOUR_OPENWEATHERMAP_API_KEY';
+// ✅ Multiple API keys for rotation to avoid rate limiting
+const WEATHER_API_KEYS = [
+  'c3e99eae382719dd7e1d1a38004f1777',
+  '3f177ee42c290b6b0d1fd85ffa9e361ec4f4ace0ea0ef06f0217288066fe4229',
+  '740fc9de122d8676d2713e05577b3f87',
+  // Backup keys (có thể thêm thêm nếu cần)
+  'YOUR_BACKUP_API_KEY_1',
+  'YOUR_BACKUP_API_KEY_2',
+];
+
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+const API_KEY_ROTATION_STORAGE_KEY = 'weather_api_key_rotation';
+const API_KEY_FAILURE_STORAGE_KEY = 'weather_api_key_failures';
 
 class WeatherService {
-  private async fetchWeatherData(lat: number, lon: number): Promise<any> {
+  /**
+   * ✅ Get next available API key with rotation and failure tracking
+   */
+  private async getNextApiKey(): Promise<string> {
     try {
-      const response = await fetch(
-        `${API_ENDPOINTS.WEATHER}/weather?lat=${lat}&lon=${lon}&appid=${WEATHER_API_KEY}&units=metric&lang=vi`
-      );
-      
-      if (!response.ok) {
-        throw new Error(`Weather API error: ${response.status}`);
+      // Get current rotation state
+      const rotationData = await storageService.getItem(API_KEY_ROTATION_STORAGE_KEY);
+      const failureData = await storageService.getItem(API_KEY_FAILURE_STORAGE_KEY);
+
+      let currentIndex = rotationData ? parseInt(rotationData) : 0;
+      const failures = failureData ? JSON.parse(failureData) : {};
+
+      // Find next working API key
+      let attempts = 0;
+      while (attempts < WEATHER_API_KEYS.length) {
+        const apiKey = WEATHER_API_KEYS[currentIndex];
+        const failureCount = failures[apiKey] || 0;
+        const lastFailure = failures[`${apiKey}_lastFailure`] || 0;
+        const timeSinceLastFailure = Date.now() - lastFailure;
+
+        // Reset failure count after 1 hour
+        if (timeSinceLastFailure > 60 * 60 * 1000) {
+          failures[apiKey] = 0;
+        }
+
+        // Use this key if failure count < 3
+        if (failureCount < 3) {
+          // Save current index for next rotation
+          await storageService.setItem(API_KEY_ROTATION_STORAGE_KEY, currentIndex.toString());
+          return apiKey;
+        }
+
+        // Try next key
+        currentIndex = (currentIndex + 1) % WEATHER_API_KEYS.length;
+        attempts++;
       }
-      
-      return await response.json();
+
+      // If all keys failed, use first one anyway
+      console.warn('⚠️ All weather API keys have failures, using first key');
+      return WEATHER_API_KEYS[0];
     } catch (error) {
-      console.error('Error fetching weather data:', error);
-      throw error;
+      console.error('Error getting API key:', error);
+      return WEATHER_API_KEYS[0];
     }
   }
 
-  private async fetchForecastData(lat: number, lon: number): Promise<any> {
+  /**
+   * ✅ Mark API key as failed
+   */
+  private async markApiKeyFailed(apiKey: string): Promise<void> {
     try {
-      const response = await fetch(
-        `${API_ENDPOINTS.WEATHER}/forecast?lat=${lat}&lon=${lon}&appid=${WEATHER_API_KEY}&units=metric&lang=vi&cnt=8`
-      );
-      
-      if (!response.ok) {
-        throw new Error(`Forecast API error: ${response.status}`);
-      }
-      
-      return await response.json();
+      const failureData = await storageService.getItem(API_KEY_FAILURE_STORAGE_KEY);
+      const failures = failureData ? JSON.parse(failureData) : {};
+
+      failures[apiKey] = (failures[apiKey] || 0) + 1;
+      failures[`${apiKey}_lastFailure`] = Date.now();
+
+      await storageService.setItem(API_KEY_FAILURE_STORAGE_KEY, JSON.stringify(failures));
+      console.log(`🚫 Marked API key as failed: ${apiKey.substring(0, 8)}... (failures: ${failures[apiKey]})`);
     } catch (error) {
-      console.error('Error fetching forecast data:', error);
-      throw error;
+      console.error('Error marking API key as failed:', error);
     }
+  }
+
+  /**
+   * ✅ Rotate to next API key
+   */
+  private async rotateToNextApiKey(): Promise<void> {
+    try {
+      const rotationData = await storageService.getItem(API_KEY_ROTATION_STORAGE_KEY);
+      const currentIndex = rotationData ? parseInt(rotationData) : 0;
+      const nextIndex = (currentIndex + 1) % WEATHER_API_KEYS.length;
+
+      await storageService.setItem(API_KEY_ROTATION_STORAGE_KEY, nextIndex.toString());
+      console.log(`🔄 Rotated to next API key: index ${nextIndex}`);
+    } catch (error) {
+      console.error('Error rotating API key:', error);
+    }
+  }
+
+  private async fetchWeatherData(lat: number, lon: number): Promise<any> {
+    let lastError: Error | null = null;
+
+    // Try up to 3 different API keys
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const apiKey = await this.getNextApiKey();
+        console.log(`🌤️ Fetching weather with API key: ${apiKey.substring(0, 8)}... (attempt ${attempt + 1})`);
+
+        const response = await fetch(
+          `${API_ENDPOINTS.WEATHER}/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=vi`
+        );
+
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 403 || response.status === 429) {
+            // API key issue or rate limit - mark as failed and try next
+            await this.markApiKeyFailed(apiKey);
+            await this.rotateToNextApiKey();
+            throw new Error(`Weather API error: ${response.status} - ${response.statusText}`);
+          } else {
+            // Other error - don't mark key as failed
+            throw new Error(`Weather API error: ${response.status} - ${response.statusText}`);
+          }
+        }
+
+        // Success - rotate to next key for next request
+        await this.rotateToNextApiKey();
+        return await response.json();
+
+      } catch (error) {
+        lastError = error as Error;
+        console.error(`Error fetching weather data (attempt ${attempt + 1}):`, error);
+
+        // If it's a rate limit or auth error, try next key
+        if (error instanceof Error && (
+          error.message.includes('401') ||
+          error.message.includes('403') ||
+          error.message.includes('429')
+        )) {
+          continue;
+        } else {
+          // For other errors, don't retry
+          break;
+        }
+      }
+    }
+
+    throw lastError || new Error('Failed to fetch weather data after multiple attempts');
+  }
+
+  private async fetchForecastData(lat: number, lon: number): Promise<any> {
+    let lastError: Error | null = null;
+
+    // Try up to 3 different API keys
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const apiKey = await this.getNextApiKey();
+        console.log(`🌤️ Fetching forecast with API key: ${apiKey.substring(0, 8)}... (attempt ${attempt + 1})`);
+
+        const response = await fetch(
+          `${API_ENDPOINTS.WEATHER}/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=vi&cnt=8`
+        );
+
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 403 || response.status === 429) {
+            // API key issue or rate limit - mark as failed and try next
+            await this.markApiKeyFailed(apiKey);
+            await this.rotateToNextApiKey();
+            throw new Error(`Forecast API error: ${response.status} - ${response.statusText}`);
+          } else {
+            // Other error - don't mark key as failed
+            throw new Error(`Forecast API error: ${response.status} - ${response.statusText}`);
+          }
+        }
+
+        // Success - rotate to next key for next request
+        await this.rotateToNextApiKey();
+        return await response.json();
+
+      } catch (error) {
+        lastError = error as Error;
+        console.error(`Error fetching forecast data (attempt ${attempt + 1}):`, error);
+
+        // If it's a rate limit or auth error, try next key
+        if (error instanceof Error && (
+          error.message.includes('401') ||
+          error.message.includes('403') ||
+          error.message.includes('429')
+        )) {
+          continue;
+        } else {
+          // For other errors, don't retry
+          break;
+        }
+      }
+    }
+
+    throw lastError || new Error('Failed to fetch forecast data after multiple attempts');
+  }
+
+  /**
+   * ✅ Get API key rotation status for debugging
+   */
+  async getApiKeyStatus(): Promise<{
+    totalKeys: number;
+    currentIndex: number;
+    failures: Record<string, number>;
+    workingKeys: number;
+  }> {
+    try {
+      const rotationData = await storageService.getItem(API_KEY_ROTATION_STORAGE_KEY);
+      const failureData = await storageService.getItem(API_KEY_FAILURE_STORAGE_KEY);
+
+      const currentIndex = rotationData ? parseInt(rotationData) : 0;
+      const failures = failureData ? JSON.parse(failureData) : {};
+
+      // Count working keys (failure count < 3)
+      let workingKeys = 0;
+      const keyFailures: Record<string, number> = {};
+
+      WEATHER_API_KEYS.forEach((key, index) => {
+        const failureCount = failures[key] || 0;
+        const lastFailure = failures[`${key}_lastFailure`] || 0;
+        const timeSinceLastFailure = Date.now() - lastFailure;
+
+        // Reset failure count after 1 hour
+        const effectiveFailures = timeSinceLastFailure > 60 * 60 * 1000 ? 0 : failureCount;
+
+        keyFailures[`Key ${index + 1} (${key.substring(0, 8)}...)`] = effectiveFailures;
+
+        if (effectiveFailures < 3) {
+          workingKeys++;
+        }
+      });
+
+      return {
+        totalKeys: WEATHER_API_KEYS.length,
+        currentIndex,
+        failures: keyFailures,
+        workingKeys
+      };
+    } catch (error) {
+      console.error('Error getting API key status:', error);
+      return {
+        totalKeys: WEATHER_API_KEYS.length,
+        currentIndex: 0,
+        failures: {},
+        workingKeys: WEATHER_API_KEYS.length
+      };
+    }
+  }
+
+  /**
+   * ✅ Reset all API key failures (for debugging)
+   */
+  async resetApiKeyFailures(): Promise<void> {
+    try {
+      await storageService.removeItem(API_KEY_FAILURE_STORAGE_KEY);
+      await storageService.setItem(API_KEY_ROTATION_STORAGE_KEY, '0');
+      console.log('✅ Reset all API key failures');
+    } catch (error) {
+      console.error('Error resetting API key failures:', error);
+    }
+  }
+
+  /**
+   * ✅ Test all API keys
+   */
+  async testAllApiKeys(): Promise<Array<{
+    key: string;
+    index: number;
+    status: 'working' | 'failed';
+    error?: string;
+  }>> {
+    const results = [];
+
+    for (let i = 0; i < WEATHER_API_KEYS.length; i++) {
+      const apiKey = WEATHER_API_KEYS[i];
+
+      try {
+        console.log(`🧪 Testing API key ${i + 1}: ${apiKey.substring(0, 8)}...`);
+
+        // Test with a simple weather request (Ho Chi Minh City coordinates)
+        const response = await fetch(
+          `${API_ENDPOINTS.WEATHER}/weather?lat=10.8231&lon=106.6297&appid=${apiKey}&units=metric&lang=vi`
+        );
+
+        if (response.ok) {
+          results.push({
+            key: `${apiKey.substring(0, 8)}...`,
+            index: i,
+            status: 'working'
+          });
+          console.log(`✅ API key ${i + 1} is working`);
+        } else {
+          results.push({
+            key: `${apiKey.substring(0, 8)}...`,
+            index: i,
+            status: 'failed',
+            error: `HTTP ${response.status}: ${response.statusText}`
+          });
+          console.log(`❌ API key ${i + 1} failed: ${response.status}`);
+        }
+      } catch (error) {
+        results.push({
+          key: `${apiKey.substring(0, 8)}...`,
+          index: i,
+          status: 'failed',
+          error: (error as Error).message
+        });
+        console.log(`❌ API key ${i + 1} failed:`, error);
+      }
+
+      // Small delay between tests to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    return results;
+  }
+
+  /**
+   * ✅ Chức năng Cảnh báo Thời tiết Cực đoan
+   * Phân tích thời tiết cho cả 2 chặng di chuyển: Nhà -> Công ty và Công ty -> Nhà
+   */
+  async analyzeExtremeWeatherForShift(shift: any, date: Date): Promise<{
+    hasWarning: boolean;
+    warningMessage: string;
+    departureWarning?: string;
+    returnWarning?: string;
+  }> {
+    try {
+      const settings = await storageService.getUserSettings();
+
+      if (!settings.weatherWarningEnabled || !settings.weatherLocation) {
+        return { hasWarning: false, warningMessage: '' };
+      }
+
+      const weatherLocation = settings.weatherLocation;
+      const warnings: string[] = [];
+
+      // Parse shift times
+      const [depHour, depMinute] = shift.departureTime.split(':').map(Number);
+      const [endHour, endMinute] = shift.officeEndTime.split(':').map(Number);
+
+      const departureTime = new Date(date);
+      departureTime.setHours(depHour, depMinute, 0, 0);
+
+      const returnTime = new Date(date);
+      returnTime.setHours(endHour, endMinute, 0, 0);
+
+      // Handle night shift
+      if (shift.isNightShift && returnTime <= departureTime) {
+        returnTime.setDate(returnTime.getDate() + 1);
+      }
+
+      // 1. Phân tích chặng "Đi làm" (tại vị trí Nhà)
+      if (weatherLocation.home) {
+        const departureWarning = await this.analyzeWeatherForTimeAndLocation(
+          weatherLocation.home.lat,
+          weatherLocation.home.lon,
+          departureTime,
+          'departure',
+          'nhà'
+        );
+
+        if (departureWarning) {
+          warnings.push(departureWarning);
+        }
+      }
+
+      // 2. Phân tích chặng "Tan làm" (tại vị trí Công ty)
+      if (!weatherLocation.useSingleLocation && weatherLocation.work) {
+        const returnWarning = await this.analyzeWeatherForTimeAndLocation(
+          weatherLocation.work.lat,
+          weatherLocation.work.lon,
+          returnTime,
+          'return',
+          'công ty'
+        );
+
+        if (returnWarning) {
+          warnings.push(returnWarning);
+        }
+      } else if (weatherLocation.useSingleLocation && weatherLocation.home) {
+        // Nếu dùng single location, check return weather tại nhà
+        const returnWarning = await this.analyzeWeatherForTimeAndLocation(
+          weatherLocation.home.lat,
+          weatherLocation.home.lon,
+          returnTime,
+          'return',
+          'nhà'
+        );
+
+        if (returnWarning) {
+          warnings.push(returnWarning);
+        }
+      }
+
+      // 3. Tổng hợp cảnh báo
+      if (warnings.length > 0) {
+        const warningMessage = this.formatExtremeWeatherWarning(warnings);
+        return {
+          hasWarning: true,
+          warningMessage,
+          departureWarning: warnings.find(w => w.includes('đi làm')),
+          returnWarning: warnings.find(w => w.includes('tan làm'))
+        };
+      }
+
+      return { hasWarning: false, warningMessage: '' };
+
+    } catch (error) {
+      console.error('Error analyzing extreme weather:', error);
+      return { hasWarning: false, warningMessage: '' };
+    }
+  }
+
+  /**
+   * ✅ Phân tích thời tiết cho một thời điểm và vị trí cụ thể
+   */
+  private async analyzeWeatherForTimeAndLocation(
+    lat: number,
+    lon: number,
+    targetTime: Date,
+    type: 'departure' | 'return',
+    locationName: string
+  ): Promise<string | null> {
+    try {
+      // Lấy dự báo theo giờ
+      const forecastData = await this.fetchForecastData(lat, lon);
+
+      if (!forecastData?.list) {
+        return null;
+      }
+
+      // Tìm dự báo gần nhất với thời gian target
+      const targetTimestamp = Math.floor(targetTime.getTime() / 1000);
+      const closestForecast = forecastData.list.reduce((closest: any, current: any) => {
+        const currentDiff = Math.abs(current.dt - targetTimestamp);
+        const closestDiff = Math.abs(closest.dt - targetTimestamp);
+        return currentDiff < closestDiff ? current : closest;
+      });
+
+      if (!closestForecast) {
+        return null;
+      }
+
+      // Phân tích các điều kiện cực đoan
+      const warnings: string[] = [];
+      const timeStr = targetTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
+      // 1. Mưa to
+      const rainAmount = closestForecast.rain?.['3h'] || 0;
+      if (rainAmount > 2.5) { // Mưa to > 2.5mm/3h
+        const actionText = type === 'departure' ? 'nhớ mang áo mưa' : 'chuẩn bị áo mưa từ nhà';
+        warnings.push(`Mưa to tại ${locationName} lúc ${type === 'departure' ? 'đi làm' : 'tan làm'} (~${timeStr}), ${actionText}`);
+      } else if (rainAmount > 0.5) { // Mưa nhẹ
+        const actionText = type === 'departure' ? 'nên mang ô' : 'có thể cần ô';
+        warnings.push(`Có mưa tại ${locationName} lúc ${type === 'departure' ? 'đi làm' : 'tan làm'} (~${timeStr}), ${actionText}`);
+      }
+
+      // 2. Nhiệt độ cực đoan
+      const temp = closestForecast.main.temp;
+      if (temp <= 15) { // Quá lạnh
+        const actionText = type === 'departure' ? 'nhớ mặc ấm' : 'chuẩn bị áo khoác từ nhà';
+        warnings.push(`Trời rất lạnh tại ${locationName} lúc ${type === 'departure' ? 'đi làm' : 'tan làm'} (~${timeStr}): ${Math.round(temp)}°C, ${actionText}`);
+      } else if (temp >= 37) { // Quá nóng
+        const actionText = type === 'departure' ? 'nhớ mang nước và che nắng' : 'chuẩn bị nước uống từ nhà';
+        warnings.push(`Trời rất nóng tại ${locationName} lúc ${type === 'departure' ? 'đi làm' : 'tan làm'} (~${timeStr}): ${Math.round(temp)}°C, ${actionText}`);
+      }
+
+      // 3. Gió mạnh
+      const windSpeed = closestForecast.wind?.speed || 0;
+      if (windSpeed > 10) { // Gió mạnh > 10 m/s (36 km/h)
+        const actionText = type === 'departure' ? 'cẩn thận khi di chuyển' : 'lưu ý an toàn khi về';
+        warnings.push(`Gió mạnh tại ${locationName} lúc ${type === 'departure' ? 'đi làm' : 'tan làm'} (~${timeStr}): ${Math.round(windSpeed * 3.6)} km/h, ${actionText}`);
+      }
+
+      // 4. Tuyết (hiếm ở VN nhưng vẫn check)
+      const snowAmount = closestForecast.snow?.['3h'] || 0;
+      if (snowAmount > 0) {
+        const actionText = type === 'departure' ? 'cực kỳ cẩn thận' : 'tránh di chuyển nếu có thể';
+        warnings.push(`Có tuyết tại ${locationName} lúc ${type === 'departure' ? 'đi làm' : 'tan làm'} (~${timeStr}), ${actionText}`);
+      }
+
+      // 5. Độ ẩm cực cao (cảm giác ngột ngạt)
+      const humidity = closestForecast.main.humidity;
+      if (humidity > 90 && temp > 30) {
+        const actionText = type === 'departure' ? 'mang theo khăn và nước' : 'chuẩn bị khăn lạnh từ nhà';
+        warnings.push(`Thời tiết ngột ngạt tại ${locationName} lúc ${type === 'departure' ? 'đi làm' : 'tan làm'} (~${timeStr}): ${humidity}% độ ẩm, ${actionText}`);
+      }
+
+      return warnings.length > 0 ? warnings.join('. ') : null;
+
+    } catch (error) {
+      console.error('Error analyzing weather for time and location:', error);
+      return null;
+    }
+  }
+
+  /**
+   * ✅ Format cảnh báo thời tiết cực đoan thành message hoàn chỉnh
+   */
+  private formatExtremeWeatherWarning(warnings: string[]): string {
+    if (warnings.length === 0) {
+      return '';
+    }
+
+    if (warnings.length === 1) {
+      return `⚠️ Cảnh báo thời tiết: ${warnings[0]}`;
+    }
+
+    // Tách warnings thành departure và return
+    const departureWarnings = warnings.filter(w => w.includes('đi làm'));
+    const returnWarnings = warnings.filter(w => w.includes('tan làm'));
+
+    let message = '⚠️ Cảnh báo thời tiết: ';
+
+    if (departureWarnings.length > 0) {
+      message += departureWarnings.join('. ');
+    }
+
+    if (returnWarnings.length > 0) {
+      if (departureWarnings.length > 0) {
+        message += '. Lưu ý: ';
+      }
+      message += returnWarnings.join('. ');
+    }
+
+    return message;
   }
 
   private async getCurrentLocation(): Promise<{ lat: number; lon: number }> {

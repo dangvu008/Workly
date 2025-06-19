@@ -43,6 +43,12 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
     return state.weeklyStatus[dateString] || null;
   };
 
+  // ✅ Force refresh khi có refreshTrigger thay đổi
+  React.useEffect(() => {
+    // Trigger re-render khi refreshTrigger thay đổi
+    console.log('📊 WeeklyStatusGrid: Refresh triggered');
+  }, [state.refreshTrigger]);
+
   const getStatusIcon = (date: Date): string => {
     const status = getStatusForDate(date);
 

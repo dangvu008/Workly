@@ -23,7 +23,7 @@ import { TabParamList, RootStackParamList } from '../types';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { notificationService } from '../services/notifications';
+import { notificationScheduler } from '../services/notificationScheduler';
 import { debounce } from '../utils/debounce';
 
 type HomeScreenNavigationProp = CompositeNavigationProp<
@@ -289,8 +289,9 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
           onPress: async () => {
             try {
               await actions.updateNote(note.id, { isHiddenFromHome: true });
-              // Cancel any scheduled reminders for this note
-              await notificationService.cancelNoteReminder(note.id);
+              // Cancel any scheduled reminders for this note (note reminders chưa implement trong notificationScheduler)
+              // TODO: Implement note reminders trong notificationScheduler nếu cần
+              // await notificationScheduler.cancelNoteReminder(note.id);
             } catch (error) {
               Alert.alert(t(currentLanguage, 'common.error'), `${t(currentLanguage, 'common.error')}: Không thể ẩn ${t(currentLanguage, 'notes.title').toLowerCase()}.`);
             }
@@ -336,12 +337,13 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
         snoozeUntil: snoozeUntil.toISOString()
       });
 
-      // Reschedule reminder for snooze time
-      await notificationService.cancelNoteReminder(note.id);
-      await notificationService.scheduleNoteReminder({
-        ...note,
-        reminderDateTime: snoozeUntil.toISOString()
-      });
+      // Reschedule reminder for snooze time (note reminders chưa implement trong notificationScheduler)
+      // TODO: Implement note reminders trong notificationScheduler nếu cần
+      // await notificationScheduler.cancelNoteReminder(note.id);
+      // await notificationScheduler.scheduleNoteReminder({
+      //   ...note,
+      //   reminderDateTime: snoozeUntil.toISOString()
+      // });
     } catch (error) {
       Alert.alert(t(currentLanguage, 'common.error'), `${t(currentLanguage, 'common.error')}: Không thể ${t(currentLanguage, 'actions.snooze').toLowerCase()} ${t(currentLanguage, 'notes.title').toLowerCase()}.`);
     }
@@ -449,6 +451,8 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
             }} />
           </Card.Content>
         </AnimatedCard>
+
+
 
 
 
@@ -571,6 +575,8 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
           </Card.Content>
         </AnimatedCard>
 
+
+
         </ScrollView>
       </SafeAreaView>
     </WorklyBackground>
@@ -660,4 +666,6 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
     zIndex: 1, // Ensure it's above other elements
   },
+
+
 });

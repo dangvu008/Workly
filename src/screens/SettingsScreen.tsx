@@ -20,6 +20,7 @@ import { CompositeNavigationProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { t } from '../i18n';
 import { WorklyBackground } from '../components/WorklyBackground';
+import { NotificationDebugPanel } from '../components/NotificationDebugPanel';
 
 
 type SettingsScreenNavigationProp = CompositeNavigationProp<
@@ -342,6 +343,11 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
             />
           </Card.Content>
         </Card>
+
+        {/* Notification Debug Panel - Chỉ hiển thị trong development */}
+        {__DEV__ && (
+          <NotificationDebugPanel />
+        )}
 
         {/* Developer/Debug */}
         <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>

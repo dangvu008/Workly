@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text, Card, IconButton, useTheme, Button } from 'react-native-paper';
-import { notificationService } from '../services/notifications';
+import { notificationScheduler } from '../services/notificationScheduler';
 import { SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../constants/themes';
 
 interface NotificationStatusBannerProps {
@@ -36,8 +36,31 @@ export function NotificationStatusBanner({ onPress, showDetails = false }: Notif
   const loadNotificationStatus = async () => {
     try {
       setIsLoading(true);
-      const status = await notificationService.getDetailedStatus();
-      setDetailedStatus(status);
+
+      // Get status from notificationScheduler
+      const status = notificationScheduler.getNotificationStatus();
+      const scheduledNotifications = await notificationScheduler.getAllScheduledNotifications();
+
+      // Create detailed status compatible with old interface
+      const detailedStatus = {
+        status: status || {
+          isSupported: false,
+          isExpoGo: false,
+          hasPermission: false,
+          platform: 'unknown',
+          message: 'Chưa khởi tạo',
+          canSchedule: false
+        },
+        scheduledCount: scheduledNotifications.length,
+        environment: status?.isExpoGo ? 'Expo Go' : 'Development/Production Build',
+        recommendations: status?.isExpoGo
+          ? ['Sử dụng development build để có đầy đủ tính năng notifications']
+          : !status?.hasPermission
+            ? ['Cấp quyền notifications trong Settings của thiết bị']
+            : []
+      };
+
+      setDetailedStatus(detailedStatus);
     } catch (error) {
       console.error('Error loading notification status:', error);
     } finally {
@@ -72,7 +95,7 @@ export function NotificationStatusBanner({ onPress, showDetails = false }: Notif
 
   const handleTestNotification = async () => {
     try {
-      await notificationService.testNotification();
+      await notificationScheduler.testNotification();
     } catch (error) {
       console.error('Test notification failed:', error);
     }

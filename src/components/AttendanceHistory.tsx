@@ -24,17 +24,26 @@ export function AttendanceHistory({ visible = true }: AttendanceHistoryProps) {
 
   useEffect(() => {
     loadTodayLogs();
-  }, [state.currentButtonState]); // Refresh when button state changes
+  }, [state.currentButtonState, state.todayStatus, state.weeklyStatus, state.refreshTrigger]); // ✅ Refresh khi có bất kỳ thay đổi nào
 
   const loadTodayLogs = async () => {
     try {
       const today = format(new Date(), 'yyyy-MM-dd');
       const logs = await storageService.getAttendanceLogsForDate(today);
+      console.log(`📊 AttendanceHistory: Loaded ${logs.length} logs for ${today}`);
       setTodayLogs(logs);
     } catch (error) {
       console.error('Error loading today logs:', error);
+      setTodayLogs([]); // ✅ Reset về empty array khi có lỗi
     }
   };
+
+  // ✅ Force refresh logs khi component mount hoặc visible thay đổi
+  useEffect(() => {
+    if (visible) {
+      loadTodayLogs();
+    }
+  }, [visible]);
 
   const getActionText = (type: AttendanceLog['type']): string => {
     const actionMap = {
