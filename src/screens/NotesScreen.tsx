@@ -44,6 +44,16 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
   // Lấy ngôn ngữ hiện tại để sử dụng cho i18n
   const currentLanguage = state.settings?.language || 'vi';
 
+  // ✅ Auto sync notes when screen is focused to ensure shift references are valid
+  React.useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      console.log('🔄 NotesScreen: Screen focused, syncing notes...');
+      actions.syncNotes();
+    });
+
+    return unsubscribe;
+  }, [navigation, actions]);
+
   const handleDeleteNote = (note: Note) => {
     Alert.alert(
       t(currentLanguage, 'common.confirm') + ' ' + t(currentLanguage, 'common.delete').toLowerCase(),
@@ -152,6 +162,10 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
                 <View style={styles.noteTitleRow}>
                   {note.isPriority && (
                     <Text style={styles.priorityIcon}>⭐</Text>
+                  )}
+                  {/* ✅ Visual indicator cho tùy chọn thông báo */}
+                  {note.enableNotifications === false && (
+                    <Text style={styles.notificationIcon}>🔕</Text>
                   )}
                   <Text
                     style={[
@@ -479,6 +493,11 @@ const styles = StyleSheet.create({
   priorityIcon: {
     fontSize: 16,
     marginRight: 8,
+  },
+  notificationIcon: {
+    fontSize: 14,
+    marginRight: 6,
+    opacity: 0.7,
   },
   noteTitle: {
     fontSize: 16,

@@ -54,6 +54,7 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
     reminderType: 'specific' as 'specific' | 'shift', // "Đặt lịch cụ thể" | "Nhắc theo ca"
     reminderDateTime: new Date(),
     associatedShiftIds: [] as string[],
+    enableNotifications: true, // ✅ Mặc định cho phép thông báo
   });
 
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -88,6 +89,7 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
         reminderType: hasSpecificTime ? 'specific' : 'shift',
         reminderDateTime: existingNote.reminderDateTime ? new Date(existingNote.reminderDateTime) : new Date(),
         associatedShiftIds: existingNote.associatedShiftIds || [],
+        enableNotifications: existingNote.enableNotifications !== false, // ✅ Mặc định true nếu undefined
       });
     }
   }, [existingNote]);
@@ -194,6 +196,7 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
           : undefined,
         createdAt: existingNote?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        enableNotifications: formData.enableNotifications, // ✅ Lưu tùy chọn thông báo
       };
 
       if (isEditing) {
@@ -401,6 +404,24 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
 
             {formData.hasReminder && (
               <>
+                {/* ✅ Notification Toggle */}
+                <View style={[styles.switchRow, { marginTop: 16 }]}>
+                  <View style={styles.switchLabelContainer}>
+                    <Text style={[styles.switchLabel, { color: theme.colors.onSurface }]}>
+                      🔔 Hiển thị thông báo
+                    </Text>
+                    <Text style={[styles.switchDescription, { color: theme.colors.onSurfaceVariant }]}>
+                      {formData.enableNotifications
+                        ? 'Sẽ hiển thị thông báo/nhắc nhở khi đến thời gian'
+                        : 'Chỉ hiển thị trên màn hình chính, không có thông báo'}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={formData.enableNotifications}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, enableNotifications: value }))}
+                  />
+                </View>
+
                 {/* Reminder Type Selection */}
                 <Text style={[styles.subSectionTitle, { color: theme.colors.onSurface, marginTop: 16 }]}>
                   Chọn kiểu nhắc *
@@ -691,6 +712,15 @@ const styles = StyleSheet.create({
   },
   switchLabel: {
     fontSize: 16,
+  },
+  switchLabelContainer: {
+    flex: 1,
+    marginRight: 12,
+  },
+  switchDescription: {
+    fontSize: 12,
+    marginTop: 2,
+    lineHeight: 16,
   },
   timePickerButton: {
     marginBottom: 8,

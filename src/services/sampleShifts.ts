@@ -1,27 +1,29 @@
 /**
  * ✅ Sample Shifts Service - Quản lý dữ liệu mẫu ca làm việc với đa ngôn ngữ
- * Cung cấp dữ liệu mẫu cố định kèm theo ứng dụng từ khi cài đặt
+ * Cung cấp dữ liệu mẫu ban đầu kèm theo ứng dụng (người dùng có thể xóa/chỉnh sửa)
  */
 
 import { Shift } from '../types';
 import { t } from '../i18n';
 
 /**
- * ✅ Tạo dữ liệu mẫu shiftList với đa ngôn ngữ
+ * ✅ Tạo dữ liệu mẫu ca làm việc với đa ngôn ngữ
  * @param language - Ngôn ngữ hiện tại ('vi' hoặc 'en')
  * @returns Array of sample shifts with localized names
  */
 export const createSampleShifts = (language: string = 'vi'): Shift[] => {
   const currentDate = new Date().toISOString();
-  
+
   return [
+    // Ca 1 (8 tiếng) - 06:00-14:00
     {
-      id: 'shift_uuid_001',
-      name: t(language, 'shifts.defaultShifts.morning'),
+      id: 'shift_uuid_1_8h',
+      name: t(language, 'shifts.defaultShifts.shift1_8h'),
       startTime: '06:00',
       officeEndTime: '14:00',
       endTime: '14:30',
       departureTime: '05:15', // Trước startTime 45 phút
+      daysApplied: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
       workDays: [1, 2, 3, 4, 5, 6], // Mon-Sat
       remindBeforeStart: 15,
       remindAfterEnd: 10,
@@ -31,13 +33,15 @@ export const createSampleShifts = (language: string = 'vi'): Shift[] => {
       createdAt: currentDate,
       updatedAt: currentDate
     },
+    // Ca 2 (8 tiếng) - 14:00-22:00
     {
-      id: 'shift_uuid_002',
-      name: t(language, 'shifts.defaultShifts.afternoon'),
+      id: 'shift_uuid_2_8h',
+      name: t(language, 'shifts.defaultShifts.shift2_8h'),
       startTime: '14:00',
       officeEndTime: '22:00',
       endTime: '22:30',
       departureTime: '13:15', // Trước startTime 45 phút
+      daysApplied: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
       workDays: [1, 2, 3, 4, 5, 6], // Mon-Sat
       remindBeforeStart: 15,
       remindAfterEnd: 10,
@@ -47,14 +51,16 @@ export const createSampleShifts = (language: string = 'vi'): Shift[] => {
       createdAt: currentDate,
       updatedAt: currentDate
     },
+    // Ca 3 (8 tiếng) - 22:00-06:00
     {
-      id: 'shift_uuid_003',
-      name: t(language, 'shifts.defaultShifts.night'),
+      id: 'shift_uuid_3_8h',
+      name: t(language, 'shifts.defaultShifts.shift3_8h'),
       startTime: '22:00',
       officeEndTime: '06:00', // Sáng hôm sau
       endTime: '06:30',       // Sáng hôm sau
       departureTime: '21:15', // Trước startTime 45 phút
-      workDays: [1, 2, 3, 4, 5, 6], // Mon-Sat (làm cả T7 đêm)
+      daysApplied: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      workDays: [1, 2, 3, 4, 5, 6], // Mon-Sat
       remindBeforeStart: 20,
       remindAfterEnd: 15,
       showPunch: true,
@@ -63,6 +69,61 @@ export const createSampleShifts = (language: string = 'vi'): Shift[] => {
       createdAt: currentDate,
       updatedAt: currentDate
     },
+    // Ca Ngày (12 tiếng) - 06:00-18:00
+    {
+      id: 'shift_uuid_day_12h',
+      name: t(language, 'shifts.defaultShifts.dayShift_12h'),
+      startTime: '06:00',
+      officeEndTime: '18:00',
+      endTime: '18:30',
+      departureTime: '05:00', // Trước startTime 1 tiếng
+      daysApplied: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      workDays: [1, 2, 3, 4, 5, 6], // Mon-Sat
+      remindBeforeStart: 30,
+      remindAfterEnd: 15,
+      showPunch: true,
+      breakMinutes: 120, // 2 tiếng nghỉ cho ca 12h
+      isNightShift: false,
+      createdAt: currentDate,
+      updatedAt: currentDate
+    },
+    // Ca Đêm (12 tiếng) - 18:00-06:00
+    {
+      id: 'shift_uuid_night_12h',
+      name: t(language, 'shifts.defaultShifts.nightShift_12h'),
+      startTime: '18:00',
+      officeEndTime: '06:00', // Sáng hôm sau
+      endTime: '06:30',       // Sáng hôm sau
+      departureTime: '17:00', // Trước startTime 1 tiếng
+      daysApplied: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      workDays: [1, 2, 3, 4, 5, 6], // Mon-Sat
+      remindBeforeStart: 30,
+      remindAfterEnd: 20,
+      showPunch: true,
+      breakMinutes: 120, // 2 tiếng nghỉ cho ca 12h
+      isNightShift: true, // ✅ Ca đêm
+      createdAt: currentDate,
+      updatedAt: currentDate
+    },
+    // Ca Kíp (xoay ca linh hoạt)
+    {
+      id: 'shift_uuid_rotation',
+      name: t(language, 'shifts.defaultShifts.rotationShift'),
+      startTime: '08:00',
+      officeEndTime: '16:00',
+      endTime: '16:30',
+      departureTime: '07:15', // Trước startTime 45 phút
+      daysApplied: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      workDays: [1, 2, 3, 4, 5, 6], // Mon-Sat
+      remindBeforeStart: 15,
+      remindAfterEnd: 10,
+      showPunch: false,
+      breakMinutes: 60,
+      isNightShift: false,
+      createdAt: currentDate,
+      updatedAt: currentDate
+    },
+    // Ca Hành Chính
     {
       id: 'shift_uuid_hc',
       name: t(language, 'shifts.defaultShifts.administrative'),
@@ -70,6 +131,7 @@ export const createSampleShifts = (language: string = 'vi'): Shift[] => {
       officeEndTime: '17:00',
       endTime: '17:30',
       departureTime: '07:00', // Trước startTime 1 tiếng
+      daysApplied: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
       workDays: [1, 2, 3, 4, 5, 6], // Mon-Sat
       remindBeforeStart: 15,
       remindAfterEnd: 15,
@@ -78,47 +140,15 @@ export const createSampleShifts = (language: string = 'vi'): Shift[] => {
       isNightShift: false,
       createdAt: currentDate,
       updatedAt: currentDate
-    },
-    {
-      id: 'shift_uuid_ngay_linh_hoat',
-      name: t(language, 'shifts.defaultShifts.flexible'),
-      startTime: '09:00',
-      officeEndTime: '18:00',
-      endTime: '19:00',
-      departureTime: '08:15', // Trước startTime 45 phút
-      workDays: [2, 3, 4, 6], // Tue, Wed, Thu, Sat
-      remindBeforeStart: 10,
-      remindAfterEnd: 5,
-      showPunch: false,
-      breakMinutes: 60,
-      isNightShift: false,
-      createdAt: currentDate,
-      updatedAt: currentDate
-    },
-    {
-      id: 'shift_uuid_dem_cuoi_tuan',
-      name: t(language, 'shifts.defaultShifts.weekendNight'),
-      startTime: '20:00',
-      officeEndTime: '04:00', // Sáng hôm sau
-      endTime: '05:00',       // Sáng hôm sau
-      departureTime: '19:00', // Trước startTime 1 tiếng
-      workDays: [6], // Chỉ áp dụng cho Thứ 7 (sẽ kéo dài qua Chủ Nhật)
-      remindBeforeStart: 15,
-      remindAfterEnd: 15,
-      showPunch: true,
-      breakMinutes: 60,
-      isNightShift: true, // ✅ Ca đêm
-      createdAt: currentDate,
-      updatedAt: currentDate
     }
   ];
 };
 
 /**
- * ✅ Cập nhật tên ca theo ngôn ngữ hiện tại
+ * ✅ Cập nhật tên ca mẫu theo ngôn ngữ hiện tại
  * @param shifts - Danh sách ca hiện tại
  * @param language - Ngôn ngữ mới
- * @returns Updated shifts with localized names
+ * @returns Updated shifts with localized names for sample shifts only
  */
 export const updateShiftNamesForLanguage = (shifts: Shift[], language: string): Shift[] => {
   const sampleShifts = createSampleShifts(language);
@@ -126,17 +156,17 @@ export const updateShiftNamesForLanguage = (shifts: Shift[], language: string): 
   return shifts.map(shift => {
     // Tìm ca mẫu tương ứng dựa trên ID
     const sampleShift = sampleShifts.find(sample => sample.id === shift.id);
-    
+
     if (sampleShift) {
-      // Cập nhật tên ca theo ngôn ngữ mới, giữ nguyên các thông tin khác
+      // Cập nhật tên ca mẫu theo ngôn ngữ mới, giữ nguyên các thông tin khác
       return {
         ...shift,
         name: sampleShift.name,
         updatedAt: new Date().toISOString()
       };
     }
-    
-    // Nếu không phải ca mẫu, giữ nguyên
+
+    // Nếu không phải ca mẫu, giữ nguyên (ca tùy chỉnh của user)
     return shift;
   });
 };
@@ -144,18 +174,22 @@ export const updateShiftNamesForLanguage = (shifts: Shift[], language: string): 
 /**
  * ✅ Kiểm tra xem có phải ca mẫu không
  * @param shiftId - ID của ca
- * @returns true nếu là ca mẫu
+ * @returns true nếu là ca mẫu (có thể xóa được)
  */
 export const isSampleShift = (shiftId: string): boolean => {
   const sampleShiftIds = [
-    'shift_uuid_001',
-    'shift_uuid_002', 
-    'shift_uuid_003',
-    'shift_uuid_hc',
-    'shift_uuid_ngay_linh_hoat',
-    'shift_uuid_dem_cuoi_tuan'
+    // Ca 8 tiếng
+    'shift_uuid_1_8h',
+    'shift_uuid_2_8h',
+    'shift_uuid_3_8h',
+    // Ca 12 tiếng
+    'shift_uuid_day_12h',
+    'shift_uuid_night_12h',
+    // Ca kíp và hành chính
+    'shift_uuid_rotation',
+    'shift_uuid_hc'
   ];
-  
+
   return sampleShiftIds.includes(shiftId);
 };
 
@@ -213,7 +247,7 @@ export const formatWorkDays = (workDays: number[], language: string): string => 
 };
 
 /**
- * ✅ Service chính để quản lý sample shifts
+ * ✅ Service chính để quản lý ca làm việc mẫu
  */
 export const sampleShiftsService = {
   createSampleShifts,

@@ -64,10 +64,21 @@ interface NotificationStatus {
   canSchedule: boolean;
 }
 
+// ✅ Interface cho scheduled notification object
+interface ScheduledNotification {
+  identifier: string;
+  content?: any;
+  trigger?: any;
+}
+
 class NotificationService {
   private isInitialized = false;
   private isAvailable = false;
   private status: NotificationStatus | null = null;
+  private lastFallbackAlertTime: number = 0;
+  private fallbackAlertCooldown: number = 30000; // 30 giây cooldown
+  private userInitiatedFlag: boolean = false;
+  private currentUserActionId: string | null = null; // Track current user action to prevent duplicates
 
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
@@ -288,13 +299,71 @@ class NotificationService {
     }
   }
 
-  // Hiển thị thông báo fallback khi notifications không khả dụng
-  private showFallbackAlert(title: string, message: string): void {
+  // Hiển thị thông báo fallback khi notifications không khả dụng (với debounce và action tracking)
+  private showFallbackAlert(title: string, message: string, actionType: string = 'general'): void {
+    const now = Date.now();
+
+    // ✅ Kiểm tra cooldown để tránh hiển thị lặp lại
+    if (now - this.lastFallbackAlertTime < this.fallbackAlertCooldown) {
+      console.log(`⏭️ NotificationService: Fallback alert skipped due to cooldown (${title})`);
+      return;
+    }
+
+    // ✅ Kiểm tra xem có phải cùng một user action không (để tránh duplicate trong cùng action)
+    const currentActionId = this.currentUserActionId;
+    if (currentActionId && actionType === 'shift_reminder') {
+      // Chỉ hiển thị một lần cho mỗi user action
+      const actionKey = `${currentActionId}_${actionType}`;
+      if (this.hasShownAlertForAction(actionKey)) {
+        console.log(`⏭️ NotificationService: Fallback alert skipped - already shown for action ${actionKey}`);
+        return;
+      }
+      this.markAlertShownForAction(actionKey);
+    }
+
+    this.lastFallbackAlertTime = now;
+
     Alert.alert(
       `📱 ${title}`,
       `${message}\n\n💡 Để sử dụng đầy đủ tính năng nhắc nhở, hãy tạo development build hoặc build production.`,
       [{ text: 'Đã hiểu', style: 'default' }]
     );
+
+    console.log(`📱 NotificationService: Showed fallback alert: ${title} (action: ${actionType})`);
+  }
+
+  // Track alerts shown for specific actions
+  private shownAlertsForActions: Set<string> = new Set();
+
+  private hasShownAlertForAction(actionKey: string): boolean {
+    return this.shownAlertsForActions.has(actionKey);
+  }
+
+  private markAlertShownForAction(actionKey: string): void {
+    this.shownAlertsForActions.add(actionKey);
+    // Clean up old action keys after 10 seconds
+    setTimeout(() => {
+      this.shownAlertsForActions.delete(actionKey);
+    }, 10000);
+  }
+
+  // ✅ Kiểm tra xem action có phải do người dùng khởi tạo không
+  private isUserInitiatedAction(): boolean {
+    return this.userInitiatedFlag;
+  }
+
+  // ✅ Đánh dấu action là do người dùng khởi tạo với unique action ID
+  public markAsUserInitiated(actionId?: string): void {
+    this.userInitiatedFlag = true;
+    this.currentUserActionId = actionId || `action_${Date.now()}`;
+
+    // Tự động reset flag và action ID sau 10 giây (tăng từ 5 giây để đủ thời gian cho tất cả operations)
+    setTimeout(() => {
+      this.userInitiatedFlag = false;
+      this.currentUserActionId = null;
+    }, 10000);
+
+    console.log(`🏷️ NotificationService: Marked as user initiated with action ID: ${this.currentUserActionId}`);
   }
 
   async scheduleShiftReminders(shift: Shift): Promise<void> {
@@ -303,154 +372,121 @@ class NotificationService {
 
       if (!this.canScheduleNotifications()) {
         console.log('📱 Workly: Notifications không khả dụng, bỏ qua lập lịch nhắc nhở ca làm việc');
-        // Hiển thị thông báo fallback cho người dùng
-        if (this.status?.isExpoGo) {
-          this.showFallbackAlert(
-            'Nhắc nhở ca làm việc',
-            'Tính năng nhắc nhở ca làm việc sẽ được kích hoạt khi bạn sử dụng development build.'
-          );
-        }
+
+        // ✅ KHÔNG hiển thị fallback alert khi lập lịch
+        // Fallback alert sẽ được hiển thị bởi AlarmService khi thực sự đến thời gian nhắc nhở
+        console.log('📱 Workly: Sử dụng AlarmService thay thế cho notifications trong Expo Go');
         return;
       }
 
-      // ✅ BƯỚC 1: Hủy tất cả thông báo cũ trước khi lên lịch mới
-      await this.cancelAllShiftReminders();
+      // ✅ SỬ DỤNG LOGIC JUST-IN-TIME: Chỉ lên lịch cho reminder tiếp theo
+      console.log('📱 NotificationService: Using just-in-time scheduling logic');
 
-      const settings = await storageService.getUserSettings();
-      if (!settings.alarmSoundEnabled && !settings.alarmVibrationEnabled) {
-        console.log('🔕 NotificationService: Cả âm thanh và rung đều bị tắt, bỏ qua lập lịch');
-        return;
-      }
+      // Logic cũ (lên lịch 7 ngày) đã được thay thế bằng ReminderSyncService
+      // NotificationService giờ chỉ chịu trách nhiệm lên lịch từng notification cụ thể
+      // khi được gọi từ ReminderSyncService
 
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-      console.log(`📅 NotificationService: Lên lịch thông báo cho ca ${shift.name} - 7 ngày tới`);
-
-      // ✅ BƯỚC 2: Lên lịch thông báo thông minh cho 7 ngày tới
-      for (let i = 0; i < 7; i++) {
-        const targetDate = new Date(today);
-        targetDate.setDate(today.getDate() + i);
-        const dayOfWeek = targetDate.getDay();
-        const dateString = this.formatDateString(targetDate);
-
-        // Kiểm tra ca có áp dụng cho ngày này không
-        if (!shift.workDays.includes(dayOfWeek)) {
-          continue;
-        }
-
-        // ✅ Lấy attendance logs cho ngày cụ thể này
-        const dayLogs = await storageService.getAttendanceLogsForDate(dateString);
-        const hasGoWork = dayLogs.some(log => log.type === 'go_work');
-        const hasCheckIn = dayLogs.some(log => log.type === 'check_in');
-        const hasCheckOut = dayLogs.some(log => log.type === 'check_out');
-
-        // ✅ DEPARTURE REMINDER: Chỉ lên lịch nếu chưa có go_work
-        if (!hasGoWork) {
-          const departureTime = this.parseTime(shift.departureTime);
-          const departureDateTime = new Date(targetDate);
-          departureDateTime.setHours(departureTime.hours, departureTime.minutes - 30, 0, 0);
-
-          // Xử lý ca đêm (departure time có thể ở ngày trước)
-          if (shift.isNightShift && departureTime.hours >= 20) {
-            departureDateTime.setDate(departureDateTime.getDate() - 1);
-          }
-
-          if (departureDateTime > now) {
-            await Notifications.scheduleNotificationAsync({
-              identifier: `departure_${shift.id}_${dateString}`,
-              content: {
-                title: '🚶‍♂️ Chuẩn bị đi làm',
-                body: `Còn 30 phút nữa là giờ khởi hành (${shift.departureTime}) cho ca ${shift.name}`,
-                categoryIdentifier: NOTIFICATION_CATEGORIES.SHIFT_REMINDER,
-                data: {
-                  type: 'departure',
-                  shiftId: shift.id,
-                  shiftName: shift.name,
-                  date: dateString,
-                },
-              },
-              trigger: {
-                date: departureDateTime,
-              },
-            });
-            console.log(`📅 Lên lịch departure reminder: ${dateString} ${departureDateTime.toLocaleTimeString()}`);
-          }
-        }
-
-        // ✅ CHECK-IN REMINDER: Chỉ lên lịch nếu chưa có check_in
-        if (!hasCheckIn) {
-          const startTime = this.parseTime(shift.startTime);
-          const startDateTime = new Date(targetDate);
-          startDateTime.setHours(startTime.hours, startTime.minutes, 0, 0);
-
-          // Xử lý ca đêm
-          if (shift.isNightShift && startTime.hours < 12) {
-            startDateTime.setDate(startDateTime.getDate() + 1);
-          }
-
-          if (startDateTime > now) {
-            await Notifications.scheduleNotificationAsync({
-              identifier: `checkin_${shift.id}_${dateString}`,
-              content: {
-                title: '📥 Giờ chấm công vào',
-                body: `Đã đến giờ chấm công vào cho ca ${shift.name}`,
-                categoryIdentifier: NOTIFICATION_CATEGORIES.SHIFT_REMINDER,
-                data: {
-                  type: 'checkin',
-                  shiftId: shift.id,
-                  shiftName: shift.name,
-                  date: dateString,
-                },
-              },
-              trigger: {
-                date: startDateTime,
-              },
-            });
-            console.log(`📅 Lên lịch check-in reminder: ${dateString} ${startDateTime.toLocaleTimeString()}`);
-          }
-        }
-
-        // ✅ CHECK-OUT REMINDER: Chỉ lên lịch nếu chưa có check_out
-        if (!hasCheckOut) {
-          const endTime = this.parseTime(shift.officeEndTime);
-          const endDateTime = new Date(targetDate);
-          endDateTime.setHours(endTime.hours, endTime.minutes, 0, 0);
-
-          // Xử lý ca đêm
-          if (shift.isNightShift && endTime.hours < 12) {
-            endDateTime.setDate(endDateTime.getDate() + 1);
-          }
-
-          if (endDateTime > now) {
-            await Notifications.scheduleNotificationAsync({
-              identifier: `checkout_${shift.id}_${dateString}`,
-              content: {
-                title: '📤 Giờ chấm công ra',
-                body: `Đã đến giờ chấm công ra cho ca ${shift.name}`,
-                categoryIdentifier: NOTIFICATION_CATEGORIES.SHIFT_REMINDER,
-                data: {
-                  type: 'checkout',
-                  shiftId: shift.id,
-                  shiftName: shift.name,
-                  date: dateString,
-                },
-              },
-              trigger: {
-                date: endDateTime,
-              },
-            });
-            console.log(`📅 Lên lịch check-out reminder: ${dateString} ${endDateTime.toLocaleTimeString()}`);
-          }
-        }
-      }
-
-      console.log(`✅ NotificationService: Hoàn thành lên lịch thông báo cho ca ${shift.name}`);
+      console.log('✅ NotificationService: Shift reminders will be managed by ReminderSyncService');
+      return;
     } catch (error) {
       console.error('❌ NotificationService: Lỗi lên lịch shift reminders:', error);
       throw error;
     }
   }
+
+  /**
+   * ✅ JUST-IN-TIME: Lên lịch một notification cụ thể
+   * Được gọi từ ReminderSyncService
+   */
+  async scheduleSpecificReminder(
+    type: 'departure' | 'checkin' | 'checkout',
+    shift: Shift,
+    triggerTime: Date,
+    dateString: string
+  ): Promise<void> {
+    try {
+      await this.initialize();
+
+      if (!this.canScheduleNotifications()) {
+        console.log(`📱 NotificationService: Cannot schedule ${type} notification - using AlarmService fallback`);
+        return;
+      }
+
+      // ✅ CRITICAL FIX: Kiểm tra thời gian trigger - PHẢI LÀ TƯƠNG LAI
+      const now = new Date();
+      if (triggerTime <= now) {
+        console.log(`⏭️ NotificationService: SKIPPED ${type} notification - trigger time ${triggerTime.toLocaleString('vi-VN')} is in the past (now: ${now.toLocaleString('vi-VN')})`);
+        return;
+      }
+
+      // ✅ Kiểm tra thời gian hợp lý - không quá xa trong tương lai
+      const timeDiff = triggerTime.getTime() - now.getTime();
+      const maxFutureTime = 7 * 24 * 60 * 60 * 1000; // 7 ngày
+      if (timeDiff > maxFutureTime) {
+        console.log(`⏭️ NotificationService: SKIPPED ${type} notification - trigger time too far in future (${Math.round(timeDiff / 1000 / 60 / 60 / 24)} days)`);
+        return;
+      }
+
+      const identifier = `${type}_${dateString}`;
+      let title: string;
+      let body: string;
+
+      switch (type) {
+        case 'departure':
+          title = '🚶‍♂️ Chuẩn bị đi làm';
+          body = `Còn 30 phút nữa là giờ khởi hành (${shift.departureTime}) cho ca ${shift.name}`;
+          break;
+        case 'checkin':
+          title = '📥 Giờ chấm công vào';
+          body = `Đã đến giờ chấm công vào cho ca ${shift.name}`;
+          break;
+        case 'checkout':
+          title = '📤 Giờ chấm công ra';
+          body = `Đã đến giờ chấm công ra cho ca ${shift.name}`;
+          break;
+      }
+
+      await Notifications.scheduleNotificationAsync({
+        identifier,
+        content: {
+          title,
+          body,
+          categoryIdentifier: NOTIFICATION_CATEGORIES.SHIFT_REMINDER,
+          data: {
+            type,
+            shiftId: shift.id,
+            shiftName: shift.name,
+            date: dateString,
+          },
+        },
+        trigger: {
+          date: triggerTime,
+        },
+      });
+
+      console.log(`📅 NotificationService: Scheduled ${type} notification for ${dateString} at ${triggerTime.toLocaleTimeString()}`);
+    } catch (error) {
+      console.error(`❌ NotificationService: Error scheduling ${type} notification:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * ✅ JUST-IN-TIME: Hủy notification cụ thể theo type và date
+   */
+  async cancelSpecificReminderByDate(type: 'departure' | 'checkin' | 'checkout', dateString: string): Promise<void> {
+    try {
+      if (!this.canScheduleNotifications()) return;
+
+      const identifier = `${type}_${dateString}`;
+      await Notifications.cancelScheduledNotificationAsync(identifier);
+      console.log(`🔕 NotificationService: Cancelled ${type} notification for ${dateString}`);
+    } catch (error) {
+      console.error(`❌ NotificationService: Error cancelling ${type} notification:`, error);
+    }
+  }
+
+
 
   async cancelShiftReminders(): Promise<void> {
     // ✅ Sử dụng hàm mới để hủy tất cả shift reminders
@@ -464,7 +500,7 @@ class NotificationService {
 
       const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
       const specificNotifications = scheduledNotifications.filter(
-        notification => notification.identifier.startsWith(`${type}_${shiftId}_`)
+        (notification: ScheduledNotification) => notification.identifier.startsWith(`${type}_${shiftId}_`)
       );
 
       for (const notification of specificNotifications) {
@@ -480,15 +516,18 @@ class NotificationService {
     try {
       await this.initialize();
 
+      // ✅ Kiểm tra tùy chọn thông báo của ghi chú
+      if (note.enableNotifications === false) {
+        console.log(`📱 NotificationService: Ghi chú "${note.title}" đã tắt thông báo, bỏ qua lập lịch`);
+        return;
+      }
+
       if (!this.canScheduleNotifications()) {
         console.log('📱 Workly: Notifications không khả dụng, bỏ qua lập lịch nhắc nhở ghi chú');
-        // Hiển thị thông báo fallback cho người dùng
-        if (this.status?.isExpoGo) {
-          this.showFallbackAlert(
-            'Nhắc nhở ghi chú',
-            'Tính năng nhắc nhở ghi chú sẽ được kích hoạt khi bạn sử dụng development build.'
-          );
-        }
+
+        // ✅ KHÔNG hiển thị fallback alert khi lập lịch
+        // Fallback alert sẽ được hiển thị bởi AlarmService khi thực sự đến thời gian nhắc nhở
+        console.log('📱 Workly: Sử dụng AlarmService thay thế cho note notifications trong Expo Go');
         return;
       }
 
@@ -583,7 +622,7 @@ class NotificationService {
       // Cancel all shift-based reminders for this note
       const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
       const noteShiftReminders = scheduledNotifications.filter(
-        notification => notification.identifier.startsWith(`note_shift_${noteId}_`)
+        (notification: ScheduledNotification) => notification.identifier.startsWith(`note_shift_${noteId}_`)
       );
 
       for (const notification of noteShiftReminders) {
@@ -687,7 +726,7 @@ class NotificationService {
       // ✅ Kiểm tra lại sau khi cancel để đảm bảo không còn reminder nào
       const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
       const remainingWeeklyReminders = scheduledNotifications.filter(
-        notification => notification.identifier.startsWith('weekly_reminder_')
+        (notification: ScheduledNotification) => notification.identifier.startsWith('weekly_reminder_')
       );
 
       if (remainingWeeklyReminders.length > 0) {
@@ -728,7 +767,7 @@ class NotificationService {
 
       const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
       const weeklyReminders = scheduledNotifications.filter(
-        notification => notification.identifier.startsWith('weekly_reminder_')
+        (notification: ScheduledNotification) => notification.identifier.startsWith('weekly_reminder_')
       );
 
       for (const notification of weeklyReminders) {
@@ -792,10 +831,13 @@ class NotificationService {
 
       const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
       const shiftNotifications = scheduledNotifications.filter(
-        notification =>
+        (notification: ScheduledNotification) =>
           notification.identifier.startsWith('departure_') ||
           notification.identifier.startsWith('checkin_') ||
-          notification.identifier.startsWith('checkout_')
+          notification.identifier.startsWith('checkout_') ||
+          notification.identifier.startsWith('departure-') ||
+          notification.identifier.startsWith('checkin-') ||
+          notification.identifier.startsWith('checkout-')
       );
 
       console.log(`🧹 NotificationService: Tìm thấy ${shiftNotifications.length} shift notifications cần hủy`);
@@ -911,6 +953,125 @@ class NotificationService {
       message: 'Chưa khởi tạo notification service',
       canSchedule: false
     };
+  }
+
+  /**
+   * ✅ HỦY NOTIFICATIONS THEO PATTERN ID
+   * Hủy bỏ các notifications có identifier bắt đầu với pattern cụ thể
+   */
+  async cancelNotificationsByPattern(pattern: string): Promise<void> {
+    try {
+      if (!this.canScheduleNotifications()) return;
+
+      console.log(`🧹 NotificationService: Cancelling notifications with pattern: ${pattern}`);
+
+      const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
+      const matchingNotifications = scheduledNotifications.filter(
+        (notification: ScheduledNotification) => notification.identifier.startsWith(pattern)
+      );
+
+      for (const notification of matchingNotifications) {
+        await Notifications.cancelScheduledNotificationAsync(notification.identifier);
+        console.log(`🔕 NotificationService: Cancelled notification: ${notification.identifier}`);
+      }
+
+      console.log(`✅ NotificationService: Cancelled ${matchingNotifications.length} notifications with pattern: ${pattern}`);
+    } catch (error) {
+      console.error(`❌ NotificationService: Error cancelling notifications with pattern ${pattern}:`, error);
+    }
+  }
+
+  /**
+   * ✅ LÊN LỊCH NOTIFICATION VỚI ID CÓ QUY TẮC
+   * Lên lịch notification với identifier được chỉ định trước
+   */
+  async scheduleReminderWithId(
+    identifier: string,
+    type: 'departure' | 'checkin' | 'checkout',
+    shift: Shift,
+    triggerTime: Date,
+    dateString: string
+  ): Promise<void> {
+    try {
+      await this.initialize();
+
+      if (!this.canScheduleNotifications()) {
+        console.log(`📱 NotificationService: Cannot schedule ${type} notification with ID ${identifier} - using AlarmService fallback`);
+        return;
+      }
+
+      // ✅ CRITICAL FIX: Kiểm tra thời gian trigger - PHẢI LÀ TƯƠNG LAI
+      const now = new Date();
+      if (triggerTime <= now) {
+        console.log(`⏭️ NotificationService: SKIPPED ${type} notification ${identifier} - trigger time ${triggerTime.toLocaleString('vi-VN')} is in the past (now: ${now.toLocaleString('vi-VN')})`);
+        return;
+      }
+
+      // Kiểm tra thời gian hợp lý (không quá xa trong tương lai)
+      const timeDiff = triggerTime.getTime() - now.getTime();
+      const maxFutureTime = 7 * 24 * 60 * 60 * 1000; // 7 ngày
+
+      if (timeDiff > maxFutureTime) {
+        console.log(`⏭️ NotificationService: SKIPPED ${type} notification ${identifier} - too far in future (${Math.round(timeDiff / 1000 / 60 / 60 / 24)} days)`);
+        return;
+      }
+
+      let title: string;
+      let body: string;
+
+      switch (type) {
+        case 'departure':
+          title = '🚶‍♂️ Chuẩn bị đi làm';
+          body = `Đã đến giờ khởi hành (${shift.departureTime}) cho ca ${shift.name}`;
+          break;
+        case 'checkin':
+          title = '📥 Giờ chấm công vào';
+          body = `Đã đến giờ chấm công vào cho ca ${shift.name}`;
+          break;
+        case 'checkout':
+          title = '📤 Giờ chấm công ra';
+          body = `Đã đến giờ chấm công ra cho ca ${shift.name}`;
+          break;
+      }
+
+      await Notifications.scheduleNotificationAsync({
+        identifier,
+        content: {
+          title,
+          body,
+          categoryIdentifier: NOTIFICATION_CATEGORIES.SHIFT_REMINDER,
+          data: {
+            type,
+            shiftId: shift.id,
+            shiftName: shift.name,
+            date: dateString,
+          },
+        },
+        trigger: {
+          date: triggerTime,
+        },
+      });
+
+      console.log(`📱 NotificationService: Scheduled ${type} notification ${identifier} for ${triggerTime.toLocaleString('vi-VN')}`);
+    } catch (error) {
+      console.error(`❌ NotificationService: Error scheduling ${type} notification ${identifier}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * ✅ HỦY NOTIFICATION THEO ID CỤ THỂ
+   * Hủy bỏ notification với identifier cụ thể
+   */
+  async cancelNotificationById(identifier: string): Promise<void> {
+    try {
+      if (!this.canScheduleNotifications()) return;
+
+      await Notifications.cancelScheduledNotificationAsync(identifier);
+      console.log(`🔕 NotificationService: Cancelled notification: ${identifier}`);
+    } catch (error) {
+      console.error(`❌ NotificationService: Error cancelling notification ${identifier}:`, error);
+    }
   }
 
 

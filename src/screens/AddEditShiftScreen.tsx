@@ -599,15 +599,27 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
               {t(currentLanguage, 'shifts.options')}
             </Text>
 
-            <View style={styles.switchRow}>
-              <Text style={[styles.switchLabel, { color: theme.colors.onSurface }]}>
-                {t(currentLanguage, 'shifts.night')}
+            {/* Ca đêm được tự động phân loại dựa trên thời gian làm việc */}
+            <View style={styles.infoRow}>
+              <Text style={[styles.infoLabel, { color: theme.colors.onSurface }]}>
+                {t(currentLanguage, 'shifts.night')}:
               </Text>
-              <Switch
-                value={formData.isNightShift}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, isNightShift: value }))}
-              />
+              <Text style={[styles.infoValue, {
+                color: formData.isNightShift ? theme.colors.primary : theme.colors.onSurfaceVariant
+              }]}>
+                {formData.isNightShift
+                  ? (currentLanguage === 'vi' ? 'Có (tự động)' : 'Yes (auto)')
+                  : (currentLanguage === 'vi' ? 'Không' : 'No')
+                }
+              </Text>
             </View>
+
+            <Text style={[styles.helperText, { color: theme.colors.onSurfaceVariant }]}>
+              {currentLanguage === 'vi'
+                ? 'Ca đêm được tự động phân loại dựa trên thời gian làm việc (22h-5h)'
+                : 'Night shift is automatically classified based on work hours (10PM-5AM)'
+              }
+            </Text>
 
             <View style={styles.switchRow}>
               <Text style={[styles.switchLabel, { color: theme.colors.onSurface }]}>
@@ -767,6 +779,26 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 8,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  infoLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  infoValue: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  helperText: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginTop: 4,
+    lineHeight: 16,
   },
   switchLabel: {
     fontSize: 16,

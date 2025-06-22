@@ -1,4 +1,4 @@
-import { format, parseISO, addHours, subHours, subMinutes, isBefore, isAfter, isWithinInterval, addDays, startOfDay } from 'date-fns';
+import { format, parseISO, addHours, subHours, subMinutes, addMinutes, isBefore, isAfter, isWithinInterval, addDays, startOfDay } from 'date-fns';
 import { Shift, ButtonState, AttendanceLog } from '../types';
 import { storageService } from './storage';
 
@@ -301,6 +301,112 @@ class TimeSyncService {
     } else {
       return isWithinInterval(now, { start: notificationStart, end: notificationEnd });
     }
+  }
+
+  /**
+   * ✅ BÁOTHỨC THỰC SỰ: Kiểm tra thời gian phù hợp cho từng loại reminder cụ thể
+   * Giống như báo thức trên điện thoại - chỉ reo trong khoảng thời gian phù hợp
+   */
+  isAppropriateTimeForSpecificReminder(
+    shift: Shift,
+    reminderType: 'departure' | 'checkin' | 'checkout',
+    targetDate?: Date
+  ): boolean {
+    const now = new Date();
+    const checkDate = targetDate || now;
+
+    // Kiểm tra có phải ngày làm việc không
+    const dayOfWeek = checkDate.getDay();
+    if (!shift.workDays.includes(dayOfWeek)) {
+      console.log(`⏭️ TimeSync: Not a work day (${dayOfWeek}) for reminder ${reminderType}`);
+      return false;
+    }
+
+    switch (reminderType) {
+      case 'departure':
+        return this.isAppropriateTimeForDepartureReminder(shift, checkDate);
+      case 'checkin':
+        return this.isAppropriateTimeForCheckinReminder(shift, checkDate);
+      case 'checkout':
+        return this.isAppropriateTimeForCheckoutReminder(shift, checkDate);
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * ✅ Kiểm tra thời gian phù hợp cho departure reminder (chuẩn bị đi làm)
+   * Reminder trigger 30 phút trước departure time, hiển thị trong window 15 phút xung quanh trigger time
+   */
+  private isAppropriateTimeForDepartureReminder(shift: Shift, targetDate: Date): boolean {
+    const now = new Date();
+    const departureTime = this.parseTimeForDate(shift.departureTime, targetDate);
+
+    // Xử lý ca đêm
+    if (shift.isNightShift && departureTime.getHours() >= 20) {
+      departureTime.setDate(departureTime.getDate() - 1);
+    }
+
+    // Trigger time: 30 phút trước departure time
+    const triggerTime = subMinutes(departureTime, 30);
+
+    // Khoảng thời gian phù hợp: 15 phút trước đến 15 phút sau trigger time
+    const windowStart = subMinutes(triggerTime, 15);
+    const windowEnd = addMinutes(triggerTime, 15);
+
+    const isAppropriate = isWithinInterval(now, { start: windowStart, end: windowEnd });
+
+    console.log(`⏰ TimeSync: Departure reminder check - Departure: ${departureTime.toLocaleTimeString()}, Trigger: ${triggerTime.toLocaleTimeString()}, Now: ${now.toLocaleTimeString()}, Window: ${windowStart.toLocaleTimeString()} - ${windowEnd.toLocaleTimeString()}, Appropriate: ${isAppropriate}`);
+
+    return isAppropriate;
+  }
+
+  /**
+   * ✅ Kiểm tra thời gian phù hợp cho checkin reminder (chấm công vào)
+   * Chỉ hiển thị trong khoảng: 30 phút trước đến 30 phút sau start time
+   */
+  private isAppropriateTimeForCheckinReminder(shift: Shift, targetDate: Date): boolean {
+    const now = new Date();
+    const startTime = this.parseTimeForDate(shift.startTime, targetDate);
+
+    // Xử lý ca đêm
+    if (shift.isNightShift && startTime.getHours() < 12) {
+      startTime.setDate(startTime.getDate() + 1);
+    }
+
+    // Khoảng thời gian phù hợp: 30 phút trước đến 30 phút sau start time
+    const windowStart = subMinutes(startTime, 30);
+    const windowEnd = addMinutes(startTime, 30);
+
+    const isAppropriate = isWithinInterval(now, { start: windowStart, end: windowEnd });
+
+    console.log(`⏰ TimeSync: Checkin reminder check - Now: ${now.toLocaleTimeString()}, Window: ${windowStart.toLocaleTimeString()} - ${windowEnd.toLocaleTimeString()}, Appropriate: ${isAppropriate}`);
+
+    return isAppropriate;
+  }
+
+  /**
+   * ✅ Kiểm tra thời gian phù hợp cho checkout reminder (chấm công ra)
+   * Chỉ hiển thị trong khoảng: 15 phút trước đến 1 giờ sau end time
+   */
+  private isAppropriateTimeForCheckoutReminder(shift: Shift, targetDate: Date): boolean {
+    const now = new Date();
+    const endTime = this.parseTimeForDate(shift.officeEndTime, targetDate);
+
+    // Xử lý ca đêm
+    if (shift.isNightShift && endTime.getHours() < 12) {
+      endTime.setDate(endTime.getDate() + 1);
+    }
+
+    // Khoảng thời gian phù hợp: 15 phút trước đến 1 giờ sau end time
+    const windowStart = subMinutes(endTime, 15);
+    const windowEnd = addHours(endTime, 1);
+
+    const isAppropriate = isWithinInterval(now, { start: windowStart, end: windowEnd });
+
+    console.log(`⏰ TimeSync: Checkout reminder check - Now: ${now.toLocaleTimeString()}, Window: ${windowStart.toLocaleTimeString()} - ${windowEnd.toLocaleTimeString()}, Appropriate: ${isAppropriate}`);
+
+    return isAppropriate;
   }
 
   /**

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Modal } from 'react-native';
 import {
   Text,
   Card,
@@ -20,6 +20,7 @@ import { CompositeNavigationProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { t } from '../i18n';
 import { WorklyBackground } from '../components/WorklyBackground';
+import { AlarmDebugPanel } from '../components/AlarmDebugPanel';
 
 
 type SettingsScreenNavigationProp = CompositeNavigationProp<
@@ -36,6 +37,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
   const { state, actions } = useApp();
   const [languageMenuVisible, setLanguageMenuVisible] = useState(false);
   const [modeMenuVisible, setModeMenuVisible] = useState(false);
+  const [debugPanelVisible, setDebugPanelVisible] = useState(false);
 
   // Lấy ngôn ngữ hiện tại để sử dụng cho i18n
   const currentLanguage = state.settings?.language || 'vi';
@@ -365,6 +367,72 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
               right={(props) => <List.Icon {...props} icon="chevron-right" />}
               onPress={handleClearAllNotes}
             />
+
+            <List.Item
+              title="🔄 Refresh Shifts (Debug)"
+              description={`Tải lại ca làm việc (${state.shifts.length} ca hiện tại)`}
+              left={(props) => <List.Icon {...props} icon="refresh" />}
+              right={(props) => <List.Icon {...props} icon="chevron-right" />}
+              onPress={async () => {
+                try {
+                  setStatusMessage({ type: '', message: '' });
+                  await actions.refreshShifts();
+                  setStatusMessage({
+                    type: 'success',
+                    message: `✅ Đã refresh ${state.shifts.length} ca làm việc thành công!`
+                  });
+                } catch (error) {
+                  setStatusMessage({
+                    type: 'error',
+                    message: '❌ Không thể refresh ca làm việc'
+                  });
+                }
+              }}
+            />
+
+            <List.Item
+              title="📝 Sync Notes (Debug)"
+              description={`Đồng bộ ghi chú với ca làm việc (${state.notes.length} ghi chú)`}
+              left={(props) => <List.Icon {...props} icon="note-sync" />}
+              right={(props) => <List.Icon {...props} icon="chevron-right" />}
+              onPress={async () => {
+                try {
+                  setStatusMessage({ type: '', message: '' });
+                  await actions.syncNotes();
+                  setStatusMessage({
+                    type: 'success',
+                    message: `✅ Đã đồng bộ ${state.notes.length} ghi chú thành công!`
+                  });
+                } catch (error) {
+                  setStatusMessage({
+                    type: 'error',
+                    message: '❌ Không thể đồng bộ ghi chú'
+                  });
+                }
+              }}
+            />
+
+            <List.Item
+              title="🔄 Force Refresh All (Debug)"
+              description="Force refresh tất cả dữ liệu"
+              left={(props) => <List.Icon {...props} icon="database-refresh" />}
+              right={(props) => <List.Icon {...props} icon="chevron-right" />}
+              onPress={async () => {
+                try {
+                  setStatusMessage({ type: '', message: '' });
+                  await actions.forceRefreshAllStatus();
+                  setStatusMessage({
+                    type: 'success',
+                    message: '✅ Đã force refresh tất cả dữ liệu thành công!'
+                  });
+                } catch (error) {
+                  setStatusMessage({
+                    type: 'error',
+                    message: '❌ Không thể force refresh dữ liệu'
+                  });
+                }
+              }}
+            />
           </Card.Content>
         </Card>
 
@@ -381,6 +449,13 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
               left={(props) => <List.Icon {...props} icon="information" />}
             />
 
+            <List.Item
+              title="🔧 Alarm Debug Panel"
+              description="Sửa lỗi thông báo không đúng thời gian"
+              left={(props) => <List.Icon {...props} icon="bug" />}
+              right={(props) => <List.Icon {...props} icon="chevron-right" />}
+              onPress={() => setDebugPanelVisible(true)}
+            />
 
           </Card.Content>
         </Card>
@@ -500,6 +575,15 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
         )}
       </ScrollView>
       </SafeAreaView>
+
+      {/* Debug Panel Modal */}
+      <Modal
+        visible={debugPanelVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <AlarmDebugPanel onClose={() => setDebugPanelVisible(false)} />
+      </Modal>
     </WorklyBackground>
   );
 }

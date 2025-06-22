@@ -59,7 +59,7 @@ class StorageService {
     // ✅ Nếu thay đổi ngôn ngữ, cập nhật tên ca mẫu
     if (updates.language && updates.language !== currentSettings.language) {
       await this.updateShiftNamesForLanguage(updates.language);
-      console.log(`🌐 Updated shift names for language: ${updates.language}`);
+      console.log(`🌐 Updated sample shift names for language: ${updates.language}`);
     }
 
     await this.setUserSettings(newSettings);
@@ -76,7 +76,37 @@ class StorageService {
       await this.setShiftList(sampleShifts);
       return sampleShifts;
     }
-    return shifts;
+
+    // ✅ Loại bỏ các ca mẫu cũ không còn sử dụng
+    const oldSampleShiftIds = [
+      'shift_uuid_001',
+      'shift_uuid_002',
+      'shift_uuid_003',
+      'shift_uuid_ngay_linh_hoat',
+      'shift_uuid_dem_cuoi_tuan'
+    ];
+
+    const filteredShifts = shifts.filter(shift => !oldSampleShiftIds.includes(shift.id));
+    const removedCount = shifts.length - filteredShifts.length;
+
+    if (removedCount > 0) {
+      console.log(`🗑️ Đã loại bỏ ${removedCount} ca mẫu cũ`);
+    }
+
+    // ✅ Kiểm tra và thêm các ca mẫu mới nếu chưa có
+    const settings = await this.getUserSettings();
+    const sampleShifts = createSampleShifts(settings.language);
+    const existingIds = filteredShifts.map(s => s.id);
+    const newSampleShifts = sampleShifts.filter(sample => !existingIds.includes(sample.id));
+
+    if (newSampleShifts.length > 0 || removedCount > 0) {
+      console.log(`🆕 Thêm ${newSampleShifts.length} ca mẫu mới:`, newSampleShifts.map(s => s.name));
+      const updatedShifts = [...filteredShifts, ...newSampleShifts];
+      await this.setShiftList(updatedShifts);
+      return updatedShifts;
+    }
+
+    return filteredShifts;
   }
 
   async setShiftList(shifts: Shift[]): Promise<void> {
@@ -209,7 +239,42 @@ class StorageService {
 
   // Notes
   async getNotes(): Promise<Note[]> {
-    return this.getItem(STORAGE_KEYS.NOTES, []);
+    const notes = await this.getItem(STORAGE_KEYS.NOTES, []);
+
+    // ✅ Đồng bộ và sửa chữa ghi chú có liên kết với ca đã bị xóa
+    const shifts = await this.getShiftList();
+    const validShiftIds = shifts.map(s => s.id);
+    let hasChanges = false;
+
+    const cleanedNotes = notes.map(note => {
+      if (note.associatedShiftIds && note.associatedShiftIds.length > 0) {
+        const validAssociatedShiftIds = note.associatedShiftIds.filter(shiftId =>
+          validShiftIds.includes(shiftId)
+        );
+
+        // Nếu có ca bị xóa, cập nhật ghi chú
+        if (validAssociatedShiftIds.length !== note.associatedShiftIds.length) {
+          hasChanges = true;
+          const removedCount = note.associatedShiftIds.length - validAssociatedShiftIds.length;
+          console.log(`🔧 Ghi chú "${note.title}": Loại bỏ ${removedCount} ca không tồn tại`);
+
+          return {
+            ...note,
+            associatedShiftIds: validAssociatedShiftIds.length > 0 ? validAssociatedShiftIds : undefined,
+            updatedAt: new Date().toISOString()
+          };
+        }
+      }
+      return note;
+    });
+
+    // Lưu lại nếu có thay đổi
+    if (hasChanges) {
+      await this.setNotes(cleanedNotes);
+      console.log('✅ Đã đồng bộ dữ liệu ghi chú với ca làm việc mới');
+    }
+
+    return cleanedNotes;
   }
 
   async setNotes(notes: Note[]): Promise<void> {

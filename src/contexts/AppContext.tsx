@@ -177,6 +177,8 @@ interface AppContextType {
     refreshWeeklyStatus: () => Promise<void>;
     refreshTimeDisplayInfo: () => Promise<void>;
     forceRefreshAllStatus: () => Promise<void>;
+    refreshShifts: () => Promise<void>;
+    syncNotes: () => Promise<void>;
   };
 }
 
@@ -200,26 +202,39 @@ export function AppProvider({ children }: AppProviderProps) {
       await alarmService.initialize();
 
       // Load all data
-      const [settings, shifts, activeShiftId] = await Promise.all([
+      const [settings, activeShiftId] = await Promise.all([
         storageService.getUserSettings(),
-        storageService.getShiftList(),
         storageService.getActiveShiftId(),
       ]);
 
-      // Load notes and add sample data if needed
-      let notes = await storageService.getNotes();
-      if (notes.length === 0) {
-        // Import and add sample data với ngôn ngữ từ settings
+      // ✅ Load shifts using refreshShifts (will automatically add new sample shifts if needed)
+      console.log('🔄 AppContext: Loading shifts with auto-update...');
+      const finalShifts = await storageService.getShiftList();
+      console.log(`✅ AppContext: Loaded ${finalShifts.length} shifts`);
+
+      dispatch({ type: 'SET_SHIFTS', payload: finalShifts });
+
+      // ✅ Sync notes after loading shifts to fix any broken shift references
+      console.log('🔄 AppContext: Syncing notes with updated shifts...');
+      const syncedNotes = await storageService.getNotes();
+      console.log(`✅ AppContext: Synced ${syncedNotes.length} notes`);
+
+      dispatch({ type: 'SET_NOTES', payload: syncedNotes });
+
+      // Add sample notes if needed (only in development and no notes exist)
+      if (__DEV__ && syncedNotes.length === 0) {
+        // ✅ Chỉ thêm sample notes trong development, không có trong production build
+        console.log('🔄 AppContext: Development mode - adding sample notes...');
         const { addSampleNotesToStorage } = await import('../services/sampleData');
-        notes = await addSampleNotesToStorage(settings.language);
+        const sampleNotes = await addSampleNotesToStorage(settings.language);
+        dispatch({ type: 'SET_NOTES', payload: sampleNotes });
+        console.log(`✅ AppContext: Added ${sampleNotes.length} sample notes for development`);
       }
 
       dispatch({ type: 'SET_SETTINGS', payload: settings });
-      dispatch({ type: 'SET_SHIFTS', payload: shifts });
-      dispatch({ type: 'SET_NOTES', payload: notes });
 
       // Set active shift
-      const activeShift = activeShiftId ? shifts.find(s => s.id === activeShiftId) || null : null;
+      const activeShift = activeShiftId ? finalShifts.find(s => s.id === activeShiftId) || null : null;
       dispatch({ type: 'SET_ACTIVE_SHIFT', payload: activeShift });
 
       // Load today's status and button state
@@ -242,27 +257,29 @@ export function AppProvider({ children }: AppProviderProps) {
         dispatch({ type: 'SET_WEATHER_DATA', payload: weatherData });
       }
 
-      // ✅ Dọn dẹp toàn bộ thông báo cũ khi khởi động app để tránh trùng lặp
-      console.log('🧹 AppContext: Bắt đầu dọn dẹp thông báo cũ khi khởi động app...');
+      // ✅ CRITICAL FIX: Sử dụng forceResetForNewShift thay vì syncNextReminders để tránh load hàng loạt thông báo
+      console.log('🔄 AppContext: Bắt đầu đồng bộ hóa thông báo với logic SAFE...');
 
-      // Hủy tất cả shift reminders cũ
-      await notificationService.cancelAllShiftReminders();
-      console.log('🧹 AppContext: Đã hủy tất cả shift reminders cũ');
-
-      // Hủy tất cả weekly reminders cũ
-      await notificationService.cancelWeeklyReminders();
-      console.log('🧹 AppContext: Đã hủy tất cả weekly reminders cũ');
+      // Import ReminderSyncService
+      const { reminderSyncService } = await import('../services/reminderSync');
 
       // Check for shift rotation and schedule reminders
       await workManager.checkAndRotateShifts();
 
-      // Chỉ lập lịch weekly reminder nếu có active shift
-      // Tránh hiển thị thông báo fallback ngay khi khởi động app
-      if (activeShiftId) {
+      // ✅ SỬ DỤNG FORCE RESET thay vì sync thông thường để tránh load hàng loạt
+      if (activeShift) {
+        console.log(`🔄 AppContext: Using SAFE force reset for active shift: ${activeShift.name}`);
+        // Sử dụng forceResetForNewShift thay vì syncNextReminders
+        // để đảm bảo không có thông báo nào hiển thị ngay lập tức khi app start
+        await reminderSyncService.forceResetForNewShift(activeShift);
+
+        // Lập lịch weekly reminder
         await workManager.scheduleWeeklyReminder();
+      } else {
+        console.log('ℹ️ AppContext: Không có ca hoạt động, bỏ qua sync reminders');
       }
 
-      console.log('✅ AppContext: Hoàn thành dọn dẹp và lập lịch lại thông báo');
+      console.log('✅ AppContext: Hoàn thành đồng bộ hóa thông báo SAFE - không có thông báo ngay lập tức');
 
       // ✅ Khởi tạo ngày nghỉ thông thường (tự động đặt Chủ Nhật là ngày nghỉ)
       console.log('🔄 AppContext: Khởi tạo ngày nghỉ thông thường...');
@@ -330,10 +347,19 @@ export function AppProvider({ children }: AppProviderProps) {
 
       // Lập lịch thông báo mới nếu có active shift
       if (activeShift) {
-        await notificationService.scheduleShiftReminders(activeShift);
-        await alarmService.scheduleShiftReminder(activeShift);
-        await workManager.scheduleWeeklyReminder();
-        console.log(`✅ AppContext: Đã lập lịch thông báo cho ca ${activeShift.name}`);
+        // ✅ SỬ DỤNG FORCE RESET: Tránh "cơn bão" thông báo từ sự kiện đã qua
+        console.log('🔄 AppContext: Using forceResetForNewShift to prevent immediate notifications');
+
+        // Import ReminderSyncService
+        const { reminderSyncService } = await import('../services/reminderSync');
+
+        // Force reset với logic "chỉ tương lai"
+        await Promise.all([
+          reminderSyncService.forceResetForNewShift(activeShift),
+          workManager.scheduleWeeklyReminder()
+        ]);
+
+        console.log(`✅ AppContext: Đã force reset thông báo cho ca ${activeShift.name} - không có thông báo ngay lập tức`);
       } else {
         console.log('ℹ️ AppContext: Không có ca hoạt động, bỏ qua lập lịch thông báo');
       }
@@ -370,8 +396,24 @@ export function AppProvider({ children }: AppProviderProps) {
 
       // If this is the active shift, reschedule reminders
       if (state.activeShift?.id === shiftId) {
+        console.log('🔄 AppContext: Updating active shift, rescheduling notifications...');
+
+        // ✅ Hủy tất cả thông báo cũ trước khi lập lịch mới
+        await notificationService.cancelAllShiftReminders();
+        await alarmService.cancelShiftReminders();
+
         const updatedShift = { ...state.activeShift, ...updates };
-        await notificationService.scheduleShiftReminders(updatedShift);
+
+        // ✅ SỬ DỤNG FORCE RESET: Tránh "cơn bão" thông báo khi cập nhật ca
+        console.log('🔄 AppContext: Using forceResetForNewShift for shift update');
+
+        // Import ReminderSyncService
+        const { reminderSyncService } = await import('../services/reminderSync');
+
+        // Force reset với logic "chỉ tương lai"
+        await reminderSyncService.forceResetForNewShift(updatedShift);
+
+        console.log(`✅ AppContext: Đã force reset thông báo cho ca ${updatedShift.name} - không có thông báo ngay lập tức`);
       }
     } catch (error) {
       console.error('Error updating shift:', error);
@@ -405,8 +447,14 @@ export function AppProvider({ children }: AppProviderProps) {
       // Schedule reminder if set (both notifications and alarms)
       // Hỗ trợ cả specific datetime và shift-based reminders
       if (note.reminderDateTime || (note.associatedShiftIds && note.associatedShiftIds.length > 0)) {
-        await notificationService.scheduleNoteReminder(note);
-        await alarmService.scheduleNoteReminder(note);
+        // ✅ Đánh dấu là user-initiated action khi thêm note có reminder
+        const actionId = `addNote_${note.id}_${Date.now()}`;
+        notificationService.markAsUserInitiated(actionId);
+
+        await Promise.all([
+          notificationService.scheduleNoteReminder(note),
+          alarmService.scheduleNoteReminder(note)
+        ]);
       }
     } catch (error) {
       console.error('Error adding note:', error);
@@ -429,8 +477,14 @@ export function AppProvider({ children }: AppProviderProps) {
         const newNote = { ...updatedNote, ...updates } as Note;
         // Hỗ trợ cả specific datetime và shift-based reminders
         if (newNote.reminderDateTime || (newNote.associatedShiftIds && newNote.associatedShiftIds.length > 0)) {
-          await notificationService.scheduleNoteReminder(newNote);
-          await alarmService.scheduleNoteReminder(newNote);
+          // ✅ Đánh dấu là user-initiated action khi cập nhật note có reminder
+          const actionId = `updateNote_${noteId}_${Date.now()}`;
+          notificationService.markAsUserInitiated(actionId);
+
+          await Promise.all([
+            notificationService.scheduleNoteReminder(newNote),
+            alarmService.scheduleNoteReminder(newNote)
+          ]);
         }
       }
     } catch (error) {
@@ -651,6 +705,41 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   };
 
+  // ✅ Refresh shifts data - tải lại danh sách ca làm việc
+  const refreshShifts = async () => {
+    try {
+      console.log('🔄 AppContext: Refreshing shifts data...');
+
+      // Tải lại danh sách ca từ storage (sẽ tự động thêm ca mẫu mới nếu có)
+      const shifts = await storageService.getShiftList();
+      dispatch({ type: 'SET_SHIFTS', payload: shifts });
+
+      // Cập nhật active shift nếu cần
+      const activeShiftId = await storageService.getActiveShiftId();
+      const activeShift = activeShiftId ? shifts.find(s => s.id === activeShiftId) || null : null;
+      dispatch({ type: 'SET_ACTIVE_SHIFT', payload: activeShift });
+
+      console.log(`✅ AppContext: Refreshed ${shifts.length} shifts`);
+    } catch (error) {
+      console.error('❌ AppContext: Error refreshing shifts:', error);
+    }
+  };
+
+  // ✅ Sync notes data - đồng bộ ghi chú với ca làm việc
+  const syncNotes = async () => {
+    try {
+      console.log('🔄 AppContext: Syncing notes data...');
+
+      // Tải lại ghi chú từ storage (sẽ tự động sửa chữa liên kết ca bị xóa)
+      const notes = await storageService.getNotes();
+      dispatch({ type: 'SET_NOTES', payload: notes });
+
+      console.log(`✅ AppContext: Synced ${notes.length} notes`);
+    } catch (error) {
+      console.error('❌ AppContext: Error syncing notes:', error);
+    }
+  };
+
   // ✅ Force refresh tất cả trạng thái - dùng cho debug
   const forceRefreshAllStatus = async () => {
     try {
@@ -668,7 +757,9 @@ export function AppProvider({ children }: AppProviderProps) {
       await Promise.all([
         refreshButtonState(),
         refreshWeeklyStatus(),
-        refreshTimeDisplayInfo()
+        refreshTimeDisplayInfo(),
+        refreshShifts(),
+        syncNotes()
       ]);
 
       console.log('✅ AppContext: Force refresh completed');
@@ -743,6 +834,8 @@ export function AppProvider({ children }: AppProviderProps) {
       refreshWeeklyStatus,
       refreshTimeDisplayInfo,
       forceRefreshAllStatus,
+      refreshShifts,
+      syncNotes,
     },
   };
 

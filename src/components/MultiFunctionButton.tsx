@@ -10,6 +10,7 @@ import { storageService } from '../services/storage';
 import { LoadingOverlay } from './LoadingOverlay';
 import { SPACING, BORDER_RADIUS, SCREEN_DIMENSIONS } from '../constants/themes';
 import { t } from '../i18n';
+import { alertManager } from '../utils/AlertManager';
 
 interface MultiFunctionButtonProps {
   onPress?: () => void;
@@ -22,6 +23,7 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
   const [hasTodayLogs, setHasTodayLogs] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [punchButtonPressed, setPunchButtonPressed] = useState(false); // ✅ Trạng thái ẩn nút ký công
+  const [lastPressTime, setLastPressTime] = useState(0); // ✅ Debouncing cho button press
 
   // Lấy ngôn ngữ hiện tại để sử dụng cho i18n
   const currentLanguage = state.settings?.language || 'vi';
@@ -141,12 +143,40 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
           style: 'default',
           onPress: async () => {
             try {
+              // ✅ Execute main action - nếu gặp RapidPressDetectedException thì tự động confirm
               await actions.handleButtonPress();
-              await checkTodayLogs();
+
+              // ✅ Background refresh (non-blocking)
+              checkTodayLogs().catch(error => {
+                console.warn('Background checkTodayLogs failed:', error);
+              });
+
               onPress?.();
             } catch (error) {
               console.error('Error in confirmed button press:', error);
-              Alert.alert(t(currentLanguage, 'common.error'), t(currentLanguage, 'common.error') + ': Có lỗi xảy ra. Vui lòng thử lại.');
+              // ✅ Kiểm tra nếu vẫn là RapidPressDetectedException thì tự động confirm
+              if ((error as any)?.name === 'RapidPressDetectedException') {
+                console.warn('⚠️ RapidPressDetectedException in confirmation dialog - auto confirming rapid press');
+                // Tự động confirm rapid press
+                try {
+                  await actions.handleRapidPressConfirmed(
+                    (error as any).checkInTime,
+                    (error as any).checkOutTime
+                  );
+
+                  // ✅ Background refresh (non-blocking)
+                  checkTodayLogs().catch(error => {
+                    console.warn('Background checkTodayLogs failed after rapid press:', error);
+                  });
+
+                  onPress?.();
+                } catch (bypassError) {
+                  console.error('Error in auto rapid press confirm:', bypassError);
+                  Alert.alert(t(currentLanguage, 'common.error'), t(currentLanguage, 'common.error') + ': Không thể xử lý. Vui lòng thử lại.');
+                }
+              } else {
+                Alert.alert(t(currentLanguage, 'common.error'), t(currentLanguage, 'common.error') + ': Có lỗi xảy ra. Vui lòng thử lại.');
+              }
             } finally {
               setIsPressed(false);
               setIsProcessing(false);
@@ -160,14 +190,30 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
   const handlePress = async () => {
     if (isDisabled) return;
 
-    try {
-      setIsPressed(true);
-      setIsProcessing(true);
+    // ✅ Debouncing - prevent rapid successive clicks
+    const now = Date.now();
+    if (now - lastPressTime < 500) { // 500ms debounce
+      console.log('🚫 Button press ignored due to debouncing');
+      return;
+    }
+    setLastPressTime(now);
 
-      // Vibrate if enabled
+    try {
+      console.log('🚀 MultiFunctionButton: Button press started');
+      console.log('🚀 MultiFunctionButton: Current button state:', state.currentButtonState);
+      console.log('🚀 MultiFunctionButton: Multi-button mode:', state.settings?.multiButtonMode);
+      console.log('🚀 MultiFunctionButton: Rapid press threshold:', state.settings?.rapidPressThresholdSeconds);
+
+      // ✅ Immediate feedback - set pressed state first
+      setIsPressed(true);
+
+      // ✅ Vibrate immediately for instant feedback
       if (state.settings?.alarmVibrationEnabled) {
         Vibration.vibrate(100);
       }
+
+      // ✅ Set processing state after immediate feedback
+      setIsProcessing(true);
 
       // Kiểm tra xem có phải bấm không đúng thời gian không
       const shouldConfirm = await checkIfNeedsConfirmation();
@@ -177,10 +223,13 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
         return;
       }
 
+      // ✅ Execute main action
       await actions.handleButtonPress();
 
-      // Refresh logs status after successful button press
-      await checkTodayLogs();
+      // ✅ Refresh logs status in background (non-blocking)
+      checkTodayLogs().catch(error => {
+        console.warn('Background checkTodayLogs failed:', error);
+      });
 
       onPress?.();
     } catch (error) {
@@ -196,6 +245,20 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
           checkInTime: rapidError.checkInTime,
           checkOutTime: rapidError.checkOutTime
         });
+
+        // Kiểm tra xem duration có hợp lý không
+        if (rapidError.actualDurationSeconds < 0 || rapidError.actualDurationSeconds > 3600) {
+          console.warn('⚠️ MultiFunctionButton: Invalid duration detected, treating as normal error');
+          Alert.alert(
+            t(currentLanguage, 'common.error'),
+            'Thời gian không hợp lệ. Vui lòng thử lại.'
+          );
+          return;
+        }
+
+        // ✅ Reset trạng thái processing trước khi hiển thị dialog
+        setIsPressed(false);
+        setIsProcessing(false);
 
         const durationText = rapidError.actualDurationSeconds < 60
           ? `${Math.round(rapidError.actualDurationSeconds)} ${t(currentLanguage, 'time.seconds')}`
@@ -218,6 +281,8 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
               onPress: async () => {
                 try {
                   console.log('🚀 MultiFunctionButton: User confirmed rapid press, calling handleRapidPressConfirmed');
+
+                  // ✅ Execute rapid press confirmation
                   await actions.handleRapidPressConfirmed(
                     rapidError.checkInTime,
                     rapidError.checkOutTime
@@ -225,9 +290,12 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
 
                   console.log('✅ MultiFunctionButton: handleRapidPressConfirmed completed successfully');
 
-                  // ✅ FIX: KHÔNG gọi checkTodayLogs() để tránh trigger lại rapid press detection
-                  // AppContext đã xử lý việc set button state thành 'completed_day'
+                  // ✅ Background refresh (non-blocking)
+                  checkTodayLogs().catch(error => {
+                    console.warn('Background checkTodayLogs failed after rapid press:', error);
+                  });
 
+                  // ✅ Show success message immediately
                   Alert.alert(
                     t(currentLanguage, 'modals.rapidPressSuccess'),
                     t(currentLanguage, 'modals.rapidPressSuccessMessage'),
@@ -247,6 +315,7 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
             }
           ]
         );
+        return; // ✅ Quan trọng: return để không chạy finally block
       } else {
         // Lỗi thực sự - log và hiển thị cho user
         console.error('Error in button press:', error);
@@ -264,8 +333,11 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
         );
       }
     } finally {
+      // ✅ CRITICAL FIX: Luôn reset trạng thái processing trong finally block
+      // Đảm bảo UI không bị treo ở trạng thái loading
       setIsPressed(false);
       setIsProcessing(false);
+      console.log('✅ MultiFunctionButton: Reset processing state in finally block');
     }
   };
 
@@ -282,24 +354,24 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
             try {
               console.log('🔄 MultiFunctionButton: Starting manual reset');
 
-              // Thực hiện reset
+              // ✅ Execute reset immediately
               await actions.resetDailyStatus();
-
-              // Đợi một chút để đảm bảo reset hoàn tất
-              await new Promise(resolve => setTimeout(resolve, 200));
 
               console.log('🔄 MultiFunctionButton: Refreshing all states after reset');
 
-              // Refresh tất cả state liên quan - tuần tự để đảm bảo
-              await checkTodayLogs();
-              await actions.refreshButtonState();
-              await actions.refreshWeeklyStatus();
-              await actions.refreshTimeDisplayInfo();
-
-              // Đợi thêm một chút để UI cập nhật
-              await new Promise(resolve => setTimeout(resolve, 100));
+              // ✅ Batch refresh operations in parallel for better performance
+              await Promise.all([
+                checkTodayLogs(),
+                actions.refreshButtonState(),
+                actions.refreshWeeklyStatus(),
+                actions.refreshTimeDisplayInfo()
+              ]).catch(error => {
+                console.warn('Some refresh operations failed:', error);
+              });
 
               console.log(`✅ MultiFunctionButton: Manual reset completed, current button state: ${state.currentButtonState}`);
+
+              // ✅ Show success message immediately
               Alert.alert(t(currentLanguage, 'common.success'), t(currentLanguage, 'common.success') + ': Đã reset trạng thái chấm công hôm nay.');
             } catch (error) {
               console.error('❌ MultiFunctionButton: Reset failed:', error);
@@ -311,7 +383,8 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
     );
   };
 
-  const getGradientColors = (): [string, string] => {
+  // ✅ Memoize gradient colors to prevent unnecessary recalculations
+  const getGradientColors = React.useMemo((): [string, string] => {
     const baseColor = buttonConfig.color;
     if (isDisabled) {
       return [theme.colors.surfaceDisabled, theme.colors.surfaceDisabled];
@@ -320,16 +393,18 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
       return [baseColor, theme.colors.primary];
     }
     return [baseColor, baseColor + '80'];
-  };
+  }, [buttonConfig.color, isDisabled, isPressed, theme.colors.surfaceDisabled, theme.colors.primary]);
 
-  // Show reset button theo thiết kế mới: khi đã hoàn tất hoặc có logs
-  const showResetButton = state.currentButtonState === 'completed_day' || hasTodayLogs;
+  // ✅ Memoize reset button visibility to prevent unnecessary recalculations
+  const showResetButton = React.useMemo(() => {
+    return state.currentButtonState === 'completed_day' || hasTodayLogs;
+  }, [state.currentButtonState, hasTodayLogs]);
 
   return (
     <View style={styles.container}>
       <View style={styles.buttonContainer}>
         <LinearGradient
-          colors={getGradientColors()}
+          colors={getGradientColors}
           style={[
             styles.gradient,
             isPressed && styles.pressed,
@@ -392,28 +467,29 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
               mode="contained"
               onPress={async () => {
                 try {
-                  // ✅ Vibration feedback
+                  // ✅ Immediate feedback - vibration and hide button first
                   if (state.settings?.alarmVibrationEnabled) {
                     Vibration.vibrate(150);
                   }
 
-                  // ✅ Ẩn nút ngay lập tức để tránh spam
+                  // ✅ Hide button immediately to prevent spam
                   setPunchButtonPressed(true);
 
-                  // Handle punch action
+                  // ✅ Execute punch action in background
                   const today = new Date().toISOString().split('T')[0];
                   await storageService.addAttendanceLog(today, {
                     type: 'punch',
                     time: new Date().toISOString(),
                   });
 
+                  // ✅ Show success message immediately
                   Alert.alert(
                     t(currentLanguage, 'modals.punchSuccess'),
                     t(currentLanguage, 'modals.punchSuccessMessage'),
                     [{ text: t(currentLanguage, 'common.ok') }]
                   );
                 } catch (error) {
-                  // ✅ Nếu có lỗi, hiện lại nút
+                  // ✅ If error, show button again
                   setPunchButtonPressed(false);
                   Alert.alert(
                     t(currentLanguage, 'common.error'),

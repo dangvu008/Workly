@@ -92,27 +92,27 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
 
 
 
-  // Get upcoming notes with advanced filtering
+  // ✅ Get all notes (có và không có thông báo) với advanced filtering
   const getUpcomingNotes = () => {
     const now = new Date();
     const settings = state.settings;
     const maxCount = settings?.notesDisplayCount || 3;
     const timeWindow = settings?.notesTimeWindow || 'always';
 
-    // Filter notes based on reminder status and visibility
-    let notesWithReminders = state.notes.filter(note => {
+    // ✅ Hiển thị TẤT CẢ ghi chú, không chỉ ghi chú có reminder
+    let allNotes = state.notes.filter(note => {
       // Skip hidden notes
       if (note.isHiddenFromHome) return false;
 
       // Skip snoozed notes
       if (note.snoozeUntil && new Date(note.snoozeUntil) > now) return false;
 
-      // Has specific reminder time
+      // ✅ Ghi chú có specific reminder time
       if (note.reminderDateTime) {
         const reminderTime = new Date(note.reminderDateTime);
         if (reminderTime <= now) return false; // Past reminders
 
-        // Apply time window filter
+        // Apply time window filter chỉ cho ghi chú có reminder
         if (timeWindow !== 'always') {
           const timeWindowMs = timeWindow * 60 * 1000; // Convert minutes to milliseconds
           const timeDiff = reminderTime.getTime() - now.getTime();
@@ -122,28 +122,36 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
         return true;
       }
 
-      // Has shift-based reminders
+      // ✅ Ghi chú có shift-based reminders
       if (note.associatedShiftIds && note.associatedShiftIds.length > 0) {
         return true; // Always show shift-based notes as they have recurring reminders
       }
 
-      return false;
+      // ✅ Ghi chú KHÔNG có reminder - vẫn hiển thị trên màn hình chính
+      return true;
     });
 
-    // Sort by priority and reminder time
-    const sortedNotes = notesWithReminders.sort((a, b) => {
+    // ✅ Sort by priority, reminder status, and time
+    const sortedNotes = allNotes.sort((a, b) => {
       // Priority notes first
       if (a.isPriority && !b.isPriority) return -1;
       if (!a.isPriority && b.isPriority) return 1;
 
-      // Then by reminder type and time
+      // ✅ Ghi chú có reminder trước ghi chú không có reminder
+      const aHasReminder = !!(a.reminderDateTime || (a.associatedShiftIds && a.associatedShiftIds.length > 0));
+      const bHasReminder = !!(b.reminderDateTime || (b.associatedShiftIds && b.associatedShiftIds.length > 0));
+
+      if (aHasReminder && !bHasReminder) return -1;
+      if (!aHasReminder && bHasReminder) return 1;
+
+      // Both have reminders - sort by reminder time
       if (a.reminderDateTime && b.reminderDateTime) {
         return new Date(a.reminderDateTime).getTime() - new Date(b.reminderDateTime).getTime();
       }
       if (a.reminderDateTime && !b.reminderDateTime) return -1;
       if (!a.reminderDateTime && b.reminderDateTime) return 1;
 
-      // Both are shift-based, sort by updated time
+      // ✅ Cả hai đều không có reminder hoặc đều là shift-based - sort by updated time
       return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
 
@@ -289,8 +297,10 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
           onPress: async () => {
             try {
               await actions.updateNote(note.id, { isHiddenFromHome: true });
-              // Cancel any scheduled reminders for this note
-              await notificationService.cancelNoteReminder(note.id);
+              // ✅ Cancel any scheduled reminders for this note (chỉ nếu có thông báo)
+              if (note.enableNotifications !== false) {
+                await notificationService.cancelNoteReminder(note.id);
+              }
             } catch (error) {
               Alert.alert(t(currentLanguage, 'common.error'), `${t(currentLanguage, 'common.error')}: Không thể ẩn ${t(currentLanguage, 'notes.title').toLowerCase()}.`);
             }
@@ -336,12 +346,14 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
         snoozeUntil: snoozeUntil.toISOString()
       });
 
-      // Reschedule reminder for snooze time
+      // ✅ Reschedule reminder for snooze time (chỉ nếu ghi chú có bật thông báo)
       await notificationService.cancelNoteReminder(note.id);
-      await notificationService.scheduleNoteReminder({
-        ...note,
-        reminderDateTime: snoozeUntil.toISOString()
-      });
+      if (note.enableNotifications !== false) {
+        await notificationService.scheduleNoteReminder({
+          ...note,
+          reminderDateTime: snoozeUntil.toISOString()
+        });
+      }
     } catch (error) {
       Alert.alert(t(currentLanguage, 'common.error'), `${t(currentLanguage, 'common.error')}: Không thể ${t(currentLanguage, 'actions.snooze').toLowerCase()} ${t(currentLanguage, 'notes.title').toLowerCase()}.`);
     }
@@ -494,6 +506,10 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
                           {note.isPriority && (
                             <Text style={styles.priorityIcon}>⭐</Text>
                           )}
+                          {/* ✅ Visual indicator cho tùy chọn thông báo */}
+                          {note.enableNotifications === false && (
+                            <Text style={styles.notificationIcon}>🔕</Text>
+                          )}
                           <View style={styles.noteText}>
                             <Text
                               style={[styles.noteTitle, { color: theme.colors.onSurface }]}
@@ -627,6 +643,11 @@ const styles = StyleSheet.create({
   priorityIcon: {
     fontSize: 16,
     marginRight: 8,
+  },
+  notificationIcon: {
+    fontSize: 14,
+    marginRight: 6,
+    opacity: 0.7,
   },
   noteText: {
     flex: 1,

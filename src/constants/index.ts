@@ -24,7 +24,7 @@ export const DEFAULT_SETTINGS = {
   timeFormat: '24h' as const,
   firstDayOfWeek: 'Mon' as const,
   lateThresholdMinutes: 5,
-  rapidPressThresholdSeconds: 60, // Ngưỡng phát hiện "Bấm Nhanh" - mặc định 60 giây
+  rapidPressThresholdSeconds: 30, // Ngưỡng phát hiện "Bấm Nhanh" - mặc định 30 giây
   overtimeRates: {
     weekday: 150,
     saturday: 200,

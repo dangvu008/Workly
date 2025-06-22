@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { View, Text } from 'react-native';
 
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -13,6 +14,7 @@ import { t } from './src/i18n';
 import { RootStackParamList, TabParamList } from './src/types';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { TabIcon } from './src/components/WorklyIcon';
+import { initializeIconPreloader } from './src/services/iconPreloader';
 
 // Screens
 import { HomeScreen } from './src/screens/HomeScreen';
@@ -149,9 +151,35 @@ function AppNavigator() {
 
 
 /**
- * ✅ App đơn giản không cần icon preloader phức tạp
+ * ✅ App với Icon Preloader để khắc phục lỗi load icon chậm
  */
-function SimpleApp() {
+function AppWithIconPreloader() {
+  const [isIconsReady, setIsIconsReady] = useState(false);
+
+  useEffect(() => {
+    const preloadIcons = async () => {
+      try {
+        await initializeIconPreloader();
+        setIsIconsReady(true);
+      } catch (error) {
+        console.error('❌ Lỗi preload icons:', error);
+        // Vẫn cho phép app chạy nếu preload thất bại
+        setIsIconsReady(true);
+      }
+    };
+
+    preloadIcons();
+  }, []);
+
+  // Hiển thị loading screen trong khi preload icons
+  if (!isIconsReady) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+        <Text style={{ fontSize: 18, color: '#666' }}>Đang tải icons...</Text>
+      </View>
+    );
+  }
+
   return <AppNavigator />;
 }
 
@@ -160,7 +188,7 @@ export default function App() {
     <ErrorBoundary>
       <SafeAreaProvider>
         <AppProvider>
-          <SimpleApp />
+          <AppWithIconPreloader />
         </AppProvider>
       </SafeAreaProvider>
     </ErrorBoundary>

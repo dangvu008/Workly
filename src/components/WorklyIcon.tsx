@@ -27,8 +27,8 @@ interface WorklyIconButtonProps extends WorklyIconProps {
 }
 
 /**
- * ✅ WorklyIcon - Icon component cơ bản
- * Render trực tiếp MaterialCommunityIcons, không có logic phức tạp
+ * ✅ WorklyIcon - Icon component cơ bản với fallback
+ * Render trực tiếp MaterialCommunityIcons, có fallback nếu icon không load
  */
 export function WorklyIcon({
   name,
@@ -40,15 +40,30 @@ export function WorklyIcon({
   const theme = useTheme();
   const iconColor = color || theme.colors.onSurface;
 
-  return (
-    <MaterialCommunityIcons
-      name={name}
-      size={size}
-      color={iconColor}
-      style={style}
-      testID={testID}
-    />
-  );
+  try {
+    return (
+      <MaterialCommunityIcons
+        name={name}
+        size={size}
+        color={iconColor}
+        style={style}
+        testID={testID}
+        suppressHighlighting={true}
+      />
+    );
+  } catch (error) {
+    // Fallback nếu icon không load được
+    console.warn(`⚠️ WorklyIcon: Không thể load icon "${name}"`);
+    return (
+      <MaterialCommunityIcons
+        name="help-circle-outline"
+        size={size}
+        color={iconColor}
+        style={style}
+        testID={testID}
+      />
+    );
+  }
 }
 
 /**

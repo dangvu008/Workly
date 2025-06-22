@@ -100,6 +100,7 @@ export interface Note {
   updatedAt: string; // ISO 8601 timestamp
   isHiddenFromHome?: boolean; // Temporarily hidden from home screen
   snoozeUntil?: string; // ISO 8601 timestamp - snoozed until this time
+  enableNotifications?: boolean; // ✅ Cho phép hiển thị thông báo/nhắc nhở (mặc định: true)
 }
 
 export interface WeatherData {

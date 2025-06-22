@@ -158,26 +158,35 @@ class WorkManager {
             const checkOutTime = new Date(now);
             const durationSeconds = differenceInSeconds(checkOutTime, checkInTime);
 
+            console.log(`🚀 WorkManager: Rapid press check - Duration: ${durationSeconds}s, Threshold: ${settings.rapidPressThresholdSeconds}s`);
+
             if (durationSeconds < settings.rapidPressThresholdSeconds) {
               // ✅ FIX: Kiểm tra xem đã có complete log chưa để tránh trigger lại rapid press detection
               const logs = await storageService.getAttendanceLogsForDate(today);
               const hasCompleteLog = logs.some(log => log.type === 'complete');
+              const hasCheckOutLog = logs.some(log => log.type === 'check_out');
 
-              if (hasCompleteLog) {
-                console.log('🚀 WorkManager: Complete log already exists, skipping rapid press detection');
-                // Đã có complete log, không cần rapid press detection nữa
+              if (hasCompleteLog || hasCheckOutLog) {
+                console.log('🚀 WorkManager: Complete/CheckOut log already exists, skipping rapid press detection');
+                // Đã có complete hoặc check_out log, không cần rapid press detection nữa
                 return;
               }
 
-              // Throw exception để UI xử lý confirmation dialog
-              // Đây KHÔNG phải lỗi - đây là flow bình thường để yêu cầu xác nhận từ user
-              console.log('🚀 WorkManager: Rapid press detected, throwing RapidPressDetectedException for UI confirmation');
-              throw new RapidPressDetectedException(
-                durationSeconds,
-                settings.rapidPressThresholdSeconds,
-                checkInLog.time,
-                now
-              );
+              // Kiểm tra thêm: nếu duration quá ngắn (< 5 giây), có thể là lỗi double-tap
+              if (durationSeconds < 5) {
+                console.log('🚀 WorkManager: Duration too short (< 5s), treating as double-tap, proceeding normally');
+                // Tiếp tục với check_out bình thường
+              } else {
+                // Throw exception để UI xử lý confirmation dialog
+                // Đây KHÔNG phải lỗi - đây là flow bình thường để yêu cầu xác nhận từ user
+                console.log('🚀 WorkManager: Rapid press detected, throwing RapidPressDetectedException for UI confirmation');
+                throw new RapidPressDetectedException(
+                  durationSeconds,
+                  settings.rapidPressThresholdSeconds,
+                  checkInLog.time,
+                  now
+                );
+              }
             }
           }
 
@@ -234,39 +243,86 @@ class WorkManager {
   }
 
   /**
-   * ✅ Hủy thông báo liên quan khi người dùng thực hiện hành động
+   * ✅ LOGIC ĐÚNG: Chỉ hủy thông báo tương ứng, KHÔNG re-sync để tránh bật nhắc nhở mới
    */
   private async cancelRelatedNotification(action: AttendanceLog['type'], date: string): Promise<void> {
     try {
+      console.log(`🔕 WorkManager: User performed ${action}, cancelling related reminders only`);
+
+      // ✅ CHỈ HỦY thông báo cụ thể - KHÔNG re-sync
+      await this.cancelSpecificReminder(action, date);
+
+      console.log(`✅ WorkManager: Cancelled ${action} reminders for ${date} - NO re-sync to avoid new reminders`);
+
+    } catch (error) {
+      console.error('❌ WorkManager: Lỗi hủy thông báo:', error);
+      // Không throw error để không ảnh hưởng đến việc ghi log chính
+    }
+  }
+
+  /**
+   * ✅ Hủy thông báo cụ thể theo action với ID có quy tắc - CHỈ HỦY, KHÔNG re-sync
+   */
+  private async cancelSpecificReminder(action: AttendanceLog['type'], date: string): Promise<void> {
+    try {
       const { notificationService } = await import('./notifications');
-      const activeShiftId = await storageService.getActiveShiftId();
+      const { alarmService } = await import('./alarmService');
 
-      if (!activeShiftId) return;
-
-      // Map action to notification type (đúng với tên identifier trong NotificationService)
-      let notificationType: 'go_work' | 'check_in' | 'check_out' | null = null;
+      // Map action to reminder type
+      let reminderType: 'departure' | 'checkin' | 'checkout' | null = null;
 
       switch (action) {
         case 'go_work':
-          notificationType = 'go_work'; // Maps to 'departure_' identifier
+          reminderType = 'departure';
           break;
         case 'check_in':
-          notificationType = 'check_in'; // Maps to 'checkin_' identifier
+          reminderType = 'checkin';
           break;
         case 'check_out':
-          notificationType = 'check_out'; // Maps to 'checkout_' identifier
+          reminderType = 'checkout';
           break;
         default:
-          return; // Không hủy thông báo cho các action khác
+          return;
       }
 
-      if (notificationType) {
-        await notificationService.cancelReminderAfterAction(notificationType, activeShiftId, date);
-        console.log(`🔕 WorkManager: Đã hủy thông báo ${notificationType} sau khi thực hiện ${action}`);
+      if (reminderType) {
+        // Tạo ID theo quy tắc: type-YYYYMMDD
+        const dateObj = new Date(date);
+        const dateId = dateObj.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+        const identifier = `${reminderType}-${dateId}`;
+
+        console.log(`🔕 WorkManager: Cancelling ${reminderType} reminders with ID: ${identifier}`);
+
+        // Hủy cả notification và alarm theo ID cụ thể
+        await Promise.all([
+          notificationService.cancelNotificationById(identifier),
+          alarmService.cancelAlarmById(identifier)
+        ]);
+
+        console.log(`✅ WorkManager: Cancelled ${reminderType} reminders for ${date} after ${action}`);
       }
     } catch (error) {
-      console.error('❌ WorkManager: Lỗi hủy thông báo liên quan:', error);
-      // Không throw error để không ảnh hưởng đến việc ghi log chính
+      console.error('❌ WorkManager: Error cancelling specific reminders:', error);
+    }
+  }
+
+  /**
+   * ✅ Re-sync reminders chỉ khi thực sự cần thiết (ví dụ: thay đổi ca làm việc)
+   * KHÔNG gọi hàm này sau khi user thực hiện action bình thường
+   */
+  async resyncRemindersIfNeeded(reason: string): Promise<void> {
+    try {
+      console.log(`🔄 WorkManager: Re-syncing reminders due to: ${reason}`);
+
+      // Import ReminderSyncService
+      const { reminderSyncService } = await import('./reminderSync');
+
+      // Re-sync để lên lịch reminder tiếp theo
+      await reminderSyncService.onReminderTriggeredOrCancelled();
+
+      console.log(`✅ WorkManager: Completed reminder re-sync for: ${reason}`);
+    } catch (error) {
+      console.error('❌ WorkManager: Error re-syncing reminders:', error);
     }
   }
 

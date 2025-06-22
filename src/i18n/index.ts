@@ -126,6 +126,13 @@ export interface TranslationKeys {
       administrative: string;
       flexible: string;
       weekendNight: string;
+      // New shift types
+      shift1_8h: string;
+      shift2_8h: string;
+      shift3_8h: string;
+      dayShift_12h: string;
+      nightShift_12h: string;
+      rotationShift: string;
     };
   };
 
@@ -515,7 +522,14 @@ export const vi: TranslationKeys = {
       night: 'Ca 3 (Đêm)',
       administrative: 'Ca Hành Chính',
       flexible: 'Ca Ngày Linh Hoạt',
-      weekendNight: 'Ca Đêm Cuối Tuần'
+      weekendNight: 'Ca Đêm Cuối Tuần',
+      // New shift types
+      shift1_8h: 'Ca 1 (8 tiếng)',
+      shift2_8h: 'Ca 2 (8 tiếng)',
+      shift3_8h: 'Ca 3 (8 tiếng)',
+      dayShift_12h: 'Ca Ngày (12 tiếng)',
+      nightShift_12h: 'Ca Đêm (12 tiếng)',
+      rotationShift: 'Ca Kíp'
     },
   },
 
@@ -890,7 +904,14 @@ export const en: TranslationKeys = {
       night: 'Shift 3 (Night)',
       administrative: 'Administrative Shift',
       flexible: 'Flexible Day Shift',
-      weekendNight: 'Weekend Night Shift'
+      weekendNight: 'Weekend Night Shift',
+      // New shift types
+      shift1_8h: 'Shift 1 (8 hours)',
+      shift2_8h: 'Shift 2 (8 hours)',
+      shift3_8h: 'Shift 3 (8 hours)',
+      dayShift_12h: 'Day Shift (12 hours)',
+      nightShift_12h: 'Night Shift (12 hours)',
+      rotationShift: 'Rotation Shift'
     },
   },
 

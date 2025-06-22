@@ -58,6 +58,16 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
     }
   }, [isRotationMode, settings?.rotationConfig?.rotationShifts]);
 
+  // ✅ Refresh shifts when screen is focused to ensure new sample shifts are loaded
+  React.useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      console.log('🔄 ShiftManagementScreen: Screen focused, refreshing shifts...');
+      actions.refreshShifts();
+    });
+
+    return unsubscribe;
+  }, [navigation, actions]);
+
   const handleSelectShift = async (shiftId: string) => {
     if (isRotationMode) {
       // Multi-select for rotation
