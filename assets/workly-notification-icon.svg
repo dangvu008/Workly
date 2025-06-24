@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Notification Icon - Simple monochrome design -->
+  
+  <!-- Clock Face -->
+  <circle cx="128" cy="128" r="100" fill="#FFFFFF" stroke="#000000" stroke-width="4"/>
+  
+  <!-- Hour Markers -->
+  <g stroke="#000000" stroke-width="3" stroke-linecap="round">
+    <!-- 12 o'clock -->
+    <line x1="128" y1="40" x2="128" y2="50" />
+    <!-- 3 o'clock -->
+    <line x1="216" y1="128" x2="206" y2="128" />
+    <!-- 6 o'clock -->
+    <line x1="128" y1="216" x2="128" y2="206" />
+    <!-- 9 o'clock -->
+    <line x1="40" y1="128" x2="50" y2="128" />
+  </g>
+  
+  <!-- Clock Hands -->
+  <!-- Hour Hand (pointing to 9) -->
+  <line x1="128" y1="128" x2="90" y2="128" stroke="#000000" stroke-width="6" stroke-linecap="round"/>
+  
+  <!-- Minute Hand (pointing to 12) -->
+  <line x1="128" y1="128" x2="128" y2="80" stroke="#000000" stroke-width="4" stroke-linecap="round"/>
+  
+  <!-- Center Dot -->
+  <circle cx="128" cy="128" r="6" fill="#000000"/>
+  
+  <!-- Work Badge -->
+  <g transform="translate(180, 80)">
+    <!-- Badge Background -->
+    <circle cx="0" cy="0" r="24" fill="#000000"/>
+    
+    <!-- Briefcase Icon -->
+    <g fill="#FFFFFF">
+      <!-- Briefcase Body -->
+      <rect x="-12" y="-6" width="24" height="15" rx="2" ry="2"/>
+      <!-- Briefcase Handle -->
+      <rect x="-6" y="-10" width="12" height="6" rx="1" ry="1" fill="none" stroke="#FFFFFF" stroke-width="1.5"/>
+    </g>
+  </g>
+</svg>
