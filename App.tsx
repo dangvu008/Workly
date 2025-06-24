@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, Text } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
 
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -14,7 +14,7 @@ import { t } from './src/i18n';
 import { RootStackParamList, TabParamList } from './src/types';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { TabIcon } from './src/components/WorklyIcon';
-import { initializeIconPreloader } from './src/services/iconPreloader';
+
 
 // Screens
 import { HomeScreen } from './src/screens/HomeScreen';
@@ -127,6 +127,21 @@ function AppNavigator() {
 
   const theme = state.settings?.theme === 'dark' ? darkTheme : lightTheme;
 
+  // Ẩn splash screen ngay khi component mount
+  useEffect(() => {
+    const hideSplash = async () => {
+      try {
+        await SplashScreen.hideAsync();
+      } catch (error) {
+        console.warn('Lỗi ẩn splash screen:', error);
+      }
+    };
+
+    // Delay ngắn để đảm bảo UI đã render
+    const timer = setTimeout(hideSplash, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <PaperProvider theme={theme}>
       <NavigationContainer>
@@ -151,44 +166,16 @@ function AppNavigator() {
 
 
 /**
- * ✅ App với Icon Preloader để khắc phục lỗi load icon chậm
+ * ✅ App tối ưu hóa - Loại bỏ icon preloader không cần thiết
+ * Expo tự động handle icon loading, không cần preload thủ công
  */
-function AppWithIconPreloader() {
-  const [isIconsReady, setIsIconsReady] = useState(false);
-
-  useEffect(() => {
-    const preloadIcons = async () => {
-      try {
-        await initializeIconPreloader();
-        setIsIconsReady(true);
-      } catch (error) {
-        console.error('❌ Lỗi preload icons:', error);
-        // Vẫn cho phép app chạy nếu preload thất bại
-        setIsIconsReady(true);
-      }
-    };
-
-    preloadIcons();
-  }, []);
-
-  // Hiển thị loading screen trong khi preload icons
-  if (!isIconsReady) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
-        <Text style={{ fontSize: 18, color: '#666' }}>Đang tải icons...</Text>
-      </View>
-    );
-  }
-
-  return <AppNavigator />;
-}
 
 export default function App() {
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
         <AppProvider>
-          <AppWithIconPreloader />
+          <AppNavigator />
         </AppProvider>
       </SafeAreaProvider>
     </ErrorBoundary>

@@ -470,13 +470,13 @@ export const commonStyles = StyleSheet.create({
   },
 });
 
-// Animation configurations
+// Animation configurations - Tối ưu hóa cho tốc độ
 export const ANIMATIONS = {
-  // Timing configurations
+  // Timing configurations - Giảm thời gian animation
   timing: {
-    short: 200,
-    medium: 300,
-    long: 500,
+    short: 100,  // Giảm từ 200ms xuống 100ms
+    medium: 150, // Giảm từ 300ms xuống 150ms
+    long: 250,   // Giảm từ 500ms xuống 250ms
   },
 
   // Easing functions

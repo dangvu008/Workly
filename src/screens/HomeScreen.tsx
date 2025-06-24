@@ -10,7 +10,7 @@ import { WeeklyStatusGrid } from '../components/WeeklyStatusGrid';
 import { WeatherWidget } from '../components/WeatherWidget';
 import { AttendanceHistory } from '../components/AttendanceHistory';
 import { t } from '../i18n';
-import { NotificationStatusBanner } from '../components/NotificationStatusBanner';
+// ✅ PRODUCTION: NotificationStatusBanner removed
 
 import ExpoGoBanner from '../components/ExpoGoBanner';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -191,7 +191,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
     return null;
   }, [state.settings?.notesShowConflictWarning, topNotes]);
 
-  // Load upcoming notes - Debounced to prevent excessive calls
+  // Load upcoming notes - Debounced to prevent excessive calls (reduced delay)
   const loadTopNotes = useCallback(
     debounce(async () => {
       try {
@@ -201,14 +201,14 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
         console.error('Error loading top notes:', error);
         setTopNotes([]);
       }
-    }, 300),
+    }, 100), // Reduced from 300ms to 100ms
     [state.notes, state.settings?.notesDisplayCount, state.activeShift?.id]
   );
 
-  // Load top notes when notes or settings change
+  // Load top notes when notes or settings change - Optimized with reduced dependencies
   useEffect(() => {
     loadTopNotes();
-  }, [state.notes, state.settings?.notesDisplayCount, state.activeShift]);
+  }, [state.notes.length, state.settings?.notesDisplayCount, state.activeShift?.id]);
 
   // Helper function to format reminder info
   const formatReminderInfo = (note: any): string => {
@@ -359,6 +359,8 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
     }
   };
 
+  // ✅ PRODUCTION: All debug functions removed
+
   // Show loading spinner when app is loading
   if (state.isLoading) {
     return (
@@ -378,7 +380,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
           }
           showsVerticalScrollIndicator={false}
         >
-        {/* Header với animation */}
+        {/* Header với animation - Tối ưu delay */}
         <AnimatedCard animationType="fadeIn" delay={0} backgroundColor={theme.colors.surfaceVariant}>
           <Card.Content>
             <View style={[commonStyles.header, styles.header]}>
@@ -395,34 +397,34 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
         </AnimatedCard>
 
         {/* Expo Go Banner - Hiển thị khi chạy trong Expo Go */}
-        <AnimatedCard animationType="slideUp" delay={25}>
+        <AnimatedCard animationType="slideUp" delay={0}>
           <ExpoGoBanner />
         </AnimatedCard>
 
-        {/* Notification Status Banner - Hiển thị khi có vấn đề với notifications */}
-        <AnimatedCard animationType="slideUp" delay={50}>
-          <NotificationStatusBanner />
-        </AnimatedCard>
+        {/* ✅ PRODUCTION: Notification Status Banner removed */}
 
         {/* Weather Widget với animation */}
-        <AnimatedCard animationType="slideUp" delay={100}>
+        <AnimatedCard animationType="slideUp" delay={0}>
           <MemoizedWeatherWidget onPress={() => navigation.navigate('WeatherDetail')} />
         </AnimatedCard>
 
         {/* Active Shift với animation */}
-        <AnimatedCard animationType="slideUp" delay={200} elevated backgroundColor={theme.colors.surfaceVariant}>
+        <AnimatedCard animationType="slideUp" delay={0} elevated backgroundColor={theme.colors.surfaceVariant}>
           <Card.Content>
             <View style={styles.shiftHeader}>
               <Text style={[commonStyles.cardTitle, { color: theme.colors.onSurface }]}>
                 {t(currentLanguage, 'home.currentShift')}
               </Text>
-              <WorklyIconButton
-                name={COMMON_ICONS.edit}
-                size={20}
-                color={theme.colors.primary}
-                onPress={() => navigation.navigate('ShiftsTab')}
-                style={commonStyles.accessibleTouchTarget}
-              />
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {/* ✅ PRODUCTION: Debug buttons removed */}
+                <WorklyIconButton
+                  name={COMMON_ICONS.edit}
+                  size={20}
+                  color={theme.colors.primary}
+                  onPress={() => navigation.navigate('ShiftsTab')}
+                  style={commonStyles.accessibleTouchTarget}
+                />
+              </View>
             </View>
             <Text style={[styles.shiftName, { color: theme.colors.primary }]}>
               {state.activeShift?.name || t(currentLanguage, 'home.noActiveShift')}
@@ -446,7 +448,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
 
         {/* Attendance History - Show below Multi-Function Button */}
         {state.activeShift && (
-          <AnimatedCard animationType="slideUp" delay={400} style={styles.attendanceHistoryCard} backgroundColor={theme.colors.surfaceVariant}>
+          <AnimatedCard animationType="slideUp" delay={0} style={styles.attendanceHistoryCard} backgroundColor={theme.colors.surfaceVariant}>
             <Card.Content>
               <MemoizedAttendanceHistory />
             </Card.Content>
@@ -454,7 +456,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
         )}
 
         {/* Weekly Status Grid với animation */}
-        <AnimatedCard animationType="slideUp" delay={500} elevated backgroundColor={theme.colors.surfaceVariant}>
+        <AnimatedCard animationType="slideUp" delay={0} elevated backgroundColor={theme.colors.surfaceVariant}>
           <Card.Content>
             <MemoizedWeeklyStatusGrid onDayPress={() => {
               // Day press handled by WeeklyStatusGrid internally
@@ -465,7 +467,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
 
 
         {/* Notes Section với animation */}
-        <AnimatedCard animationType="slideUp" delay={600} elevated backgroundColor={theme.colors.surfaceVariant}>
+        <AnimatedCard animationType="slideUp" delay={0} elevated backgroundColor={theme.colors.surfaceVariant}>
           <Card.Content>
             <View style={styles.notesHeader}>
               <Text style={[commonStyles.cardTitle, { color: theme.colors.onSurface }]}>

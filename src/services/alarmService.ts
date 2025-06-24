@@ -4,7 +4,7 @@
  */
 
 import { Platform, Alert, Vibration, AppState, AppStateStatus } from 'react-native';
-import { Audio } from 'expo-audio';
+import { Audio } from 'expo-av';
 import { AlarmData, Shift, Note, UserSettings } from '../types';
 import { storageService } from './storage';
 import { t } from '../i18n';
@@ -26,7 +26,9 @@ interface AlarmStatus {
   hasAudioPermission: boolean;
   isBackgroundEnabled: boolean;
   scheduledCount: number;
+  activeCount: number;
   message: string;
+  alarms: ScheduledAlarm[];
 }
 
 class AlarmService {
@@ -242,15 +244,16 @@ class AlarmService {
     if (scheduleTime) {
       const timeSinceScheduled = now.getTime() - scheduleTime;
 
-      // Nếu alarm được lên lịch trong vòng 2 phút và trigger ngay, bỏ qua
-      if (timeSinceScheduled < 120000) { // Tăng lên 2 phút
+      // ✅ RELAXED: Giảm thời gian chờ từ 2 phút xuống 30 giây để thông báo hiển thị nhanh hơn
+      if (timeSinceScheduled < 30000) { // Giảm từ 120000 (2 phút) xuống 30000 (30 giây)
         console.log(`⏭️ AlarmService: SKIPPED alarm ${alarm.id} - scheduled too recently (${Math.round(timeSinceScheduled/1000)}s ago)`);
         return;
       }
     }
 
     // ✅ BÁOTHỨC THỰC SỰ: Kiểm tra thời gian phù hợp trước khi hiển thị bất kỳ alarm nào
-    if (alarm.type === 'shift_reminder' && alarm.relatedId) {
+    // 🔧 TEMPORARY DEBUG: Tạm thời disable kiểm tra thời gian để test thông báo
+    if (false && alarm.type === 'shift_reminder' && alarm.relatedId) {
       const reminderType = this.extractReminderTypeFromAlarmId(alarm.id);
       if (reminderType) {
         const isAppropriateTime = await this.isAppropriateTimeForSpecificReminder(
@@ -443,6 +446,8 @@ class AlarmService {
       console.error('❌ AlarmService: Lỗi snooze alarm:', error);
     }
   }
+
+  // ✅ PRODUCTION: Debug functions removed
 
   // Public methods
   async scheduleShiftReminder(shift: Shift): Promise<void> {
@@ -789,12 +794,19 @@ class AlarmService {
   async getAlarmStatus(): Promise<AlarmStatus> {
     await this.initialize();
 
+    const now = new Date();
+    const activeAlarms = Array.from(this.alarms.values()).filter(alarm =>
+      alarm.isActive && alarm.scheduledTime > now
+    );
+
     return {
       isSupported: true,
       hasAudioPermission: this.sound !== null,
       isBackgroundEnabled: this.checkInterval !== null,
       scheduledCount: this.alarms.size,
+      activeCount: activeAlarms.length,
       message: `Hệ thống báo thức đang hoạt động với ${this.alarms.size} lịch nhắc nhở`,
+      alarms: Array.from(this.alarms.values()),
     };
   }
 

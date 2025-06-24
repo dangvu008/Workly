@@ -52,10 +52,26 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
   // Logic disabled theo thiết kế mới - Chỉ disabled khi processing hoặc đã hoàn tất
   const isDisabled = isProcessing || state.currentButtonState === 'completed_day';
 
+  // ✅ PRODUCTION: Debug logging removed
+
   // Check if there are attendance logs for today
   useEffect(() => {
     checkTodayLogs();
   }, [state.currentButtonState]);
+
+  // ✅ CRITICAL FIX: Auto-reset processing state if stuck
+  useEffect(() => {
+    if (isProcessing) {
+      console.log('🔄 MultiFunctionButton: Processing state detected, setting auto-reset timer');
+      const resetTimer = setTimeout(() => {
+        console.log('⚠️ MultiFunctionButton: Auto-resetting stuck processing state');
+        setIsProcessing(false);
+        setIsPressed(false);
+      }, 5000); // Reset after 5 seconds if still processing
+
+      return () => clearTimeout(resetTimer);
+    }
+  }, [isProcessing]);
 
   const checkTodayLogs = async () => {
     try {
@@ -341,6 +357,30 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
     }
   };
 
+  // ✅ PRODUCTION: Cleanup function removed
+
+  // ✅ Force reset button state
+  const handleForceReset = () => {
+    Alert.alert(
+      'Force Reset Button',
+      'Reset trạng thái nút về bình thường?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'default',
+          onPress: () => {
+            console.log('🔄 MultiFunctionButton: Force resetting button state');
+            setIsProcessing(false);
+            setIsPressed(false);
+            setPunchButtonPressed(false);
+            setLastPressTime(0);
+          }
+        }
+      ]
+    );
+  };
+
   const handleReset = () => {
     Alert.alert(
       t(currentLanguage, 'modals.resetConfirm'),
@@ -442,13 +482,26 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
         </LinearGradient>
 
         {showResetButton && (
-          <IconButton
-            icon="restart"
-            size={20}
-            iconColor={theme.colors.primary}
-            style={styles.resetButton}
-            onPress={handleReset}
-          />
+          <View style={styles.actionButtonsContainer}>
+            <IconButton
+              icon="restart"
+              size={20}
+              iconColor={theme.colors.primary}
+              style={styles.resetButton}
+              onPress={handleReset}
+            />
+            {/* ✅ PRODUCTION: Cleanup button removed */}
+            {/* ✅ Force reset button for stuck state */}
+            {(isProcessing || isPressed) && (
+              <IconButton
+                icon="refresh"
+                size={20}
+                iconColor={theme.colors.error}
+                style={styles.forceResetButton}
+                onPress={handleForceReset}
+              />
+            )}
+          </View>
         )}
       </View>
 
@@ -581,10 +634,20 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.6,
   },
-  resetButton: {
+  actionButtonsContainer: {
     position: 'absolute',
     top: -10,
     right: -10,
+    flexDirection: 'row',
+    gap: 4,
+  },
+  resetButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    elevation: 4,
+    borderRadius: BORDER_RADIUS.round,
+  },
+  // ✅ PRODUCTION: Cleanup button styles removed
+  forceResetButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     elevation: 4,
     borderRadius: BORDER_RADIUS.round,

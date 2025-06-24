@@ -131,7 +131,7 @@ class ReminderSyncService {
     try {
       // Sử dụng method mới trong notificationService để hủy theo pattern
       for (const pattern of patterns) {
-        await notificationService.cancelNotificationsByPattern(pattern);
+        await notificationService.cancelNotificationsByPattern([pattern]);
       }
     } catch (error) {
       console.error('❌ ReminderSync: Error cancelling notifications by pattern:', error);
@@ -165,8 +165,8 @@ class ReminderSyncService {
 
     console.log(`🔍 ReminderSync: Finding next departure reminder for shift: ${shift.name}`);
 
-    // ✅ LOGIC CHUẨN: Tìm kiếm trong 14 ngày tới, bắt đầu từ hôm nay
-    for (let i = 0; i < 14; i++) {
+    // ✅ CURRENT SHIFT ONLY: Chỉ tìm trong 2 ngày để thích ứng với thay đổi ca
+    for (let i = 0; i < 2; i++) {
       const targetDate = addDays(today, i);
       const dayOfWeek = targetDate.getDay();
 
@@ -176,18 +176,17 @@ class ReminderSyncService {
         continue;
       }
 
-      // ✅ BÁOTHỨC THỰC SỰ: Departure reminder trigger 30 phút trước departure time
-      // Giống như báo thức điện thoại - nhắc nhở trước khi cần hành động
+      // ✅ BÁOTHỨC THỰC SỰ: Departure reminder trigger ĐÚNG LÚC departure time
+      // Theo yêu cầu user: trigger đúng lúc departure time, không phải trước 30 phút
       const [depHour, depMin] = shift.departureTime.split(':').map(Number);
       const triggerTime = new Date(targetDate);
-      triggerTime.setHours(depHour, depMin - 30, 0, 0); // 30 phút trước departure
+      triggerTime.setHours(depHour, depMin, 0, 0); // Đúng lúc departure time
 
       // ✅ KHÔNG CẦN điều chỉnh ngày cho departure time
       // Departure time luôn diễn ra trong cùng ngày với targetDate
 
       // ✅ LOGIC CHUẨN: Kiểm tra thời gian - PHẢI LÀ TƯƠNG LAI
       const timeDiff = triggerTime.getTime() - now.getTime();
-      const maxFutureTime = 7 * 24 * 60 * 60 * 1000; // 7 ngày
 
       console.log(`🔍 ReminderSync: Departure check for ${format(targetDate, 'dd/MM/yyyy')}`);
       console.log(`   ⏰ Trigger: ${triggerTime.toLocaleString('vi-VN')}`);
@@ -199,10 +198,7 @@ class ReminderSyncService {
         continue;
       }
 
-      if (timeDiff > maxFutureTime) {
-        console.log(`   ⏭️ SKIPPED: Too far in future (${Math.round(timeDiff / 1000 / 60 / 60 / 24)} days)`);
-        continue;
-      }
+      // ✅ REMOVED: Không cần kiểm tra "too far in future" vì chỉ tìm trong 2 ngày
 
       // Kiểm tra user đã thực hiện action "đi làm" chưa
       const dateString = format(targetDate, 'yyyy-MM-dd');
@@ -225,18 +221,19 @@ class ReminderSyncService {
       };
     }
 
-    console.log('ℹ️ ReminderSync: No next departure reminder found in 14 days');
+    console.log('ℹ️ ReminderSync: No next departure reminder found in next 2 days');
     return null;
   }
 
   /**
-   * BƯỚC C: Tìm và lên lịch "CHẤM CÔNG VÀO" tiếp theo
+   * ✅ CURRENT SHIFT ONLY: Tìm checkin reminder tiếp theo GẦN NHẤT cho ca hiện tại
    */
   private async findNextCheckinReminder(shift: Shift): Promise<NextReminder | null> {
     const now = new Date();
     const today = startOfDay(now);
 
-    for (let i = 0; i < 14; i++) {
+    // ✅ CHỈ KIỂM TRA 2 NGÀY: hôm nay và ngày mai
+    for (let i = 0; i < 2; i++) {
       const targetDate = addDays(today, i);
       const dayOfWeek = targetDate.getDay();
 
@@ -293,13 +290,14 @@ class ReminderSyncService {
   }
 
   /**
-   * BƯỚC D: Tìm và lên lịch "CHẤM CÔNG RA" tiếp theo
+   * ✅ CURRENT SHIFT ONLY: Tìm checkout reminder tiếp theo GẦN NHẤT cho ca hiện tại
    */
   private async findNextCheckoutReminder(shift: Shift): Promise<NextReminder | null> {
     const now = new Date();
     const today = startOfDay(now);
 
-    for (let i = 0; i < 14; i++) {
+    // ✅ CHỈ KIỂM TRA 2 NGÀY: hôm nay và ngày mai
+    for (let i = 0; i < 2; i++) {
       const targetDate = addDays(today, i);
       const dayOfWeek = targetDate.getDay();
 
@@ -561,8 +559,7 @@ class ReminderSyncService {
       // BƯỚC 2: Đợi một chút để đảm bảo cleanup hoàn tất
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // ✅ CRITICAL FIX: KHÔNG gọi syncNextReminders ngay lập tức
-      // Thay vào đó, lên lịch sync sau 5 phút để tránh thông báo ngay lập tức
+      // ✅ FIXED: Sync sau 5 giây để tránh thông báo ngay lập tức nhưng vẫn tạo alarms
       console.log('⏳ Step 2: Scheduling delayed sync to avoid immediate notifications...');
       setTimeout(async () => {
         try {
@@ -572,29 +569,11 @@ class ReminderSyncService {
         } catch (delayedError) {
           console.error('❌ ReminderSync: Error in delayed sync:', delayedError);
         }
-      }, 300000); // 5 phút delay
+      }, 5000); // 5 giây delay thay vì 5 phút
 
       console.log('✅ ReminderSync: Force reset completed - NO immediate sync, NO immediate notifications');
     } catch (error) {
       console.error('❌ ReminderSync: Error during force reset:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * ✅ IMMEDIATE SYNC: Chỉ dùng khi thực sự cần thiết (ví dụ: user test hoặc debug)
-   * CẢNH BÁO: Có thể gây thông báo ngay lập tức nếu không cẩn thận
-   */
-  async forceSyncImmediately(activeShift: Shift, reason: string): Promise<void> {
-    try {
-      console.log(`🚨 ReminderSync: IMMEDIATE SYNC requested - Reason: ${reason}`);
-      console.log(`⚠️ WARNING: This may cause immediate notifications if not used carefully`);
-
-      await this.syncNextReminders(activeShift);
-
-      console.log(`✅ ReminderSync: Immediate sync completed for reason: ${reason}`);
-    } catch (error) {
-      console.error('❌ ReminderSync: Error during immediate sync:', error);
       throw error;
     }
   }

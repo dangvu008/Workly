@@ -336,7 +336,7 @@ class TimeSyncService {
 
   /**
    * ✅ Kiểm tra thời gian phù hợp cho departure reminder (chuẩn bị đi làm)
-   * Reminder trigger 30 phút trước departure time, hiển thị trong window 15 phút xung quanh trigger time
+   * Reminder trigger ĐÚNG LÚC departure time, hiển thị trong window 15 phút xung quanh departure time
    */
   private isAppropriateTimeForDepartureReminder(shift: Shift, targetDate: Date): boolean {
     const now = new Date();
@@ -347,10 +347,10 @@ class TimeSyncService {
       departureTime.setDate(departureTime.getDate() - 1);
     }
 
-    // Trigger time: 30 phút trước departure time
-    const triggerTime = subMinutes(departureTime, 30);
+    // Trigger time: ĐÚNG LÚC departure time (theo yêu cầu user)
+    const triggerTime = departureTime;
 
-    // Khoảng thời gian phù hợp: 15 phút trước đến 15 phút sau trigger time
+    // Khoảng thời gian phù hợp: 15 phút trước đến 15 phút sau departure time
     const windowStart = subMinutes(triggerTime, 15);
     const windowEnd = addMinutes(triggerTime, 15);
 

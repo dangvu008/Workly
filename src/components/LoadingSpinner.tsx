@@ -23,11 +23,11 @@ export const LoadingSpinner = React.memo<LoadingSpinnerProps>(({
   const theme = useTheme();
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
 
-  // Animation fade in khi component mount
+  // Animation fade in khi component mount - Tối ưu tốc độ
   React.useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
-      duration: 300,
+      duration: 150, // Giảm từ 300ms xuống 150ms
       useNativeDriver: true,
     }).start();
   }, [fadeAnim]);

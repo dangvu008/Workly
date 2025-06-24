@@ -190,12 +190,14 @@ export interface TranslationKeys {
     dataManagement: string;
     sampleData: string;
     other: string;
+    about: string;
     backupData: string;
     restoreData: string;
     resetWeatherLocation: string;
     replaceSampleData: string;
     clearAllNotes: string;
     appInfo: string;
+    appVersion: string;
     version: string;
     locationManagement: string;
     savedLocation: string;
@@ -584,12 +586,14 @@ export const vi: TranslationKeys = {
     dataManagement: 'Quản lý dữ liệu',
     sampleData: 'Dữ liệu mẫu (Debug)',
     other: 'Khác',
+    about: 'Thông tin',
     backupData: 'Sao lưu dữ liệu',
     restoreData: 'Phục hồi dữ liệu',
     resetWeatherLocation: 'Quản lý vị trí',
     replaceSampleData: 'Thay thế bằng dữ liệu mẫu',
     clearAllNotes: 'Xóa tất cả ghi chú',
     appInfo: 'Thông tin ứng dụng',
+    appVersion: 'Phiên bản ứng dụng',
     version: 'Phiên bản 1.0.0',
     locationManagement: 'Quản lý vị trí',
     savedLocation: 'Đã lưu',
@@ -966,12 +970,14 @@ export const en: TranslationKeys = {
     dataManagement: 'Data Management',
     sampleData: 'Sample Data (Debug)',
     other: 'Other',
+    about: 'About',
     backupData: 'Backup data',
     restoreData: 'Restore data',
     resetWeatherLocation: 'Location management',
     replaceSampleData: 'Replace with sample data',
     clearAllNotes: 'Clear all notes',
     appInfo: 'App information',
+    appVersion: 'App version',
     version: 'Version 1.0.0',
     locationManagement: 'Location management',
     savedLocation: 'Saved',

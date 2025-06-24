@@ -133,21 +133,64 @@ class WorkManager {
 
       console.log(`🔘 WorkManager: Handling button press - State: ${currentState}`);
 
+      // ✅ CRITICAL FIX: Kiểm tra và ngăn chặn duplicate logs
+      const existingLogs = await storageService.getAttendanceLogsForDate(today);
+
       switch (currentState) {
         case 'go_work':
+          // ✅ CRITICAL FIX: Kiểm tra duplicate logs trước khi thêm
+          const recentGoWorkLog = existingLogs
+            .filter(log => log.type === 'go_work')
+            .find(log => {
+              const logTime = new Date(log.time);
+              const timeDiff = Math.abs(new Date(now).getTime() - logTime.getTime());
+              return timeDiff < 10000; // 10 seconds - giảm từ 30s để tránh block hợp lệ
+            });
+
+          if (recentGoWorkLog) {
+            console.log('🚫 WorkManager: Duplicate go_work detected within 10s, skipping');
+            return;
+          }
+
+          // ✅ Kiểm tra nếu đã có quá nhiều logs cùng loại (> 3)
+          const goWorkCount = existingLogs.filter(log => log.type === 'go_work').length;
+          if (goWorkCount >= 3) {
+            console.log('🚫 WorkManager: Too many go_work logs already, skipping');
+            return;
+          }
+
           await this.addAttendanceLog(today, 'go_work', now);
           break;
 
         case 'awaiting_check_in':
           // Trong trạng thái awaiting, bấm nút sẽ thực hiện check_in
+          // Kiểm tra duplicate check_in
+          const hasCheckIn = existingLogs.some(log => log.type === 'check_in');
+          if (hasCheckIn) {
+            console.log('🚫 WorkManager: check_in already exists, skipping');
+            return;
+          }
           await this.addAttendanceLog(today, 'check_in', now);
           break;
 
         case 'check_in':
+          // Kiểm tra duplicate check_in
+          const hasCheckInDirect = existingLogs.some(log => log.type === 'check_in');
+          if (hasCheckInDirect) {
+            console.log('🚫 WorkManager: check_in already exists, skipping');
+            return;
+          }
           await this.addAttendanceLog(today, 'check_in', now);
           break;
 
         case 'check_out':
+          // Kiểm tra duplicate check_out trước
+          const hasCheckOut = existingLogs.some(log => log.type === 'check_out');
+          if (hasCheckOut) {
+            console.log('🚫 WorkManager: check_out already exists, skipping');
+            return;
+          }
+
           // Tất cả các trạng thái này đều thực hiện check_out
           // Kiểm tra rapid press logic trước
           const logs = await storageService.getAttendanceLogsForDate(today);
@@ -846,6 +889,43 @@ class WorkManager {
 
     } catch (error) {
       console.error('❌ WorkManager: Error clearing manual status:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * ✅ Clean up duplicate logs - Xóa các log trùng lặp
+   */
+  async cleanupDuplicateLogs(date: string): Promise<void> {
+    try {
+      console.log(`🧹 WorkManager: Cleaning up duplicate logs for ${date}`);
+
+      const logs = await storageService.getAttendanceLogsForDate(date);
+      if (logs.length === 0) return;
+
+      // Group logs by type and keep only the first occurrence of each type
+      const cleanedLogs: AttendanceLog[] = [];
+      const seenTypes = new Set<string>();
+
+      for (const log of logs) {
+        if (!seenTypes.has(log.type)) {
+          cleanedLogs.push(log);
+          seenTypes.add(log.type);
+        } else {
+          console.log(`🗑️ WorkManager: Removing duplicate ${log.type} log at ${log.time}`);
+        }
+      }
+
+      // Save cleaned logs
+      await storageService.setAttendanceLogsForDate(date, cleanedLogs);
+
+      // Recalculate status
+      await this.recalculateFromAttendanceLogs(date);
+
+      console.log(`✅ WorkManager: Cleaned up logs - Before: ${logs.length}, After: ${cleanedLogs.length}`);
+
+    } catch (error) {
+      console.error('❌ WorkManager: Error cleaning up duplicate logs:', error);
       throw error;
     }
   }

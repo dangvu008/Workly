@@ -179,6 +179,8 @@ interface AppContextType {
     forceRefreshAllStatus: () => Promise<void>;
     refreshShifts: () => Promise<void>;
     syncNotes: () => Promise<void>;
+    cleanupDuplicateLogs: () => Promise<void>;
+    checkNotificationStatus: () => Promise<any>;
   };
 }
 
@@ -192,103 +194,82 @@ interface AppProviderProps {
 export function AppProvider({ children }: AppProviderProps) {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
-  // Load initial data
+  // Load initial data - Tối ưu hóa tốc độ loading
   const loadInitialData = async () => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
 
-      // Initialize notification service and alarm service
-      await notificationService.initialize();
-      await alarmService.initialize();
-
-      // Load all data
+      // Khởi tạo services song song để tiết kiệm thời gian
       const [settings, activeShiftId] = await Promise.all([
         storageService.getUserSettings(),
         storageService.getActiveShiftId(),
+        // Khởi tạo services song song
+        notificationService.initialize(),
+        alarmService.initialize(),
       ]);
 
-      // ✅ Load shifts using refreshShifts (will automatically add new sample shifts if needed)
-      console.log('🔄 AppContext: Loading shifts with auto-update...');
-      const finalShifts = await storageService.getShiftList();
-      console.log(`✅ AppContext: Loaded ${finalShifts.length} shifts`);
+      // Load shifts và notes song song
+      const [finalShifts, syncedNotes] = await Promise.all([
+        storageService.getShiftList(),
+        storageService.getNotes(),
+      ]);
 
+      // Dispatch data ngay lập tức để UI hiển thị nhanh
       dispatch({ type: 'SET_SHIFTS', payload: finalShifts });
-
-      // ✅ Sync notes after loading shifts to fix any broken shift references
-      console.log('🔄 AppContext: Syncing notes with updated shifts...');
-      const syncedNotes = await storageService.getNotes();
-      console.log(`✅ AppContext: Synced ${syncedNotes.length} notes`);
-
       dispatch({ type: 'SET_NOTES', payload: syncedNotes });
-
-      // Add sample notes if needed (only in development and no notes exist)
-      if (__DEV__ && syncedNotes.length === 0) {
-        // ✅ Chỉ thêm sample notes trong development, không có trong production build
-        console.log('🔄 AppContext: Development mode - adding sample notes...');
-        const { addSampleNotesToStorage } = await import('../services/sampleData');
-        const sampleNotes = await addSampleNotesToStorage(settings.language);
-        dispatch({ type: 'SET_NOTES', payload: sampleNotes });
-        console.log(`✅ AppContext: Added ${sampleNotes.length} sample notes for development`);
-      }
-
       dispatch({ type: 'SET_SETTINGS', payload: settings });
 
-      // Set active shift
+      // Set active shift ngay lập tức
       const activeShift = activeShiftId ? finalShifts.find(s => s.id === activeShiftId) || null : null;
       dispatch({ type: 'SET_ACTIVE_SHIFT', payload: activeShift });
 
-      // Load today's status and button state
+      // Load critical data song song
       const today = format(new Date(), 'yyyy-MM-dd');
-      const todayStatus = await storageService.getDailyWorkStatusForDate(today);
-      const buttonState = await workManager.getCurrentButtonState(today);
+      const [todayStatus, buttonState] = await Promise.all([
+        storageService.getDailyWorkStatusForDate(today),
+        workManager.getCurrentButtonState(today),
+      ]);
 
       dispatch({ type: 'SET_TODAY_STATUS', payload: todayStatus });
       dispatch({ type: 'SET_BUTTON_STATE', payload: buttonState });
 
-      // Load weekly status
-      await refreshWeeklyStatus();
+      // ✅ Ẩn loading ngay sau khi có dữ liệu cơ bản
+      dispatch({ type: 'SET_LOADING', payload: false });
 
-      // Load time display info
-      await refreshTimeDisplayInfo();
+      // Load các dữ liệu phụ trong background (không block UI)
+      Promise.all([
+        refreshWeeklyStatus(),
+        refreshTimeDisplayInfo(),
+        // Load weather data nếu được bật
+        settings.weatherWarningEnabled ? weatherService.getWeatherData().then(data =>
+          dispatch({ type: 'SET_WEATHER_DATA', payload: data })
+        ) : Promise.resolve(),
+        // ✅ PRODUCTION: Sample notes removed
+      ]).catch(error => {
+        console.error('Error loading background data:', error);
+      });
 
-      // Load weather data
-      if (settings.weatherWarningEnabled) {
-        const weatherData = await weatherService.getWeatherData();
-        dispatch({ type: 'SET_WEATHER_DATA', payload: weatherData });
-      }
-
-      // ✅ CRITICAL FIX: Sử dụng forceResetForNewShift thay vì syncNextReminders để tránh load hàng loạt thông báo
-      console.log('🔄 AppContext: Bắt đầu đồng bộ hóa thông báo với logic SAFE...');
-
-      // Import ReminderSyncService
-      const { reminderSyncService } = await import('../services/reminderSync');
-
-      // Check for shift rotation and schedule reminders
-      await workManager.checkAndRotateShifts();
-
-      // ✅ SỬ DỤNG FORCE RESET thay vì sync thông thường để tránh load hàng loạt
-      if (activeShift) {
-        console.log(`🔄 AppContext: Using SAFE force reset for active shift: ${activeShift.name}`);
-        // Sử dụng forceResetForNewShift thay vì syncNextReminders
-        // để đảm bảo không có thông báo nào hiển thị ngay lập tức khi app start
-        await reminderSyncService.forceResetForNewShift(activeShift);
-
-        // Lập lịch weekly reminder
-        await workManager.scheduleWeeklyReminder();
-      } else {
-        console.log('ℹ️ AppContext: Không có ca hoạt động, bỏ qua sync reminders');
-      }
-
-      console.log('✅ AppContext: Hoàn thành đồng bộ hóa thông báo SAFE - không có thông báo ngay lập tức');
-
-      // ✅ Khởi tạo ngày nghỉ thông thường (tự động đặt Chủ Nhật là ngày nghỉ)
-      console.log('🔄 AppContext: Khởi tạo ngày nghỉ thông thường...');
-      await dayOffService.initializeDayOffs();
-      console.log('✅ AppContext: Hoàn thành khởi tạo ngày nghỉ thông thường');
+      // Setup notifications và services trong background
+      Promise.all([
+        // Check shift rotation
+        workManager.checkAndRotateShifts(),
+        // Setup reminders nếu có active shift
+        activeShift ? (async () => {
+          const { reminderSyncService } = await import('../services/reminderSync');
+          await Promise.all([
+            reminderSyncService.forceResetForNewShift(activeShift),
+            workManager.scheduleWeeklyReminder(),
+          ]);
+        })() : Promise.resolve(),
+        // Initialize day offs
+        dayOffService.initializeDayOffs(),
+      ]).catch(error => {
+        console.error('Error setting up background services:', error);
+      });
 
     } catch (error) {
       console.error('Error loading initial data:', error);
-    } finally {
+      // Đảm bảo loading được tắt ngay cả khi có lỗi
       dispatch({ type: 'SET_LOADING', payload: false });
     }
   };
@@ -769,6 +750,96 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   };
 
+  // ✅ Clean up duplicate logs
+  const cleanupDuplicateLogs = async () => {
+    try {
+      console.log('🧹 AppContext: Cleaning up duplicate logs...');
+
+      const today = format(new Date(), 'yyyy-MM-dd');
+      await workManager.cleanupDuplicateLogs(today);
+
+      // Refresh states after cleanup
+      await Promise.all([
+        refreshButtonState(),
+        refreshWeeklyStatus(),
+        refreshTimeDisplayInfo()
+      ]);
+
+      console.log('✅ AppContext: Duplicate logs cleaned up');
+
+    } catch (error) {
+      console.error('❌ AppContext: Error cleaning up duplicate logs:', error);
+      throw error;
+    }
+  };
+
+  // ✅ PRODUCTION: Debug functions removed
+
+  // ✅ Check notification status for current shift
+  const checkNotificationStatus = async () => {
+    try {
+      console.log('🔍 AppContext: Checking notification status...');
+
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const now = new Date();
+
+      // Get alarm status
+      const alarmStatus = await alarmService.getAlarmStatus();
+
+      // Get current shift info
+      const activeShift = state.activeShift;
+
+      // Get today's logs
+      const todayLogs = await storageService.getAttendanceLogsForDate(today);
+
+      // Get button state
+      const buttonState = await workManager.getCurrentButtonState(today);
+
+      const status = {
+        timestamp: now.toLocaleString('vi-VN'),
+        activeShift: activeShift ? {
+          id: activeShift.id,
+          name: activeShift.name,
+          departureTime: activeShift.departureTime,
+          startTime: activeShift.startTime,
+          endTime: activeShift.endTime,
+          officeEndTime: activeShift.officeEndTime,
+          workDays: activeShift.workDays,
+          isNightShift: activeShift.isNightShift
+        } : null,
+        alarmStatus: {
+          scheduledCount: alarmStatus.scheduledCount || 0,
+          activeCount: alarmStatus.activeCount || 0,
+          alarms: (alarmStatus.alarms || []).map((alarm: any) => ({
+            id: alarm.id,
+            title: alarm.title,
+            scheduledTime: alarm.scheduledTime ? alarm.scheduledTime.toLocaleString('vi-VN') : 'N/A',
+            type: alarm.type,
+            relatedId: alarm.relatedId,
+            isActive: alarm.isActive
+          }))
+        },
+        todayLogs: todayLogs.map((log: any) => ({
+          type: log.type,
+          time: new Date(log.time).toLocaleString('vi-VN')
+        })),
+        buttonState,
+        settings: {
+          alarmSoundEnabled: state.settings?.alarmSoundEnabled,
+          alarmVibrationEnabled: state.settings?.alarmVibrationEnabled,
+          language: state.settings?.language
+        }
+      };
+
+      console.log('📊 Notification Status:', JSON.stringify(status, null, 2));
+      return status;
+
+    } catch (error) {
+      console.error('❌ AppContext: Error checking notification status:', error);
+      throw error;
+    }
+  };
+
   // Initialize app on mount
   useEffect(() => {
     loadInitialData();
@@ -836,6 +907,8 @@ export function AppProvider({ children }: AppProviderProps) {
       forceRefreshAllStatus,
       refreshShifts,
       syncNotes,
+      cleanupDuplicateLogs,
+      checkNotificationStatus,
     },
   };
 
