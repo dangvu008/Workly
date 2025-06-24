@@ -263,6 +263,11 @@ export function AppProvider({ children }: AppProviderProps) {
         })() : Promise.resolve(),
         // Initialize day offs
         dayOffService.initializeDayOffs(),
+        // 🤖 Initialize auto mode service
+        (async () => {
+          const { autoModeService } = await import('../services/autoMode');
+          await autoModeService.initialize();
+        })(),
       ]).catch(error => {
         console.error('Error setting up background services:', error);
       });
@@ -279,6 +284,12 @@ export function AppProvider({ children }: AppProviderProps) {
     try {
       const newSettings = await storageService.updateUserSettings(updates);
       dispatch({ type: 'SET_SETTINGS', payload: newSettings });
+
+      // 🤖 Handle auto mode changes
+      if (updates.multiButtonMode !== undefined) {
+        const { autoModeService } = await import('../services/autoMode');
+        await autoModeService.updateMode(updates.multiButtonMode);
+      }
 
       // If weather settings changed, refresh weather data
       if ('weatherWarningEnabled' in updates || 'weatherLocation' in updates) {

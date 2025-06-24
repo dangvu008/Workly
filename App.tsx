@@ -25,6 +25,7 @@ import { NotesScreen } from './src/screens/NotesScreen';
 import { NoteDetailScreen } from './src/screens/NoteDetailScreen';
 import { StatisticsScreen } from './src/screens/StatisticsScreen';
 import { WeatherDetailScreen } from './src/screens/WeatherDetailScreen';
+import { ManualStatusUpdateScreen } from './src/screens/ManualStatusUpdateScreen';
 
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -156,6 +157,7 @@ function AppNavigator() {
           <Stack.Screen name="AddEditShift" component={AddEditShiftScreen} />
           <Stack.Screen name="NoteDetail" component={NoteDetailScreen} />
           <Stack.Screen name="WeatherDetail" component={WeatherDetailScreen} />
+          <Stack.Screen name="ManualStatusUpdate" component={ManualStatusUpdateScreen} />
 
         </Stack.Navigator>
       </NavigationContainer>

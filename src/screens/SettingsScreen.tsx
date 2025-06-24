@@ -205,7 +205,11 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
 
             <List.Item
               title={t(currentLanguage, 'settings.multiButtonMode')}
-              description={settings.multiButtonMode === 'full' ? t(currentLanguage, 'settings.full') : t(currentLanguage, 'settings.simple')}
+              description={
+                settings.multiButtonMode === 'full' ? t(currentLanguage, 'settings.full') :
+                settings.multiButtonMode === 'simple' ? t(currentLanguage, 'settings.simple') :
+                `${t(currentLanguage, 'settings.auto')} - ${t(currentLanguage, 'settings.autoModeDescription')}`
+              }
               left={(props) => <List.Icon {...props} icon="gesture-tap-button" />}
               right={() => (
                 <Menu
@@ -231,6 +235,13 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                       setModeMenuVisible(false);
                     }}
                     title={t(currentLanguage, 'settings.simple')}
+                  />
+                  <Menu.Item
+                    onPress={() => {
+                      actions.updateSettings({ multiButtonMode: 'auto' });
+                      setModeMenuVisible(false);
+                    }}
+                    title={t(currentLanguage, 'settings.auto')}
                   />
                 </Menu>
               )}

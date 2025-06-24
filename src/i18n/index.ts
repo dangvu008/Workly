@@ -168,6 +168,8 @@ export interface TranslationKeys {
     day: string;
     status: string;
     exportReport: string;
+    editStatus: string;
+    editStatusConfirm: string;
   };
 
   // Settings
@@ -182,8 +184,10 @@ export interface TranslationKeys {
     vibration: string;
     weatherWarnings: string;
     multiButtonMode: string;
+    autoModeDescription: string;
     full: string;
     simple: string;
+    auto: string;
     general: string;
     notificationsAndAlarms: string;
     weather: string;
@@ -565,6 +569,8 @@ export const vi: TranslationKeys = {
     day: 'Thứ',
     status: 'TT',
     exportReport: 'Xuất báo cáo',
+    editStatus: 'Chỉnh sửa trạng thái',
+    editStatusConfirm: 'Chỉnh sửa trạng thái ngày {date} ({day})?',
   },
 
   settings: {
@@ -578,8 +584,10 @@ export const vi: TranslationKeys = {
     vibration: 'Rung',
     weatherWarnings: 'Cảnh báo thời tiết',
     multiButtonMode: 'Chế độ nút',
+    autoModeDescription: 'Tự động chấm công theo lịch ca, tắt thông báo nhắc nhở',
     full: 'Đầy đủ',
     simple: 'Đơn giản',
+    auto: 'Tự động',
     general: 'Cài đặt chung',
     notificationsAndAlarms: 'Nhắc nhở & Báo thức',
     weather: 'Thời tiết',
@@ -949,6 +957,8 @@ export const en: TranslationKeys = {
     day: 'Day',
     status: 'Status',
     exportReport: 'Export report',
+    editStatus: 'Edit Status',
+    editStatusConfirm: 'Edit status for {date} ({day})?',
   },
 
   settings: {
@@ -962,8 +972,10 @@ export const en: TranslationKeys = {
     vibration: 'Vibration',
     weatherWarnings: 'Weather warnings',
     multiButtonMode: 'Button mode',
+    autoModeDescription: 'Auto attendance tracking by shift schedule, disable reminders',
     full: 'Full',
     simple: 'Simple',
+    auto: 'Auto',
     general: 'General Settings',
     notificationsAndAlarms: 'Notifications & Alarms',
     weather: 'Weather',

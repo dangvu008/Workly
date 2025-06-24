@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import {
   Text,
   Card,
@@ -156,6 +156,52 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
   const summary = calculateSummary();
   const { label } = getDateRange();
 
+  // 🔧 Handle row click để edit work status
+  const handleRowPress = (item: any) => {
+    const dateStr = format(new Date(item.date), 'dd/MM/yyyy');
+    const confirmMessage = t(currentLanguage, 'statistics.editStatusConfirm')
+      .replace('{date}', dateStr)
+      .replace('{day}', item.dayName);
+
+    Alert.alert(
+      `✏️ ${t(currentLanguage, 'statistics.editStatus')}`,
+      confirmMessage,
+      [
+        { text: t(currentLanguage, 'common.cancel'), style: 'cancel' },
+        {
+          text: t(currentLanguage, 'statistics.editStatus'),
+          onPress: () => {
+            // Navigate to ManualStatusUpdateScreen
+            navigation.navigate('ManualStatusUpdate', {
+              date: item.date,
+              currentStatus: {
+                status: item.status,
+                standardHoursScheduled: item.standardHoursScheduled,
+                otHoursScheduled: item.otHoursScheduled,
+                sundayHoursScheduled: item.sundayHoursScheduled,
+                nightHoursScheduled: item.nightHoursScheduled,
+                totalHoursScheduled: item.totalHoursScheduled,
+                lateMinutes: item.lateMinutes,
+                earlyMinutes: item.earlyMinutes,
+                checkInTime: item.checkInTime,
+                checkOutTime: item.checkOutTime,
+                workDuration: item.workDuration,
+                breakDuration: item.breakDuration,
+                actualWorkHours: item.actualWorkHours,
+                notes: item.notes,
+                appliedShiftIdForDay: item.appliedShiftIdForDay,
+                isManualOverride: item.isManualOverride,
+                manualOverrideReason: item.manualOverrideReason,
+                vaoLogTime: item.vaoLogTime,
+                raLogTime: item.raLogTime
+              }
+            });
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <WorklyBackground variant="default">
       <SafeAreaView style={styles.container}>
@@ -309,9 +355,14 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
         {/* Detailed Table */}
         <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
           <Card.Content>
-            <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-              {t(currentLanguage, 'statistics.dailyDetails')}
-            </Text>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+                {t(currentLanguage, 'statistics.dailyDetails')}
+              </Text>
+              <Text style={[styles.sectionHint, { color: theme.colors.onSurfaceVariant }]}>
+                💡 {t(currentLanguage, 'statistics.editStatus')}
+              </Text>
+            </View>
 
             <DataTable>
               <DataTable.Header>
@@ -323,27 +374,43 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
               </DataTable.Header>
 
               {data.slice(0, 10).map((item) => (
-                <DataTable.Row key={item.date}>
-                  <DataTable.Cell style={styles.dateColumn}>
-                    {format(new Date(item.date), 'dd/MM')}
-                  </DataTable.Cell>
-                  <DataTable.Cell style={styles.dayColumn}>
-                    {item.dayName}
-                  </DataTable.Cell>
-                  <DataTable.Cell numeric style={styles.hoursColumn}>
-                    {item.standardHoursScheduled.toFixed(1)}
-                  </DataTable.Cell>
-                  <DataTable.Cell numeric style={styles.otColumn}>
-                    {item.otHoursScheduled.toFixed(1)}
-                  </DataTable.Cell>
-                  <DataTable.Cell style={styles.statusColumn}>
-                    <StatusIcon
-                      icon={getStatusIcon(item.status) as any}
-                      color={getStatusColor(item.status)}
-                      size={20}
-                    />
-                  </DataTable.Cell>
-                </DataTable.Row>
+                <TouchableOpacity
+                  key={item.date}
+                  onPress={() => handleRowPress(item)}
+                  style={styles.clickableRow}
+                  activeOpacity={0.7}
+                >
+                  <DataTable.Row style={styles.dataRow}>
+                    <DataTable.Cell style={styles.dateColumn}>
+                      {format(new Date(item.date), 'dd/MM')}
+                    </DataTable.Cell>
+                    <DataTable.Cell style={styles.dayColumn}>
+                      {item.dayName}
+                    </DataTable.Cell>
+                    <DataTable.Cell numeric style={styles.hoursColumn}>
+                      {item.standardHoursScheduled.toFixed(1)}
+                    </DataTable.Cell>
+                    <DataTable.Cell numeric style={styles.otColumn}>
+                      {item.otHoursScheduled.toFixed(1)}
+                    </DataTable.Cell>
+                    <DataTable.Cell style={styles.statusColumn}>
+                      <View style={styles.statusCellContent}>
+                        <StatusIcon
+                          icon={getStatusIcon(item.status) as any}
+                          color={getStatusColor(item.status)}
+                          size={20}
+                        />
+                        <IconButton
+                          icon="pencil"
+                          size={16}
+                          iconColor={theme.colors.outline}
+                          style={styles.editIcon}
+                          onPress={() => handleRowPress(item)}
+                        />
+                      </View>
+                    </DataTable.Cell>
+                  </DataTable.Row>
+                </TouchableOpacity>
               ))}
             </DataTable>
 
@@ -434,7 +501,14 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  sectionHeader: {
     marginBottom: 16,
+  },
+  sectionHint: {
+    fontSize: 12,
+    fontStyle: 'italic',
   },
   hoursBreakdown: {
     gap: 12,
@@ -475,8 +549,25 @@ const styles = StyleSheet.create({
     paddingLeft: 8, // Thêm khoảng cách với cột trước đó
   },
   statusColumn: {
-    flex: 0.6, // Cột trạng thái chiếm 0.6 phần (nhỏ nhất vì chỉ hiển thị icon)
+    flex: 0.8, // Tăng kích thước để chứa cả status icon và edit icon
     alignItems: 'center', // Căn giữa icon
     paddingLeft: 8, // Thêm khoảng cách với cột Giờ OT
+  },
+  statusCellContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  editIcon: {
+    margin: 0,
+    padding: 0,
+  },
+  clickableRow: {
+    borderRadius: 8,
+    marginVertical: 1,
+  },
+  dataRow: {
+    backgroundColor: 'transparent',
   },
 });

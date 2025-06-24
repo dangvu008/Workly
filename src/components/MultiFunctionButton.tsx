@@ -11,6 +11,7 @@ import { LoadingOverlay } from './LoadingOverlay';
 import { SPACING, BORDER_RADIUS, SCREEN_DIMENSIONS } from '../constants/themes';
 import { t } from '../i18n';
 import { alertManager } from '../utils/AlertManager';
+import { autoModeService } from '../services/autoMode';
 
 interface MultiFunctionButtonProps {
   onPress?: () => void;
@@ -206,6 +207,16 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
   const handlePress = async () => {
     if (isDisabled) return;
 
+    // 🤖 Kiểm tra auto mode - không cho phép manual press
+    if (state.settings?.multiButtonMode === 'auto') {
+      Alert.alert(
+        '🤖 Chế độ tự động',
+        'Bạn đang ở chế độ tự động. Hệ thống sẽ tự động chấm công theo lịch ca làm việc.\n\nMuốn chấm công thủ công? Hãy chuyển về chế độ "Đầy đủ" hoặc "Đơn giản" trong Cài đặt.',
+        [{ text: t(currentLanguage, 'common.ok') }]
+      );
+      return;
+    }
+
     // ✅ Debouncing - prevent rapid successive clicks
     const now = Date.now();
     if (now - lastPressTime < 500) { // 500ms debounce
@@ -213,6 +224,8 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
       return;
     }
     setLastPressTime(now);
+
+    // 📈 Không track manual action ở đây - chỉ track khi có rapid press
 
     try {
       console.log('🚀 MultiFunctionButton: Button press started');
@@ -272,6 +285,11 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
           return;
         }
 
+        // 📈 Track rapid press để suggest auto mode
+        autoModeService.trackRapidPress().catch(error => {
+          console.warn('Failed to track rapid press:', error);
+        });
+
         // ✅ Reset trạng thái processing trước khi hiển thị dialog
         setIsPressed(false);
         setIsProcessing(false);
@@ -315,7 +333,48 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
                   Alert.alert(
                     t(currentLanguage, 'modals.rapidPressSuccess'),
                     t(currentLanguage, 'modals.rapidPressSuccessMessage'),
-                    [{ text: t(currentLanguage, 'common.ok') }]
+                    [{
+                      text: t(currentLanguage, 'common.ok'),
+                      onPress: () => {
+                        // 💡 Suggest auto mode nếu user rapid press 2 ngày liên tục
+                        if (autoModeService.shouldSuggestAutoMode()) {
+                          setTimeout(() => {
+                            Alert.alert(
+                              '💡 Gợi ý chế độ tự động',
+                              'Bạn đã bấm nhanh (rapid press) 2 ngày liên tục, có vẻ như bạn muốn bỏ qua thời gian chờ giữa các bước chấm công.\n\n🤖 Thử chế độ tự động để hệ thống tự động chấm công theo lịch ca không?\n\n✨ Lợi ích:\n• Không cần bấm nút hằng ngày\n• Tự động check-in/check-out đúng giờ\n• Tắt tất cả thông báo nhắc nhở\n• Tính công chính xác theo ca',
+                              [
+                                {
+                                  text: 'Không, cảm ơn',
+                                  style: 'cancel',
+                                  onPress: () => {
+                                    autoModeService.resetSuggestionTracking().catch(error => {
+                                      console.warn('Failed to reset suggestion tracking:', error);
+                                    });
+                                  }
+                                },
+                                {
+                                  text: '🤖 Thử chế độ tự động',
+                                  onPress: async () => {
+                                    try {
+                                      await actions.updateSettings({ multiButtonMode: 'auto' });
+                                      await autoModeService.resetSuggestionTracking();
+                                      Alert.alert(
+                                        '🤖 Đã bật chế độ tự động',
+                                        'Hệ thống sẽ tự động chấm công theo lịch ca. Bạn có thể tắt bất cứ lúc nào trong Cài đặt.',
+                                        [{ text: t(currentLanguage, 'common.ok') }]
+                                      );
+                                    } catch (error) {
+                                      console.error('Failed to enable auto mode:', error);
+                                      Alert.alert('Lỗi', 'Không thể bật chế độ tự động. Vui lòng thử lại.');
+                                    }
+                                  }
+                                }
+                              ]
+                            );
+                          }, 1500); // Delay để không làm gián đoạn UX
+                        }
+                      }
+                    }]
                   );
 
                   onPress?.();
