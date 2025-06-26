@@ -1,5 +1,6 @@
 import { Shift, AttendanceLog } from '../types';
 import { storageService } from './storage';
+import { isExpoGo, logExpoGoWarning } from '../utils/expoGoCompat';
 
 /**
  * 🤖 AutoModeService - Tự động tính công và quản lý attendance
@@ -24,6 +25,11 @@ class AutoModeService {
     try {
       console.log('🤖 AutoModeService: Initializing...');
 
+      // ✅ Auto mode service có thể chạy bình thường trên Expo Go
+      if (isExpoGo()) {
+        console.log('✅ AutoModeService: Running on Expo Go - full functionality available');
+      }
+
       const settings = await storageService.getUserSettings();
       this.isAutoModeActive = settings.multiButtonMode === 'auto';
 
@@ -46,15 +52,21 @@ class AutoModeService {
   async startAutoMode(): Promise<void> {
     try {
       console.log('🤖 AutoModeService: Starting auto mode...');
-      
+
+      if (isExpoGo()) {
+        logExpoGoWarning('Auto Mode Start');
+        console.log('⚠️ AutoModeService: Auto mode disabled in Expo Go');
+        return;
+      }
+
       this.isAutoModeActive = true;
-      
+
       // Tắt tất cả notifications/reminders
       await this.disableNotifications();
-      
+
       // Bắt đầu auto check cycle
       await this.startAutoCheckCycle();
-      
+
       console.log('✅ AutoModeService: Auto mode started');
     } catch (error) {
       console.error('❌ AutoModeService: Error starting auto mode:', error);

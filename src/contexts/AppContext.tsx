@@ -13,6 +13,8 @@ import { weatherService } from '../services/weather';
 import { notificationService } from '../services/notifications';
 import { alarmService } from '../services/alarmService';
 import { dayOffService } from '../services/dayOffService';
+import { EXPO_GO_CONFIG, shouldLoadService } from '../config/expoGoOptimization';
+import { isExpoGo } from '../utils/expoGoCompat';
 import { format, addDays, startOfWeek } from 'date-fns';
 
 // State interface
@@ -199,53 +201,82 @@ export function AppProvider({ children }: AppProviderProps) {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
 
-      // Khởi tạo services song song để tiết kiệm thời gian
-      const [settings, activeShiftId] = await Promise.all([
+      // ✅ Bước 1: Load dữ liệu cơ bản trước (critical path)
+      const [settings, activeShiftId, finalShifts] = await Promise.all([
         storageService.getUserSettings(),
         storageService.getActiveShiftId(),
-        // Khởi tạo services song song
-        notificationService.initialize(),
-        alarmService.initialize(),
-      ]);
-
-      // Load shifts và notes song song
-      const [finalShifts, syncedNotes] = await Promise.all([
         storageService.getShiftList(),
-        storageService.getNotes(),
       ]);
 
-      // Dispatch data ngay lập tức để UI hiển thị nhanh
+      // ✅ Bước 2: Khởi tạo services trong background (non-blocking)
+      // Skip heavy services trên Expo Go để tăng tốc độ loading
+      const servicesToInit = [];
+
+      if (shouldLoadService('notificationService')) {
+        servicesToInit.push(notificationService.initialize());
+      } else {
+        console.log('⚠️ Skipping notification service on Expo Go');
+      }
+
+      if (shouldLoadService('alarmService') && !EXPO_GO_CONFIG.DISABLE_AUDIO_SERVICES) {
+        servicesToInit.push(alarmService.initialize());
+      } else {
+        console.log('⚠️ Skipping alarm service on Expo Go');
+      }
+
+      const servicesInitPromise = servicesToInit.length > 0
+        ? Promise.allSettled(servicesToInit).then(results => {
+            results.forEach((result, index) => {
+              if (result.status === 'rejected') {
+                const serviceNames = ['Notification', 'Alarm'];
+                console.warn(`⚠️ ${serviceNames[index]} service init failed:`, result.reason);
+              }
+            });
+          })
+        : Promise.resolve();
+
+      // ✅ Dispatch data cơ bản ngay lập tức để UI hiển thị nhanh
       dispatch({ type: 'SET_SHIFTS', payload: finalShifts });
-      dispatch({ type: 'SET_NOTES', payload: syncedNotes });
       dispatch({ type: 'SET_SETTINGS', payload: settings });
 
       // Set active shift ngay lập tức
       const activeShift = activeShiftId ? finalShifts.find(s => s.id === activeShiftId) || null : null;
       dispatch({ type: 'SET_ACTIVE_SHIFT', payload: activeShift });
 
-      // Load critical data song song
+      // ✅ Load critical data và notes song song
       const today = format(new Date(), 'yyyy-MM-dd');
-      const [todayStatus, buttonState] = await Promise.all([
+      const [todayStatus, buttonState, syncedNotes] = await Promise.all([
         storageService.getDailyWorkStatusForDate(today),
         workManager.getCurrentButtonState(today),
+        storageService.getNotes(),
       ]);
 
       dispatch({ type: 'SET_TODAY_STATUS', payload: todayStatus });
       dispatch({ type: 'SET_BUTTON_STATE', payload: buttonState });
+      dispatch({ type: 'SET_NOTES', payload: syncedNotes });
 
       // ✅ Ẩn loading ngay sau khi có dữ liệu cơ bản
       dispatch({ type: 'SET_LOADING', payload: false });
 
+      // ✅ Đợi services init hoàn thành trước khi setup background tasks
+      await servicesInitPromise;
+
       // Load các dữ liệu phụ trong background (không block UI)
-      Promise.all([
+      const backgroundTasks = [
         refreshWeeklyStatus(),
         refreshTimeDisplayInfo(),
-        // Load weather data nếu được bật
-        settings.weatherWarningEnabled ? weatherService.getWeatherData().then(data =>
-          dispatch({ type: 'SET_WEATHER_DATA', payload: data })
-        ) : Promise.resolve(),
-        // ✅ PRODUCTION: Sample notes removed
-      ]).catch(error => {
+      ];
+
+      // ✅ Skip weather service trên Expo Go
+      if (!EXPO_GO_CONFIG.DISABLE_WEATHER_SERVICE && settings.weatherWarningEnabled) {
+        backgroundTasks.push(
+          weatherService.getWeatherData().then(data =>
+            dispatch({ type: 'SET_WEATHER_DATA', payload: data })
+          ).catch(err => console.warn('Weather service failed:', err))
+        );
+      }
+
+      Promise.all(backgroundTasks).catch(error => {
         console.error('Error loading background data:', error);
       });
 
@@ -263,10 +294,25 @@ export function AppProvider({ children }: AppProviderProps) {
         })() : Promise.resolve(),
         // Initialize day offs
         dayOffService.initializeDayOffs(),
-        // 🤖 Initialize auto mode service
+        // 🤖 Initialize auto mode service (có thể chạy trên Expo Go)
         (async () => {
-          const { autoModeService } = await import('../services/autoMode');
-          await autoModeService.initialize();
+          try {
+            const { autoModeService } = await import('../services/autoMode');
+            await autoModeService.initialize();
+          } catch (error) {
+            console.warn('⚠️ Auto mode service init failed:', error);
+          }
+        })(),
+        // 🎯 Initialize auto check-in service
+        (async () => {
+          try {
+            if (settings.locationTrackingEnabled && settings.autoCheckInEnabled) {
+              const { autoCheckInService } = await import('../services/autoCheckInService');
+              await autoCheckInService.initialize();
+            }
+          } catch (error) {
+            console.warn('⚠️ Auto check-in service init failed:', error);
+          }
         })(),
       ]).catch(error => {
         console.error('Error setting up background services:', error);
@@ -289,6 +335,17 @@ export function AppProvider({ children }: AppProviderProps) {
       if (updates.multiButtonMode !== undefined) {
         const { autoModeService } = await import('../services/autoMode');
         await autoModeService.updateMode(updates.multiButtonMode);
+      }
+
+      // 🎯 Handle location settings changes
+      if ('locationTrackingEnabled' in updates || 'autoCheckInEnabled' in updates) {
+        try {
+          const { autoCheckInService } = await import('../services/autoCheckInService');
+          const shouldEnable = newSettings.locationTrackingEnabled && newSettings.autoCheckInEnabled;
+          await autoCheckInService.updateSettings(shouldEnable);
+        } catch (error) {
+          console.warn('⚠️ Error updating auto check-in service:', error);
+        }
       }
 
       // If weather settings changed, refresh weather data

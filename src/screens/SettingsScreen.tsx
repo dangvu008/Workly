@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import {
   Text,
   Card,
@@ -9,6 +9,9 @@ import {
   Divider,
   useTheme,
   Menu,
+  Dialog,
+  Portal,
+  TextInput,
 } from 'react-native-paper';
 import { WorklyIconButton, COMMON_ICONS } from '../components/WorklyIcon';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +23,9 @@ import { CompositeNavigationProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { t } from '../i18n';
 import { WorklyBackground } from '../components/WorklyBackground';
+import { isExpoGo } from '../utils/expoGoCompat';
+import { LocationPicker } from '../components/LocationPicker';
+import { SavedLocation } from '../types';
 // ✅ PRODUCTION: Debug components removed
 
 
@@ -37,6 +43,8 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
   const { state, actions } = useApp();
   const [languageMenuVisible, setLanguageMenuVisible] = useState(false);
   const [modeMenuVisible, setModeMenuVisible] = useState(false);
+  const [radiusDialogVisible, setRadiusDialogVisible] = useState(false);
+  const [radiusValue, setRadiusValue] = useState('');
   // ✅ PRODUCTION: Debug panel removed
 
   // Lấy ngôn ngữ hiện tại để sử dụng cho i18n
@@ -56,6 +64,17 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
   });
 
   const settings = state.settings;
+
+  // ✅ Auto hide status message after 3 seconds
+  useEffect(() => {
+    if (statusMessage.message) {
+      const timer = setTimeout(() => {
+        setStatusMessage({ type: '', message: '' });
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [statusMessage.message]);
 
   if (!settings) {
     return (
@@ -139,6 +158,50 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
       });
     }
     setConfirmStates(prev => ({ ...prev, clearAllNotes: false }));
+  };
+
+  // ✅ Radius dialog functions
+  const showRadiusDialog = () => {
+    // Sử dụng radius của work location hiện tại, hoặc autoCheckInRadius mặc định
+    const currentRadius = settings.workLocation?.radius || settings.autoCheckInRadius || 100;
+    setRadiusValue(currentRadius.toString());
+    setRadiusDialogVisible(true);
+  };
+
+  const saveRadius = async () => {
+    try {
+      const radius = parseInt(radiusValue);
+      if (isNaN(radius) || radius < 10 || radius > 1000) {
+        Alert.alert(
+          t(currentLanguage, 'common.error'),
+          t(currentLanguage, 'location.radius_invalid')
+        );
+        return;
+      }
+
+      // Cập nhật cả autoCheckInRadius global và radius của work location hiện tại
+      const updates: any = { autoCheckInRadius: radius };
+
+      if (settings.workLocation) {
+        updates.workLocation = {
+          ...settings.workLocation,
+          radius: radius,
+          updatedAt: new Date().toISOString()
+        };
+      }
+
+      await actions.updateSettings(updates);
+      setRadiusDialogVisible(false);
+      setStatusMessage({
+        type: 'success',
+        message: t(currentLanguage, 'messages.settingsUpdatedSuccessfully')
+      });
+    } catch (error) {
+      setStatusMessage({
+        type: 'error',
+        message: t(currentLanguage, 'messages.cannotUpdateSettings')
+      });
+    }
   };
 
   return (
@@ -238,10 +301,18 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                   />
                   <Menu.Item
                     onPress={() => {
-                      actions.updateSettings({ multiButtonMode: 'auto' });
+                      if (isExpoGo()) {
+                        Alert.alert(
+                          '⚠️ Expo Go',
+                          'Chế độ tự động không hoạt động trên Expo Go. Vui lòng sử dụng Development Build để test tính năng này.',
+                          [{ text: 'OK' }]
+                        );
+                      } else {
+                        actions.updateSettings({ multiButtonMode: 'auto' });
+                      }
                       setModeMenuVisible(false);
                     }}
-                    title={t(currentLanguage, 'settings.auto')}
+                    title={`${t(currentLanguage, 'settings.auto')}${isExpoGo() ? ' ⚠️' : ''}`}
                   />
                 </Menu>
               )}
@@ -338,6 +409,92 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
             />
           </Card.Content>
         </Card>
+
+        {/* Location Settings */}
+        <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
+          <Card.Content>
+            <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+              {t(currentLanguage, 'location.location_settings')}
+            </Text>
+            <Text style={[styles.sectionDescription, { color: theme.colors.onSurfaceVariant }]}>
+              {t(currentLanguage, 'location.location_settings_desc')}
+            </Text>
+
+            {/* Location Tracking Toggle */}
+            <List.Item
+              title={t(currentLanguage, 'location.location_tracking')}
+              description={t(currentLanguage, 'location.location_tracking_desc')}
+              left={(props) => <List.Icon {...props} icon="map-marker" />}
+              right={() => (
+                <Switch
+                  value={settings.locationTrackingEnabled}
+                  onValueChange={(value) =>
+                    actions.updateSettings({ locationTrackingEnabled: value })
+                  }
+                />
+              )}
+            />
+
+            {/* Auto Check-in Toggle */}
+            {settings.locationTrackingEnabled && (
+              <List.Item
+                title={t(currentLanguage, 'location.auto_checkin')}
+                description={t(currentLanguage, 'location.auto_checkin_desc')}
+                left={(props) => <List.Icon {...props} icon="account-check" />}
+                right={() => (
+                  <Switch
+                    value={settings.autoCheckInEnabled}
+                    onValueChange={(value) =>
+                      actions.updateSettings({ autoCheckInEnabled: value })
+                    }
+                  />
+                )}
+              />
+            )}
+
+            {/* Auto Check-in Radius */}
+            {settings.locationTrackingEnabled && settings.autoCheckInEnabled && (
+              <List.Item
+                title={t(currentLanguage, 'location.auto_checkin_radius')}
+                description={`${settings.workLocation?.radius || settings.autoCheckInRadius || 100}m`}
+                left={(props) => <List.Icon {...props} icon="radius" />}
+                onPress={() => showRadiusDialog()}
+              />
+            )}
+          </Card.Content>
+        </Card>
+
+        {/* Home Location */}
+        {settings.locationTrackingEnabled && (
+          <LocationPicker
+            title={t(currentLanguage, 'location.home_location')}
+            currentLocation={settings.homeLocation}
+            onLocationSave={(location: SavedLocation) => {
+              actions.updateSettings({ homeLocation: location });
+            }}
+            onLocationRemove={() => {
+              actions.updateSettings({ homeLocation: null });
+            }}
+            defaultRadius={100}
+            locationType="home"
+          />
+        )}
+
+        {/* Work Location */}
+        {settings.locationTrackingEnabled && (
+          <LocationPicker
+            title={t(currentLanguage, 'location.work_location')}
+            currentLocation={settings.workLocation}
+            onLocationSave={(location: SavedLocation) => {
+              actions.updateSettings({ workLocation: location });
+            }}
+            onLocationRemove={() => {
+              actions.updateSettings({ workLocation: null });
+            }}
+            defaultRadius={settings.autoCheckInRadius}
+            locationType="work"
+          />
+        )}
 
         {/* About */}
         <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
@@ -440,6 +597,34 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
           </Card>
         )}
       </ScrollView>
+
+      {/* Radius Dialog */}
+      <Portal>
+        <Dialog visible={radiusDialogVisible} onDismiss={() => setRadiusDialogVisible(false)}>
+          <Dialog.Title>{t(currentLanguage, 'location.auto_checkin_radius')}</Dialog.Title>
+          <Dialog.Content>
+            <TextInput
+              label={t(currentLanguage, 'location.radius_label')}
+              value={radiusValue}
+              onChangeText={setRadiusValue}
+              keyboardType="numeric"
+              mode="outlined"
+              right={<TextInput.Affix text="m" />}
+            />
+            <Text style={{ marginTop: 8, fontSize: 12, opacity: 0.7 }}>
+              {t(currentLanguage, 'location.radius_hint')}
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setRadiusDialogVisible(false)}>
+              {t(currentLanguage, 'common.cancel')}
+            </Button>
+            <Button onPress={saveRadius} mode="contained">
+              {t(currentLanguage, 'common.save')}
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
       </SafeAreaView>
 
       {/* ✅ PRODUCTION: Debug panel modal removed */}
@@ -475,6 +660,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 8,
+  },
+  sectionDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 12,
+    opacity: 0.8,
   },
   statusMessage: {
     fontSize: 16,

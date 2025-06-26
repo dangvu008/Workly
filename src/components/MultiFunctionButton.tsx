@@ -10,8 +10,8 @@ import { storageService } from '../services/storage';
 import { LoadingOverlay } from './LoadingOverlay';
 import { SPACING, BORDER_RADIUS, SCREEN_DIMENSIONS } from '../constants/themes';
 import { t } from '../i18n';
-import { alertManager } from '../utils/AlertManager';
-import { autoModeService } from '../services/autoMode';
+// import { autoModeService } from '../services/autoMode';
+import { isExpoGo } from '../utils/expoGoCompat';
 
 interface MultiFunctionButtonProps {
   onPress?: () => void;
@@ -207,13 +207,21 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
   const handlePress = async () => {
     if (isDisabled) return;
 
-    // 🤖 Kiểm tra auto mode - không cho phép manual press
+    // 🤖 Kiểm tra auto mode - không cho phép manual press (chỉ trên Development Build)
     if (state.settings?.multiButtonMode === 'auto') {
-      Alert.alert(
-        '🤖 Chế độ tự động',
-        'Bạn đang ở chế độ tự động. Hệ thống sẽ tự động chấm công theo lịch ca làm việc.\n\nMuốn chấm công thủ công? Hãy chuyển về chế độ "Đầy đủ" hoặc "Đơn giản" trong Cài đặt.',
-        [{ text: t(currentLanguage, 'common.ok') }]
-      );
+      if (isExpoGo()) {
+        Alert.alert(
+          '⚠️ Expo Go',
+          'Chế độ tự động không hoạt động trên Expo Go. Vui lòng sử dụng Development Build để test tính năng này.',
+          [{ text: t(currentLanguage, 'common.ok') }]
+        );
+      } else {
+        Alert.alert(
+          '🤖 Chế độ tự động',
+          'Bạn đang ở chế độ tự động. Hệ thống sẽ tự động chấm công theo lịch ca làm việc.\n\nMuốn chấm công thủ công? Hãy chuyển về chế độ "Đầy đủ" hoặc "Đơn giản" trong Cài đặt.',
+          [{ text: t(currentLanguage, 'common.ok') }]
+        );
+      }
       return;
     }
 
@@ -285,10 +293,12 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
           return;
         }
 
-        // 📈 Track rapid press để suggest auto mode
-        autoModeService.trackRapidPress().catch(error => {
-          console.warn('Failed to track rapid press:', error);
-        });
+        // 📈 Track rapid press để suggest auto mode (disabled for Expo Go)
+        // if (!isExpoGo()) {
+        //   autoModeService.trackRapidPress().catch(error => {
+        //     console.warn('Failed to track rapid press:', error);
+        //   });
+        // }
 
         // ✅ Reset trạng thái processing trước khi hiển thị dialog
         setIsPressed(false);
@@ -336,43 +346,10 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
                     [{
                       text: t(currentLanguage, 'common.ok'),
                       onPress: () => {
-                        // 💡 Suggest auto mode nếu user rapid press 2 ngày liên tục
-                        if (autoModeService.shouldSuggestAutoMode()) {
-                          setTimeout(() => {
-                            Alert.alert(
-                              '💡 Gợi ý chế độ tự động',
-                              'Bạn đã bấm nhanh (rapid press) 2 ngày liên tục, có vẻ như bạn muốn bỏ qua thời gian chờ giữa các bước chấm công.\n\n🤖 Thử chế độ tự động để hệ thống tự động chấm công theo lịch ca không?\n\n✨ Lợi ích:\n• Không cần bấm nút hằng ngày\n• Tự động check-in/check-out đúng giờ\n• Tắt tất cả thông báo nhắc nhở\n• Tính công chính xác theo ca',
-                              [
-                                {
-                                  text: 'Không, cảm ơn',
-                                  style: 'cancel',
-                                  onPress: () => {
-                                    autoModeService.resetSuggestionTracking().catch(error => {
-                                      console.warn('Failed to reset suggestion tracking:', error);
-                                    });
-                                  }
-                                },
-                                {
-                                  text: '🤖 Thử chế độ tự động',
-                                  onPress: async () => {
-                                    try {
-                                      await actions.updateSettings({ multiButtonMode: 'auto' });
-                                      await autoModeService.resetSuggestionTracking();
-                                      Alert.alert(
-                                        '🤖 Đã bật chế độ tự động',
-                                        'Hệ thống sẽ tự động chấm công theo lịch ca. Bạn có thể tắt bất cứ lúc nào trong Cài đặt.',
-                                        [{ text: t(currentLanguage, 'common.ok') }]
-                                      );
-                                    } catch (error) {
-                                      console.error('Failed to enable auto mode:', error);
-                                      Alert.alert('Lỗi', 'Không thể bật chế độ tự động. Vui lòng thử lại.');
-                                    }
-                                  }
-                                }
-                              ]
-                            );
-                          }, 1500); // Delay để không làm gián đoạn UX
-                        }
+                        // 💡 Auto mode suggestion disabled for Expo Go
+                        // if (!isExpoGo() && autoModeService.shouldSuggestAutoMode()) {
+                        //   // Auto mode suggestion logic disabled
+                        // }
                       }
                     }]
                   );
@@ -458,10 +435,19 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
 
               console.log('🔄 MultiFunctionButton: Refreshing all states after reset');
 
-              // ✅ Batch refresh operations in parallel for better performance
+              // ✅ Reset local component states first
+              setIsProcessing(false);
+              setIsPressed(false);
+              setPunchButtonPressed(false);
+              setLastPressTime(0);
+              setHasTodayLogs(false);
+
+              // ✅ Refresh states sequentially to ensure proper order
+              await actions.refreshButtonState();
+              await checkTodayLogs();
+
+              // ✅ Refresh other states in parallel
               await Promise.all([
-                checkTodayLogs(),
-                actions.refreshButtonState(),
                 actions.refreshWeeklyStatus(),
                 actions.refreshTimeDisplayInfo()
               ]).catch(error => {
@@ -470,8 +456,13 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
 
               console.log(`✅ MultiFunctionButton: Manual reset completed, current button state: ${state.currentButtonState}`);
 
-              // ✅ Show success message immediately
-              Alert.alert(t(currentLanguage, 'common.success'), t(currentLanguage, 'common.success') + ': Đã reset trạng thái chấm công hôm nay.');
+              // ✅ Show success message with context
+              const isWorkDay = state.activeShift?.workDays.includes(new Date().getDay()) || false;
+              const successMessage = isWorkDay
+                ? 'Đã reset trạng thái chấm công hôm nay.'
+                : 'Đã reset trạng thái. Hôm nay không phải ngày làm việc của ca hiện tại.';
+
+              Alert.alert(t(currentLanguage, 'common.success'), successMessage);
             } catch (error) {
               console.error('❌ MultiFunctionButton: Reset failed:', error);
               Alert.alert(t(currentLanguage, 'common.error'), t(currentLanguage, 'common.error') + ': Không thể reset trạng thái. Vui lòng thử lại.');
@@ -542,22 +533,22 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
 
         {showResetButton && (
           <View style={styles.actionButtonsContainer}>
-            <IconButton
-              icon="restart"
-              size={20}
-              iconColor={theme.colors.primary}
-              style={styles.resetButton}
-              onPress={handleReset}
-            />
-            {/* ✅ PRODUCTION: Cleanup button removed */}
-            {/* ✅ Force reset button for stuck state */}
-            {(isProcessing || isPressed) && (
+            {/* ✅ Hiển thị force reset khi button đang stuck, ngược lại hiển thị reset thường */}
+            {(isProcessing || isPressed) ? (
               <IconButton
                 icon="refresh"
                 size={20}
                 iconColor={theme.colors.error}
                 style={styles.forceResetButton}
                 onPress={handleForceReset}
+              />
+            ) : (
+              <IconButton
+                icon="restart"
+                size={20}
+                iconColor={theme.colors.primary}
+                style={styles.resetButton}
+                onPress={handleReset}
               />
             )}
           </View>
@@ -627,6 +618,16 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
             </Button>
           </LinearGradient>
         </View>
+      )}
+
+      {/* ✅ Hiển thị trạng thái ngày làm việc */}
+      {state.currentButtonState === 'completed_day' && !hasTodayLogs && (
+        <Text style={styles.workDayStatus}>
+          {state.activeShift?.workDays.includes(new Date().getDay())
+            ? 'Đã hoàn thành công việc hôm nay'
+            : 'Hôm nay không phải ngày làm việc'
+          }
+        </Text>
       )}
 
       {/* Loading overlay for processing state */}
@@ -751,95 +752,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
+  workDayStatus: {
+    marginTop: SPACING.sm,
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
 });
-
-// Simple mode button với i18n support
-export function SimpleMultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
-  const theme = useTheme();
-  const { state, actions } = useApp();
-  const [isPressed, setIsPressed] = useState(false);
-
-  // Lấy ngôn ngữ hiện tại để sử dụng cho i18n
-  const currentLanguage = state.settings?.language || 'vi';
-
-  const handlePress = async () => {
-    // Trong mode simple, chỉ cho phép bấm khi trạng thái là 'go_work'
-    if (state.currentButtonState !== 'go_work') return;
-
-    try {
-      setIsPressed(true);
-
-      if (state.settings?.alarmVibrationEnabled) {
-        Vibration.vibrate(100);
-      }
-
-      await actions.handleButtonPress();
-      onPress?.();
-    } catch (error) {
-      // Simple mode không nên có RapidPressDetectedException vì chỉ có một action duy nhất
-      // Nếu vẫn xảy ra, chỉ log và hiển thị lỗi chung
-      if ((error as any)?.name === 'RapidPressDetectedException') {
-        console.warn('⚠️ RapidPressDetectedException in Simple mode - this should not happen');
-        Alert.alert(
-          t(currentLanguage, 'common.error'),
-          'Simple mode không hỗ trợ rapid press detection. Vui lòng chuyển sang Full mode.'
-        );
-      } else {
-        // Lỗi thực sự
-        console.error('Error in simple button press:', error);
-        Alert.alert(t(currentLanguage, 'common.error'), t(currentLanguage, 'common.error') + ': Có lỗi xảy ra. Vui lòng thử lại.');
-      }
-    } finally {
-      setIsPressed(false);
-    }
-  };
-
-  // Trong mode simple: disabled khi đã bấm (không phải go_work)
-  const isDisabled = state.currentButtonState !== 'go_work';
-  const buttonConfig = BUTTON_STATES.go_work;
-
-  return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={isDisabled ?
-          [theme.colors.surfaceDisabled, theme.colors.surfaceDisabled] :
-          [buttonConfig.color, buttonConfig.color + '80']
-        }
-        style={[
-          styles.gradient,
-          isPressed && styles.pressed,
-          isDisabled && styles.disabled,
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <Button
-          mode="contained"
-          onPress={handlePress}
-          disabled={isDisabled}
-          style={styles.button}
-          contentStyle={styles.buttonContent}
-          labelStyle={[
-            styles.buttonText,
-            { color: isDisabled ? theme.colors.onSurfaceDisabled : '#FFFFFF' }
-          ]}
-        >
-          <View style={styles.buttonInner}>
-            <FastIcon
-              name={buttonConfig.icon as any}
-              size={SCREEN_DIMENSIONS.isSmallScreen ? 24 : 28}
-              color={isDisabled ? theme.colors.onSurfaceDisabled : '#FFFFFF'}
-              style={styles.buttonIcon}
-            />
-            <Text style={[
-              styles.buttonLabel,
-              { color: isDisabled ? theme.colors.onSurfaceDisabled : '#FFFFFF' }
-            ]}>
-              {isDisabled ? t(currentLanguage, 'buttonStates.confirmedGoWork') : t(currentLanguage, 'buttonStates.goWork')}
-            </Text>
-          </View>
-        </Button>
-      </LinearGradient>
-    </View>
-  );
-}

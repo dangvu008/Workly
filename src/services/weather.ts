@@ -191,7 +191,16 @@ class WeatherService {
       }
 
       const settings = await storageService.getUserSettings();
-      if (!settings.weatherWarningEnabled || !settings.weatherLocation) {
+      if (!settings.weatherWarningEnabled) {
+        return null;
+      }
+
+      // ✅ Fallback to saved locations if no weather location configured
+      if (!settings.weatherLocation) {
+        if (settings.workLocation || settings.homeLocation) {
+          console.log('🌤️ No weather location configured, using saved locations as fallback');
+          return await this.getWeatherFromSavedLocations(settings);
+        }
         return null;
       }
 
@@ -262,6 +271,53 @@ class WeatherService {
       console.error('Error getting weather data:', error);
       // Return cached data if available
       return await storageService.getWeatherCache();
+    }
+  }
+
+  /**
+   * ✅ Lấy thông tin thời tiết từ saved locations
+   */
+  private async getWeatherFromSavedLocations(settings: any): Promise<WeatherData | null> {
+    try {
+      // Ưu tiên work location cho thời tiết
+      const location = settings.workLocation || settings.homeLocation;
+      if (!location) return null;
+
+      const weatherData = await this.fetchWeatherData(location.latitude, location.longitude);
+      const forecastData = await this.fetchForecastData(location.latitude, location.longitude);
+
+      const locationName = location.name || await this.reverseGeocode(location.latitude, location.longitude);
+      const warnings = this.analyzeWeatherWarnings(weatherData, forecastData, 'work');
+
+      const result: WeatherData = {
+        current: {
+          temperature: Math.round(weatherData.main.temp),
+          description: weatherData.weather[0].description,
+          icon: weatherData.weather[0].icon,
+          humidity: weatherData.main.humidity,
+          windSpeed: weatherData.wind.speed,
+          location: locationName,
+        },
+        forecast: forecastData.list.slice(0, 5).map((item: any) => ({
+          time: new Date(item.dt * 1000).toLocaleTimeString('vi-VN', {
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          temperature: Math.round(item.main.temp),
+          description: item.weather[0].description,
+          icon: item.weather[0].icon,
+          precipitation: item.pop * 100,
+        })),
+        warnings,
+        lastUpdated: new Date().toISOString(),
+      };
+
+      // Cache the result
+      await storageService.setWeatherCache(result);
+      return result;
+    } catch (error) {
+      console.error('Error getting weather from saved locations:', error);
+      return null;
     }
   }
 

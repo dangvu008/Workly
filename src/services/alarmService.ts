@@ -4,7 +4,8 @@
  */
 
 import { Platform, Alert, Vibration, AppState, AppStateStatus } from 'react-native';
-import { Audio } from 'expo-av';
+// ✅ PRODUCTION: expo-av removed, using expo-audio for lighter bundle
+// import { Audio } from 'expo-audio';
 import { AlarmData, Shift, Note, UserSettings } from '../types';
 import { storageService } from './storage';
 import { t } from '../i18n';
@@ -49,45 +50,52 @@ class AlarmService {
     if (this.isInitialized) return;
 
     try {
-      // Cấu hình audio với expo-audio
-      try {
-        if (Audio && Audio.setAudioModeAsync) {
-          await Audio.setAudioModeAsync({
-            allowsRecordingIOS: false,
-            staysActiveInBackground: true,
-            playsInSilentModeIOS: true,
-            shouldDuckAndroid: true,
-            playThroughEarpieceAndroid: false,
-          });
-        } else {
-          console.warn('⚠️ AlarmService: Audio.setAudioModeAsync không khả dụng');
+      // ✅ Khởi tạo song song các tác vụ không phụ thuộc lẫn nhau
+      const initTasks = await Promise.allSettled([
+        // Cấu hình audio
+        this.initializeAudio(),
+        // Load alarm sound
+        this.loadAlarmSound(),
+        // Load existing alarms from storage
+        this.loadAlarmsFromStorage(),
+      ]);
+
+      // Log warnings cho các tác vụ thất bại nhưng không throw error
+      initTasks.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          const taskNames = ['Audio config', 'Load alarm sound', 'Load alarms'];
+          console.warn(`⚠️ AlarmService: ${taskNames[index]} failed:`, result.reason);
         }
-      } catch (audioError) {
-        console.warn('⚠️ AlarmService: Không thể cấu hình audio mode:', audioError);
-      }
+      });
 
-      // Load alarm sound
-      await this.loadAlarmSound();
-
-      // Lắng nghe app state changes
+      // Setup app state listener
       const subscription = AppState.addEventListener('change', this.handleAppStateChange);
-      // Lưu subscription để cleanup sau này
       this.appStateSubscription = subscription;
 
       // Bắt đầu kiểm tra alarms
       this.startAlarmChecker();
 
-      // Load existing alarms from storage
-      await this.loadAlarmsFromStorage();
-
-      // Clear expired alarms ngay sau khi load
-      await this.clearExpiredAlarms();
+      // Clear expired alarms trong background
+      this.clearExpiredAlarms().catch(err =>
+        console.warn('⚠️ AlarmService: Clear expired alarms failed:', err)
+      );
 
       this.isInitialized = true;
       console.log('✅ AlarmService: Đã khởi tạo thành công');
     } catch (error) {
       console.error('❌ AlarmService: Lỗi khởi tạo:', error);
-      throw error;
+      // Không throw error để không block app startup
+      this.isInitialized = true; // Mark as initialized để tránh retry
+    }
+  }
+
+  private async initializeAudio(): Promise<void> {
+    try {
+      // ✅ PRODUCTION: Audio disabled to reduce bundle size
+      console.log('🔇 AlarmService: Audio disabled for lighter bundle, using vibration only');
+    } catch (audioError) {
+      console.warn('⚠️ AlarmService: Không thể cấu hình audio mode:', audioError);
+      throw audioError;
     }
   }
 
@@ -123,27 +131,27 @@ class AlarmService {
   };
 
   private startAlarmChecker(): void {
-    // ✅ CRITICAL FIX: Delay initial check để tránh trigger alarms ngay khi app start
+    // ✅ OPTIMIZED: Giảm delay và tăng frequency cho Expo Go
     console.log('⏰ AlarmService: Starting alarm checker with initial delay...');
 
-    // Delay 10 giây trước khi bắt đầu check alarms để app ổn định
+    // Delay 5 giây trước khi bắt đầu check alarms để app ổn định
     setTimeout(() => {
       console.log('⏰ AlarmService: Starting regular alarm checks...');
       this.checkAlarms(); // Check lần đầu sau delay
 
-      // Sau đó kiểm tra mỗi 30 giây
+      // Kiểm tra mỗi 15 giây để không miss alarms
       this.checkInterval = setInterval(() => {
         this.checkAlarms();
-      }, 30000);
-    }, 10000); // 10 giây delay
+      }, 15000);
+    }, 5000); // 5 giây delay
   }
 
   private async checkAlarms(): Promise<void> {
     const now = new Date();
     const triggeredAlarms: ScheduledAlarm[] = [];
 
-    // ✅ CRITICAL FIX: Tránh trigger alarms cũ khi app mới khởi động
-    const appStartTime = Date.now() - 60000; // 1 phút trước
+    // ✅ OPTIMIZED: Giảm thời gian skip để không miss alarms hợp lệ
+    const appStartTime = Date.now() - 30000; // 30 giây trước
 
     // Tìm các alarm cần kích hoạt
     for (const [id, alarm] of this.alarms) {
@@ -227,9 +235,9 @@ class AlarmService {
     const now = new Date();
     const scheduledTime = alarm.scheduledTime;
 
-    // Kiểm tra xem có phải đúng thời gian trigger không (cho phép sai lệch 1 phút)
+    // Kiểm tra xem có phải đúng thời gian trigger không (cho phép sai lệch 2 phút)
     const timeDiff = Math.abs(now.getTime() - scheduledTime.getTime());
-    const allowedDifference = 60000; // 1 phút
+    const allowedDifference = 120000; // 2 phút
 
     if (timeDiff > allowedDifference) {
       console.log(`⏭️ AlarmService: SKIPPED alarm ${alarm.id} - not the right time`);

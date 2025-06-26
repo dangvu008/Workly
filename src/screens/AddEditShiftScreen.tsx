@@ -79,6 +79,10 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
     message: string;
   }>({ type: '', message: '' });
 
+  // ✅ Track form changes to update button text
+  const [hasChanges, setHasChanges] = useState(false);
+  const [originalFormData, setOriginalFormData] = useState<typeof formData | null>(null);
+
   // Time picker states
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
@@ -90,7 +94,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
       // Tự động phân loại ca đêm dựa trên giờ làm việc hiện tại
       const autoDetectedNightShift = isNightShiftTime(existingShift.startTime, existingShift.endTime);
 
-      setFormData({
+      const initialFormData = {
         name: existingShift.name,
         startTime: existingShift.startTime,
         endTime: existingShift.endTime,
@@ -104,9 +108,38 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
         isNightShift: autoDetectedNightShift, // Sử dụng auto-detection thay vì giá trị cũ
         workDays: existingShift.workDays,
         applyNow: false,
-      });
+      };
+
+      setFormData(initialFormData);
+      setOriginalFormData(initialFormData); // ✅ Set original data for comparison
+      setHasChanges(false); // ✅ Reset changes flag
+    } else {
+      // Cho ca mới, tự động phân loại dựa trên giờ mặc định
+      const defaultStartTime = '08:00';
+      const defaultEndTime = '17:00';
+      const autoDetectedNightShift = isNightShiftTime(defaultStartTime, defaultEndTime);
+
+      const initialFormData = {
+        name: '',
+        startTime: defaultStartTime,
+        endTime: defaultEndTime,
+        officeEndTime: '17:00',
+        departureTime: '07:30',
+        daysApplied: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+        remindBeforeStart: 15,
+        remindAfterEnd: 10,
+        showPunch: false,
+        breakMinutes: 60,
+        isNightShift: autoDetectedNightShift, // Sử dụng auto-detection (sẽ là false cho 8h-17h)
+        workDays: [1, 2, 3, 4, 5, 6],
+        applyNow: applyImmediately,
+      };
+
+      setFormData(initialFormData);
+      setOriginalFormData(initialFormData); // ✅ Set original data for comparison
+      setHasChanges(false); // ✅ Reset changes flag
     }
-  }, [existingShift]);
+  }, [existingShift, applyImmediately]);
 
   // Helper function to handle daysApplied toggle
   const handleDaysAppliedToggle = (dayString: string) => {
@@ -114,39 +147,51 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
       'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6
     };
 
-    setFormData(prev => {
-      const isCurrentlySelected = prev.daysApplied.includes(dayString);
-      const newDaysApplied = isCurrentlySelected
-        ? prev.daysApplied.filter(d => d !== dayString)
-        : [...prev.daysApplied, dayString].sort((a, b) => {
-          const order = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-          return order.indexOf(a) - order.indexOf(b);
-        });
+    const isCurrentlySelected = formData.daysApplied.includes(dayString);
+    const newDaysApplied = isCurrentlySelected
+      ? formData.daysApplied.filter(d => d !== dayString)
+      : [...formData.daysApplied, dayString].sort((a, b) => {
+        const order = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        return order.indexOf(a) - order.indexOf(b);
+      });
 
-      // Also update workDays for backward compatibility
-      const newWorkDays = isCurrentlySelected
-        ? prev.workDays.filter(d => d !== dayMap[dayString])
-        : [...prev.workDays, dayMap[dayString]].sort();
+    // Also update workDays for backward compatibility
+    const newWorkDays = isCurrentlySelected
+      ? formData.workDays.filter(d => d !== dayMap[dayString])
+      : [...formData.workDays, dayMap[dayString]].sort();
 
-      return {
-        ...prev,
-        daysApplied: newDaysApplied,
-        workDays: newWorkDays
-      };
-    });
+    const newFormData = {
+      ...formData,
+      daysApplied: newDaysApplied,
+      workDays: newWorkDays
+    };
+
+    setFormData(newFormData);
+    setHasChanges(checkForChanges(newFormData));
 
     // Clear work days error when user makes changes
     setErrors(prev => ({ ...prev, workDays: '' }));
   };
 
+  // ✅ Check if form has changes compared to original
+  const checkForChanges = (newFormData: typeof formData) => {
+    if (!originalFormData) return false;
+
+    return JSON.stringify(newFormData) !== JSON.stringify(originalFormData);
+  };
+
   // Helper functions to clear errors on input change
   const handleNameChange = (text: string) => {
-    setFormData(prev => ({ ...prev, name: text }));
+    const newFormData = { ...formData, name: text };
+    setFormData(newFormData);
+    setHasChanges(checkForChanges(newFormData));
     setErrors(prev => ({ ...prev, name: '' }));
   };
 
   const handleBreakMinutesChange = (value: number) => {
-    setFormData(prev => ({ ...prev, breakMinutes: value }));
+    const newFormData = { ...formData, breakMinutes: value };
+    setFormData(newFormData);
+    setHasChanges(checkForChanges(newFormData));
     setErrors(prev => ({ ...prev, breakMinutes: '' }));
   };
 
@@ -169,12 +214,13 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
     setShowStartTimePicker(Platform.OS === 'ios');
     if (selectedDate) {
       const timeString = dateToTimeString(selectedDate);
-      setFormData(prev => {
-        const newData = { ...prev, startTime: timeString };
-        // Tự động cập nhật trạng thái ca đêm
-        const isNight = isNightShiftTime(timeString, prev.endTime);
-        return { ...newData, isNightShift: isNight };
-      });
+      const newFormData = {
+        ...formData,
+        startTime: timeString,
+        isNightShift: isNightShiftTime(timeString, formData.endTime)
+      };
+      setFormData(newFormData);
+      setHasChanges(checkForChanges(newFormData));
     }
   };
 
@@ -182,12 +228,13 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
     setShowEndTimePicker(Platform.OS === 'ios');
     if (selectedDate) {
       const timeString = dateToTimeString(selectedDate);
-      setFormData(prev => {
-        const newData = { ...prev, endTime: timeString };
-        // Tự động cập nhật trạng thái ca đêm
-        const isNight = isNightShiftTime(prev.startTime, timeString);
-        return { ...newData, isNightShift: isNight };
-      });
+      const newFormData = {
+        ...formData,
+        endTime: timeString,
+        isNightShift: isNightShiftTime(formData.startTime, timeString)
+      };
+      setFormData(newFormData);
+      setHasChanges(checkForChanges(newFormData));
     }
   };
 
@@ -203,7 +250,9 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
     setShowDepartureTimePicker(Platform.OS === 'ios');
     if (selectedDate) {
       const timeString = dateToTimeString(selectedDate);
-      setFormData(prev => ({ ...prev, departureTime: timeString }));
+      const newFormData = { ...formData, departureTime: timeString };
+      setFormData(newFormData);
+      setHasChanges(checkForChanges(newFormData));
       setErrors(prev => ({ ...prev, departureTime: '' }));
     }
   };
@@ -389,45 +438,16 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
   };
 
   const handleReset = () => {
-    if (isEditing && existingShift) {
-      // Tự động phân loại ca đêm dựa trên giờ làm việc hiện tại
-      const autoDetectedNightShift = isNightShiftTime(existingShift.startTime, existingShift.endTime);
-
-      setFormData({
-        name: existingShift.name,
-        startTime: existingShift.startTime,
-        endTime: existingShift.endTime,
-        officeEndTime: existingShift.officeEndTime,
-        departureTime: existingShift.departureTime,
-        daysApplied: existingShift.daysApplied || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-        remindBeforeStart: existingShift.remindBeforeStart || 15,
-        remindAfterEnd: existingShift.remindAfterEnd || 10,
-        showPunch: existingShift.showPunch,
-        breakMinutes: existingShift.breakMinutes,
-        isNightShift: autoDetectedNightShift, // Sử dụng auto-detection
-        workDays: existingShift.workDays,
-        applyNow: false,
-      });
-    } else {
-      // Cho ca mới, tự động phân loại dựa trên giờ mặc định
-      const defaultStartTime = '08:00';
-      const defaultEndTime = '17:00';
-      const autoDetectedNightShift = isNightShiftTime(defaultStartTime, defaultEndTime);
-
-      setFormData({
+    if (originalFormData) {
+      setFormData(originalFormData);
+      setHasChanges(false);
+      setErrors({
         name: '',
-        startTime: defaultStartTime,
-        endTime: defaultEndTime,
-        officeEndTime: '17:00',
-        departureTime: '07:30',
-        daysApplied: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-        remindBeforeStart: 15,
-        remindAfterEnd: 10,
-        showPunch: false,
-        breakMinutes: 60,
-        isNightShift: autoDetectedNightShift, // Sử dụng auto-detection (sẽ là false cho 8h-17h)
-        workDays: [1, 2, 3, 4, 5, 6],
-        applyNow: applyImmediately,
+        workDays: '',
+        breakMinutes: '',
+        remindBeforeStart: '',
+        remindAfterEnd: '',
+        departureTime: '',
       });
     }
   };
@@ -627,7 +647,11 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
               </Text>
               <Switch
                 value={formData.showPunch}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, showPunch: value }))}
+                onValueChange={(value) => {
+                  const newFormData = { ...formData, showPunch: value };
+                  setFormData(newFormData);
+                  setHasChanges(checkForChanges(newFormData));
+                }}
               />
             </View>
 
@@ -638,7 +662,11 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
                 </Text>
                 <Switch
                   value={formData.applyNow}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, applyNow: value }))}
+                  onValueChange={(value) => {
+                    const newFormData = { ...formData, applyNow: value };
+                    setFormData(newFormData);
+                    setHasChanges(checkForChanges(newFormData));
+                  }}
                 />
               </View>
             )}
@@ -669,6 +697,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
             mode="outlined"
             onPress={handleReset}
             style={styles.actionButton}
+            icon="restart"
           >
             {t(currentLanguage, 'modals.reset')}
           </Button>
@@ -676,8 +705,12 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
             mode="contained"
             onPress={handleSave}
             style={styles.actionButton}
+            icon={hasChanges ? "content-save" : (isEditing ? "pencil" : "plus")}
           >
-            {isEditing ? t(currentLanguage, 'common.edit') : t(currentLanguage, 'shifts.addShift')}
+            {hasChanges
+              ? t(currentLanguage, 'common.save')
+              : (isEditing ? t(currentLanguage, 'common.edit') : t(currentLanguage, 'shifts.addShift'))
+            }
           </Button>
         </View>
       </ScrollView>

@@ -1,18 +1,24 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, lazy, Suspense } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { Text, Card, useTheme, Button, Divider } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { format } from 'date-fns';
-import { vi, enUS } from 'date-fns/locale';
 import { useApp } from '../contexts/AppContext';
 import { MultiFunctionButton, SimpleMultiFunctionButton } from '../components/MultiFunctionButton';
 import { WeeklyStatusGrid } from '../components/WeeklyStatusGrid';
-import { WeatherWidget } from '../components/WeatherWidget';
-import { AttendanceHistory } from '../components/AttendanceHistory';
 import { t } from '../i18n';
+import { format, vi, enUS } from '../utils/optimizedImports';
+import { EXPO_GO_CONFIG } from '../config/expoGoOptimization';
+import { isExpoGo } from '../utils/expoGoCompat';
+
+// ✅ Conditional imports - skip heavy components trên Expo Go
+const WeatherWidget = !EXPO_GO_CONFIG.DISABLE_WEATHER_SERVICE
+  ? lazy(() => import('../components/WeatherWidget').then(module => ({ default: module.WeatherWidget })))
+  : null;
+
+const AttendanceHistory = lazy(() => import('../components/AttendanceHistory').then(module => ({ default: module.AttendanceHistory })));
 // ✅ PRODUCTION: NotificationStatusBanner removed
 
-import ExpoGoBanner from '../components/ExpoGoBanner';
+// ✅ PRODUCTION: ExpoGoBanner removed
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { AnimatedCard } from '../components/AnimatedCard';
 import { WorklyBackground } from '../components/WorklyBackground';
@@ -35,10 +41,29 @@ interface HomeScreenProps {
   navigation: HomeScreenNavigationProp;
 }
 
-// Memoized components để tránh re-render không cần thiết
-const MemoizedWeatherWidget = React.memo(WeatherWidget);
+// ✅ Memoized components với Suspense wrapper
 const MemoizedWeeklyStatusGrid = React.memo(WeeklyStatusGrid);
-const MemoizedAttendanceHistory = React.memo(AttendanceHistory);
+
+// ✅ Suspense wrapper cho lazy components - với fallback cho Expo Go
+const SuspenseWeatherWidget = React.memo(({ onPress }: { onPress?: () => void }) => {
+  if (!WeatherWidget || EXPO_GO_CONFIG.DISABLE_WEATHER_SERVICE) {
+    return null; // Skip weather widget trên Expo Go
+  }
+
+  return (
+    <Suspense fallback={<LoadingSpinner size="small" />}>
+      <WeatherWidget onPress={onPress} />
+    </Suspense>
+  );
+});
+
+const SuspenseAttendanceHistory = React.memo(() => {
+  return (
+    <Suspense fallback={<LoadingSpinner size="small" />}>
+      <AttendanceHistory />
+    </Suspense>
+  );
+});
 
 export function HomeScreen({ navigation }: HomeScreenProps) {
   const theme = useTheme();
@@ -396,16 +421,12 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
           </Card.Content>
         </AnimatedCard>
 
-        {/* Expo Go Banner - Hiển thị khi chạy trong Expo Go */}
-        <AnimatedCard animationType="slideUp" delay={0}>
-          <ExpoGoBanner />
-        </AnimatedCard>
-
+        {/* ✅ PRODUCTION: Expo Go Banner removed */}
         {/* ✅ PRODUCTION: Notification Status Banner removed */}
 
         {/* Weather Widget với animation */}
         <AnimatedCard animationType="slideUp" delay={0}>
-          <MemoizedWeatherWidget onPress={() => navigation.navigate('WeatherDetail')} />
+          <SuspenseWeatherWidget onPress={() => navigation.navigate('WeatherDetail')} />
         </AnimatedCard>
 
         {/* Active Shift với animation */}
@@ -450,7 +471,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
         {state.activeShift && (
           <AnimatedCard animationType="slideUp" delay={0} style={styles.attendanceHistoryCard} backgroundColor={theme.colors.surfaceVariant}>
             <Card.Content>
-              <MemoizedAttendanceHistory />
+              <SuspenseAttendanceHistory />
             </Card.Content>
           </AnimatedCard>
         )}

@@ -25,6 +25,13 @@ export const DEFAULT_SETTINGS = {
   firstDayOfWeek: 'Mon' as const,
   lateThresholdMinutes: 5,
   rapidPressThresholdSeconds: 30, // Ngưỡng phát hiện "Bấm Nhanh" - mặc định 30 giây
+
+  // ✅ Location settings
+  homeLocation: null,
+  workLocation: null,
+  autoCheckInEnabled: false,
+  autoCheckInRadius: 100, // 100 mét
+  locationTrackingEnabled: false,
   overtimeRates: {
     weekday: 150,
     saturday: 200,

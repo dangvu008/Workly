@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Card, useTheme, Divider } from 'react-native-paper';
 import { format, parseISO } from 'date-fns';
@@ -14,7 +14,7 @@ interface AttendanceHistoryProps {
   visible?: boolean;
 }
 
-export function AttendanceHistory({ visible = true }: AttendanceHistoryProps) {
+export const AttendanceHistory = React.memo(function AttendanceHistory({ visible = true }: AttendanceHistoryProps) {
   const theme = useTheme();
   const { state } = useApp();
   const [todayLogs, setTodayLogs] = useState<AttendanceLog[]>([]);
@@ -36,37 +36,41 @@ export function AttendanceHistory({ visible = true }: AttendanceHistoryProps) {
     }
   };
 
-  const getActionText = (type: AttendanceLog['type']): string => {
-    const actionMap = {
+  // ✅ Memoize action mappings để tối ưu performance
+  const actionMappings = useMemo(() => ({
+    text: {
       go_work: t(currentLanguage, 'attendanceHistory.actions.goWork'),
       check_in: t(currentLanguage, 'attendanceHistory.actions.checkIn'),
       punch: t(currentLanguage, 'attendanceHistory.actions.punch'),
       check_out: t(currentLanguage, 'attendanceHistory.actions.checkOut'),
       complete: t(currentLanguage, 'attendanceHistory.actions.complete'),
-    };
-    return actionMap[type] || type;
-  };
-
-  const getActionIcon = (type: AttendanceLog['type']): string => {
-    const iconMap = {
+    },
+    icon: {
       go_work: 'walk',
       check_in: 'login',
       punch: 'pencil',
       check_out: 'logout',
       complete: 'check-circle',
-    };
-    return iconMap[type] || 'pencil';
-  };
-
-  const getActionColor = (type: AttendanceLog['type']): string => {
-    const colorMap = {
+    },
+    color: {
       go_work: '#4CAF50',
       check_in: '#2196F3',
       punch: '#9C27B0',
       check_out: '#FF5722',
       complete: '#4CAF50',
-    };
-    return colorMap[type] || theme.colors.primary;
+    }
+  }), [currentLanguage]);
+
+  const getActionText = (type: AttendanceLog['type']): string => {
+    return actionMappings.text[type] || type;
+  };
+
+  const getActionIcon = (type: AttendanceLog['type']): string => {
+    return actionMappings.icon[type] || 'pencil';
+  };
+
+  const getActionColor = (type: AttendanceLog['type']): string => {
+    return actionMappings.color[type] || theme.colors.primary;
   };
 
   const formatTime = (timeString: string): string => {
@@ -77,8 +81,8 @@ export function AttendanceHistory({ visible = true }: AttendanceHistoryProps) {
     }
   };
 
-  // Don't render if no logs or not visible
-  if (!visible || todayLogs.length === 0) {
+  // Don't render if not visible
+  if (!visible) {
     return null;
   }
 
@@ -88,60 +92,88 @@ export function AttendanceHistory({ visible = true }: AttendanceHistoryProps) {
         {t(currentLanguage, 'attendanceHistory.title')}
       </Text>
 
-      <ScrollView
-        style={styles.logsList}
-        contentContainerStyle={styles.logsContent}
-        showsVerticalScrollIndicator={false}
-        nestedScrollEnabled={true}
-        bounces={false}
-      >
-        {todayLogs.map((log, index) => (
-          <View key={`${log.type}-${log.time}-${index}`}>
-            <View style={styles.logItem}>
-              <View style={styles.logIcon}>
-                <FastIcon
-                  name={getActionIcon(log.type) as any}
-                  size={20}
-                  color={getActionColor(log.type)}
-                />
-              </View>
+      {todayLogs.length === 0 ? (
+        // ✅ Hiển thị trạng thái khi chưa có hoạt động - Tối ưu icon size
+        <View style={styles.emptyState}>
+          <FastIcon
+            name="clock"
+            size={32}
+            color={theme.colors.onSurfaceVariant}
+            style={styles.emptyIcon}
+          />
+          <Text style={[styles.emptyTitle, { color: theme.colors.onSurface }]}>
+            {t(currentLanguage, 'attendanceHistory.noActivity')}
+          </Text>
+          <Text style={[styles.emptySubtitle, { color: theme.colors.onSurfaceVariant }]}>
+            {t(currentLanguage, 'attendanceHistory.noActivityDescription')}
+          </Text>
+        </View>
+      ) : (
+        <>
+          <ScrollView
+            style={styles.logsList}
+            contentContainerStyle={styles.logsContent}
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled={true}
+            bounces={false}
+          >
+            {todayLogs.map((log, index) => {
+              // ✅ Memoize log item data để tối ưu rendering
+              const iconName = getActionIcon(log.type);
+              const iconColor = getActionColor(log.type);
+              const actionText = getActionText(log.type);
+              const timeText = formatTime(log.time);
 
-              <View style={styles.logContent}>
-                <Text style={[
-                  styles.actionText,
-                  { color: theme.colors.onSurface }
-                ]}>
-                  {getActionText(log.type)}
-                </Text>
-                <Text style={[
-                  styles.timeText,
-                  { color: theme.colors.onSurfaceVariant }
-                ]}>
-                  {formatTime(log.time)}
-                </Text>
-              </View>
+              return (
+                <View key={`${log.type}-${log.time}-${index}`}>
+                  <View style={styles.logItem}>
+                    <View style={styles.logIcon}>
+                      <FastIcon
+                        name={iconName as any}
+                        size={18}
+                        color={iconColor}
+                      />
+                    </View>
 
-              <View style={styles.statusIndicator}>
-                <View style={[
-                  styles.statusDot,
-                  { backgroundColor: getActionColor(log.type) }
-                ]} />
-              </View>
-            </View>
+                    <View style={styles.logContent}>
+                      <Text style={[
+                        styles.actionText,
+                        { color: theme.colors.onSurface }
+                      ]}>
+                        {actionText}
+                      </Text>
+                      <Text style={[
+                        styles.timeText,
+                        { color: theme.colors.onSurfaceVariant }
+                      ]}>
+                        {timeText}
+                      </Text>
+                    </View>
 
-            {index < todayLogs.length - 1 && (
-              <Divider style={[styles.divider, { backgroundColor: theme.colors.outline }]} />
-            )}
-          </View>
-        ))}
-      </ScrollView>
+                    <View style={styles.statusIndicator}>
+                      <View style={[
+                        styles.statusDot,
+                        { backgroundColor: iconColor }
+                      ]} />
+                    </View>
+                  </View>
 
-      <Text style={[styles.summary, { color: theme.colors.onSurfaceVariant }]}>
-        {t(currentLanguage, 'attendanceHistory.totalActions').replace('{count}', todayLogs.length.toString())}
-      </Text>
+                  {index < todayLogs.length - 1 && (
+                    <Divider style={[styles.divider, { backgroundColor: theme.colors.outline }]} />
+                  )}
+                </View>
+              );
+            })}
+          </ScrollView>
+
+          <Text style={[styles.summary, { color: theme.colors.onSurfaceVariant }]}>
+            {t(currentLanguage, 'attendanceHistory.totalActions').replace('{count}', todayLogs.length.toString())}
+          </Text>
+        </>
+      )}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -211,5 +243,26 @@ const styles = StyleSheet.create({
     marginBottom: 4, // Add bottom margin
     fontStyle: 'italic',
     paddingHorizontal: 8, // Add horizontal padding
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+  },
+  emptyIcon: {
+    marginBottom: 12,
+    opacity: 0.7,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

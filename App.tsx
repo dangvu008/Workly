@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 
@@ -14,22 +14,34 @@ import { t } from './src/i18n';
 import { RootStackParamList, TabParamList } from './src/types';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { TabIcon } from './src/components/WorklyIcon';
+import { LoadingSpinner } from './src/components/LoadingSpinner';
 
-
-// Screens
-import { HomeScreen } from './src/screens/HomeScreen';
-import { SettingsScreen } from './src/screens/SettingsScreen';
-import { ShiftManagementScreen } from './src/screens/ShiftManagementScreen';
-import { AddEditShiftScreen } from './src/screens/AddEditShiftScreen';
-import { NotesScreen } from './src/screens/NotesScreen';
-import { NoteDetailScreen } from './src/screens/NoteDetailScreen';
-import { StatisticsScreen } from './src/screens/StatisticsScreen';
-import { WeatherDetailScreen } from './src/screens/WeatherDetailScreen';
-import { ManualStatusUpdateScreen } from './src/screens/ManualStatusUpdateScreen';
+// ✅ Lazy load screens để tối ưu thời gian khởi động
+const HomeScreen = lazy(() => import('./src/screens/HomeScreen').then(module => ({ default: module.HomeScreen })));
+const SettingsScreen = lazy(() => import('./src/screens/SettingsScreen').then(module => ({ default: module.SettingsScreen })));
+const ShiftManagementScreen = lazy(() => import('./src/screens/ShiftManagementScreen').then(module => ({ default: module.ShiftManagementScreen })));
+const AddEditShiftScreen = lazy(() => import('./src/screens/AddEditShiftScreen').then(module => ({ default: module.AddEditShiftScreen })));
+const NotesScreen = lazy(() => import('./src/screens/NotesScreen').then(module => ({ default: module.NotesScreen })));
+const NoteDetailScreen = lazy(() => import('./src/screens/NoteDetailScreen').then(module => ({ default: module.NoteDetailScreen })));
+const StatisticsScreen = lazy(() => import('./src/screens/StatisticsScreen').then(module => ({ default: module.StatisticsScreen })));
+const WeatherDetailScreen = lazy(() => import('./src/screens/WeatherDetailScreen').then(module => ({ default: module.WeatherDetailScreen })));
+const ManualStatusUpdateScreen = lazy(() => import('./src/screens/ManualStatusUpdateScreen').then(module => ({ default: module.ManualStatusUpdateScreen })));
 
 
 const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
+
+// ✅ Wrapper component với Suspense cho lazy loading
+function SuspenseWrapper({ children }: { children: React.ReactNode }) {
+  const { state } = useApp();
+  const currentLanguage = state.settings?.language || 'vi';
+
+  return (
+    <Suspense fallback={<LoadingSpinner message={t(currentLanguage, 'common.loading')} />}>
+      {children}
+    </Suspense>
+  );
+}
 
 function MainTabs() {
   const { state } = useApp();
@@ -86,39 +98,44 @@ function MainTabs() {
     >
       <Tab.Screen
         name="HomeTab"
-        component={HomeScreen}
         options={{
           tabBarLabel: t(currentLanguage, 'navigation.home'),
         }}
-      />
+      >
+        {(props) => <SuspenseWrapper><HomeScreen {...props} /></SuspenseWrapper>}
+      </Tab.Screen>
       <Tab.Screen
         name="ShiftsTab"
-        component={ShiftManagementScreen}
         options={{
           tabBarLabel: t(currentLanguage, 'navigation.shifts'),
         }}
-      />
+      >
+        {(props) => <SuspenseWrapper><ShiftManagementScreen {...props} /></SuspenseWrapper>}
+      </Tab.Screen>
       <Tab.Screen
         name="NotesTab"
-        component={NotesScreen}
         options={{
           tabBarLabel: t(currentLanguage, 'navigation.notes'),
         }}
-      />
+      >
+        {(props) => <SuspenseWrapper><NotesScreen {...props} /></SuspenseWrapper>}
+      </Tab.Screen>
       <Tab.Screen
         name="StatisticsTab"
-        component={StatisticsScreen}
         options={{
           tabBarLabel: t(currentLanguage, 'navigation.statistics'),
         }}
-      />
+      >
+        {(props) => <SuspenseWrapper><StatisticsScreen {...props} /></SuspenseWrapper>}
+      </Tab.Screen>
       <Tab.Screen
         name="SettingsTab"
-        component={SettingsScreen}
         options={{
           tabBarLabel: t(currentLanguage, 'navigation.settings'),
         }}
-      />
+      >
+        {(props) => <SuspenseWrapper><SettingsScreen {...props} /></SuspenseWrapper>}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 }
@@ -128,20 +145,25 @@ function AppNavigator() {
 
   const theme = state.settings?.theme === 'dark' ? darkTheme : lightTheme;
 
-  // Ẩn splash screen ngay khi component mount
+  // ✅ Tối ưu splash screen - ẩn ngay khi có dữ liệu cơ bản
   useEffect(() => {
     const hideSplash = async () => {
       try {
-        await SplashScreen.hideAsync();
+        // Chỉ ẩn splash screen khi không còn loading
+        if (!state.isLoading) {
+          await SplashScreen.hideAsync();
+        }
       } catch (error) {
         console.warn('Lỗi ẩn splash screen:', error);
       }
     };
 
-    // Delay ngắn để đảm bảo UI đã render
-    const timer = setTimeout(hideSplash, 100);
-    return () => clearTimeout(timer);
-  }, []);
+    // Ẩn splash screen ngay khi loading hoàn thành
+    if (!state.isLoading) {
+      const timer = setTimeout(hideSplash, 50); // Giảm delay từ 100ms xuống 50ms
+      return () => clearTimeout(timer);
+    }
+  }, [state.isLoading]);
 
   return (
     <PaperProvider theme={theme}>
@@ -153,11 +175,21 @@ function AppNavigator() {
           }}
         >
           <Stack.Screen name="MainTabs" component={MainTabs} />
-          <Stack.Screen name="ShiftManagement" component={ShiftManagementScreen} />
-          <Stack.Screen name="AddEditShift" component={AddEditShiftScreen} />
-          <Stack.Screen name="NoteDetail" component={NoteDetailScreen} />
-          <Stack.Screen name="WeatherDetail" component={WeatherDetailScreen} />
-          <Stack.Screen name="ManualStatusUpdate" component={ManualStatusUpdateScreen} />
+          <Stack.Screen name="ShiftManagement">
+            {(props) => <SuspenseWrapper><ShiftManagementScreen {...props} /></SuspenseWrapper>}
+          </Stack.Screen>
+          <Stack.Screen name="AddEditShift">
+            {(props) => <SuspenseWrapper><AddEditShiftScreen {...props} /></SuspenseWrapper>}
+          </Stack.Screen>
+          <Stack.Screen name="NoteDetail">
+            {(props) => <SuspenseWrapper><NoteDetailScreen {...props} /></SuspenseWrapper>}
+          </Stack.Screen>
+          <Stack.Screen name="WeatherDetail">
+            {(props) => <SuspenseWrapper><WeatherDetailScreen {...props} /></SuspenseWrapper>}
+          </Stack.Screen>
+          <Stack.Screen name="ManualStatusUpdate">
+            {(props) => <SuspenseWrapper><ManualStatusUpdateScreen {...props} /></SuspenseWrapper>}
+          </Stack.Screen>
 
         </Stack.Navigator>
       </NavigationContainer>

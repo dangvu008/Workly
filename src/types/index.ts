@@ -1,4 +1,17 @@
 // Workly App Types
+
+// ✅ Location data structure
+export interface SavedLocation {
+  id: string;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  radius: number; // Bán kính tính bằng mét để xác định "gần"
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface UserSettings {
   language: string;
   theme: 'light' | 'dark';
@@ -10,6 +23,13 @@ export interface UserSettings {
   changeShiftReminderMode: 'ask_weekly' | 'rotate' | 'disabled';
   timeFormat: '12h' | '24h';
   firstDayOfWeek: 'Mon' | 'Sun';
+
+  // ✅ Location settings
+  homeLocation: SavedLocation | null;
+  workLocation: SavedLocation | null;
+  autoCheckInEnabled: boolean;
+  autoCheckInRadius: number; // Bán kính tự động chấm công (mét)
+  locationTrackingEnabled: boolean;
   lateThresholdMinutes: number;
   rapidPressThresholdSeconds: number; // Ngưỡng phát hiện "Bấm Nhanh" (giây)
   overtimeRates: {

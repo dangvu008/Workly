@@ -95,6 +95,10 @@ export interface TranslationKeys {
     confirmDeleteMessage: string;
     successSelected: string;
     errorSelect: string;
+    confirmApplyNew: string;
+    confirmApplyNewMessage: string;
+    applyNewShift: string;
+    resetDataWarning: string;
     successDeleted: string;
     errorDelete: string;
     successUpdatedMode: string;
@@ -371,6 +375,8 @@ export interface TranslationKeys {
   attendanceHistory: {
     title: string;
     totalActions: string;
+    noActivity: string;
+    noActivityDescription: string;
     actions: {
       goWork: string;
       checkIn: string;
@@ -393,12 +399,7 @@ export interface TranslationKeys {
     testMessage: string;
   };
 
-  // Expo Go limitations
-  expo: {
-    bannerTitle: string;
-    bannerMessage: string;
-    bannerAlternative: string;
-  };
+  // ✅ PRODUCTION: Expo Go banner removed
 }
 
 // Vietnamese translations
@@ -492,6 +493,10 @@ export const vi: TranslationKeys = {
     confirmDeleteMessage: 'Bạn có muốn xóa ca "{name}" không?',
     successSelected: 'Đã chọn ca làm việc mới.',
     errorSelect: 'Không thể chọn ca làm việc.',
+    confirmApplyNew: 'Xác nhận áp dụng ca mới',
+    confirmApplyNewMessage: 'Bạn đã có dữ liệu chấm công hôm nay. Áp dụng ca mới sẽ reset toàn bộ dữ liệu. Tiếp tục?',
+    applyNewShift: 'Áp dụng ca mới',
+    resetDataWarning: 'Hành động này sẽ xóa toàn bộ dữ liệu chấm công hôm nay và không thể hoàn tác!',
     successDeleted: 'Đã xóa ca làm việc.',
     errorDelete: 'Không thể xóa ca làm việc.',
     successUpdatedMode: 'Đã cập nhật chế độ ca làm việc.',
@@ -732,6 +737,8 @@ export const vi: TranslationKeys = {
     deleteAllNotesData: 'Xóa toàn bộ dữ liệu ghi chú',
     replace: 'Thay thế',
     deleteAll: 'Xóa tất cả',
+    settingsUpdatedSuccessfully: '✅ Đã cập nhật cài đặt thành công!',
+    cannotUpdateSettings: '❌ Không thể cập nhật cài đặt. Vui lòng thử lại.',
   },
 
   timeDate: {
@@ -761,6 +768,8 @@ export const vi: TranslationKeys = {
   attendanceHistory: {
     title: 'Lịch sử bấm nút hôm nay',
     totalActions: 'Tổng cộng: {count} hành động',
+    noActivity: 'Chưa có hoạt động',
+    noActivityDescription: 'Bấm nút chấm công để bắt đầu ghi nhận hoạt động hôm nay',
     actions: {
       goWork: 'Đi Làm',
       checkIn: 'Chấm Công Vào',
@@ -782,10 +791,38 @@ export const vi: TranslationKeys = {
     testMessage: 'Hệ thống báo thức đang hoạt động bình thường!',
   },
 
-  expo: {
-    bannerTitle: 'Chạy trong Expo Go',
-    bannerMessage: 'Push notifications không khả dụng trong Expo Go (SDK 53+). Hệ thống báo thức với rung vẫn hoạt động bình thường.',
-    bannerAlternative: '💡 Để có đầy đủ tính năng notifications, hãy sử dụng development build.',
+  // ✅ PRODUCTION: Expo Go banner removed
+
+  location: {
+    permission_denied: 'Quyền truy cập vị trí bị từ chối',
+    permission_required: 'Ứng dụng cần quyền truy cập vị trí để hoạt động',
+    get_location_error: 'Không thể lấy vị trí hiện tại',
+    name_required: 'Vui lòng nhập tên vị trí',
+    coordinates_required: 'Vui lòng chọn vị trí trên bản đồ hoặc lấy vị trí hiện tại',
+    radius_invalid: 'Bán kính phải từ 10m đến 1000m',
+    name_label: 'Tên vị trí',
+    address_label: 'Địa chỉ',
+    radius_label: 'Bán kính phát hiện',
+    radius_hint: 'Bán kính từ 10m đến 1000m',
+    home_placeholder: 'Nhà của tôi',
+    work_placeholder: 'Công ty',
+    address_placeholder: 'Nhập địa chỉ hoặc lấy vị trí hiện tại',
+    get_current: 'Lấy vị trí hiện tại',
+    last_updated: 'Cập nhật lần cuối',
+    home_default_name: 'Nhà',
+    work_default_name: 'Công ty',
+    home_location: 'Vị trí nhà',
+    work_location: 'Vị trí công ty',
+    auto_checkin: 'Tự động chấm công',
+    auto_checkin_desc: 'Tự động chấm công khi đến gần công ty',
+    location_tracking: 'Theo dõi vị trí',
+    location_tracking_desc: 'Cho phép ứng dụng theo dõi vị trí để tự động chấm công',
+    auto_checkin_radius: 'Bán kính tự động chấm công',
+    location_settings: 'Cài đặt vị trí',
+    location_settings_desc: 'Quản lý vị trí nhà và công ty cho tính năng tự động',
+    auto_checkin_confirm: 'Bạn đang ở gần {location} (cách {distance}m). Tự động chấm công vào?',
+    auto_checkin_success: 'Đã tự động chấm công vào lúc {time} tại {location}',
+    auto_checkin_error: 'Không thể tự động chấm công. Vui lòng thử lại.',
   },
 };
 
@@ -880,6 +917,10 @@ export const en: TranslationKeys = {
     confirmDeleteMessage: 'Do you want to delete shift "{name}"?',
     successSelected: 'New shift selected successfully.',
     errorSelect: 'Cannot select shift.',
+    confirmApplyNew: 'Confirm Apply New Shift',
+    confirmApplyNewMessage: 'You have attendance data for today. Applying new shift will reset all data. Continue?',
+    applyNewShift: 'Apply New Shift',
+    resetDataWarning: 'This action will delete all attendance data for today and cannot be undone!',
     successDeleted: 'Shift deleted successfully.',
     errorDelete: 'Cannot delete shift.',
     successUpdatedMode: 'Shift mode updated successfully.',
@@ -1120,6 +1161,8 @@ export const en: TranslationKeys = {
     deleteAllNotesData: 'Delete all notes data',
     replace: 'Replace',
     deleteAll: 'Delete All',
+    settingsUpdatedSuccessfully: '✅ Settings updated successfully!',
+    cannotUpdateSettings: '❌ Cannot update settings. Please try again.',
   },
 
   timeDate: {
@@ -1149,6 +1192,8 @@ export const en: TranslationKeys = {
   attendanceHistory: {
     title: 'Today\'s Button History',
     totalActions: 'Total: {count} actions',
+    noActivity: 'No Activity Yet',
+    noActivityDescription: 'Press the attendance button to start recording today\'s activities',
     actions: {
       goWork: 'Go to Work',
       checkIn: 'Check In',
@@ -1170,10 +1215,38 @@ export const en: TranslationKeys = {
     testMessage: 'Alarm system is working properly!',
   },
 
-  expo: {
-    bannerTitle: 'Running in Expo Go',
-    bannerMessage: 'Push notifications are not available in Expo Go (SDK 53+). Alarm system with vibration still works normally.',
-    bannerAlternative: '💡 For full notification features, please use a development build.',
+  // ✅ PRODUCTION: Expo Go banner removed
+
+  location: {
+    permission_denied: 'Location permission denied',
+    permission_required: 'App needs location permission to function',
+    get_location_error: 'Unable to get current location',
+    name_required: 'Please enter location name',
+    coordinates_required: 'Please select location on map or get current location',
+    radius_invalid: 'Radius must be between 10m and 1000m',
+    name_label: 'Location Name',
+    address_label: 'Address',
+    radius_label: 'Detection Radius',
+    radius_hint: 'Radius from 10m to 1000m',
+    home_placeholder: 'My Home',
+    work_placeholder: 'Office',
+    address_placeholder: 'Enter address or get current location',
+    get_current: 'Get Current Location',
+    last_updated: 'Last updated',
+    home_default_name: 'Home',
+    work_default_name: 'Office',
+    home_location: 'Home Location',
+    work_location: 'Work Location',
+    auto_checkin: 'Auto Check-in',
+    auto_checkin_desc: 'Automatically check in when arriving near office',
+    location_tracking: 'Location Tracking',
+    location_tracking_desc: 'Allow app to track location for auto check-in',
+    auto_checkin_radius: 'Auto Check-in Radius',
+    location_settings: 'Location Settings',
+    location_settings_desc: 'Manage home and work locations for automatic features',
+    auto_checkin_confirm: 'You are near {location} ({distance}m away). Auto check-in?',
+    auto_checkin_success: 'Auto checked-in at {time} at {location}',
+    auto_checkin_error: 'Unable to auto check-in. Please try again.',
   },
 };
 

@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../contexts/AppContext';
 import { Shift } from '../types';
+import { storageService } from '../services/storage';
 import { TabParamList, RootStackParamList } from '../types';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { CompositeNavigationProp } from '@react-navigation/native';
@@ -41,15 +42,13 @@ interface ShiftManagementScreenProps {
 export function ShiftManagementScreen({ navigation, route }: ShiftManagementScreenProps) {
   const theme = useTheme();
   const { state, actions } = useApp();
+  const currentLanguage = state.settings?.language || 'vi';
   const [selectedShifts, setSelectedShifts] = useState<string[]>([]);
   const [frequencyMenuVisible, setFrequencyMenuVisible] = useState(false);
   const [modeMenuVisible, setModeMenuVisible] = useState(false);
 
   const isRotationMode = route.params?.mode === 'select_rotation';
   const settings = state.settings;
-
-  // Lấy ngôn ngữ hiện tại để sử dụng cho i18n
-  const currentLanguage = state.settings?.language || 'vi';
 
   // Initialize selected shifts for rotation mode
   React.useEffect(() => {
@@ -68,6 +67,208 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
     return unsubscribe;
   }, [navigation, actions]);
 
+  /**
+   * 🔄 Xử lý áp dụng ca mới với kiểm tra dữ liệu hiện tại
+   */
+  const handleApplyNewShift = async (shiftId: string) => {
+    try {
+      // Kiểm tra xem có dữ liệu làm việc hôm nay không
+      const today = new Date().toISOString().split('T')[0];
+      console.log(`🔍 Checking existing data for ${today}...`);
+
+      const todayLogs = await storageService.getAttendanceLogsForDate(today);
+      const todayStatus = await storageService.getDailyWorkStatusForDate(today);
+
+      console.log(`🔍 Found ${todayLogs.length} attendance logs:`, todayLogs.map(l => l.type));
+      console.log(`🔍 Work status:`, todayStatus);
+
+      // Kiểm tra xem có dữ liệu quan trọng không
+      const hasAttendanceData = todayLogs.length > 0;
+      const hasWorkStatus = todayStatus && (
+        todayStatus.checkInTime ||
+        todayStatus.checkOutTime ||
+        todayStatus.actualWorkHours > 0 ||
+        todayStatus.isManualOverride
+      );
+
+      console.log(`🔍 Data check - hasAttendanceData: ${hasAttendanceData}, hasWorkStatus: ${hasWorkStatus}`);
+
+      const selectedShift = state.shifts.find(s => s.id === shiftId);
+      if (!selectedShift) {
+        Alert.alert(t(currentLanguage, 'common.error'), 'Không tìm thấy ca làm việc');
+        return;
+      }
+
+      // Nếu có dữ liệu quan trọng, yêu cầu xác nhận
+      if (hasAttendanceData || hasWorkStatus) {
+        console.log(`🔍 Important data detected, showing confirmation dialog...`);
+        Alert.alert(
+          `⚠️ ${t(currentLanguage, 'shifts.confirmApplyNew')}`,
+          `${t(currentLanguage, 'shifts.confirmApplyNewMessage')}\n\n🔄 Áp dụng ca "${selectedShift.name}" sẽ:\n\n• Reset toàn bộ dữ liệu chấm công hôm nay\n• Xóa thống kê thời gian làm việc\n• Reset trạng thái nút đa năng\n• Cập nhật lại thông báo nhắc nhở\n• Tính toán lại theo ca mới\n\n⚠️ ${t(currentLanguage, 'shifts.resetDataWarning')}`,
+          [
+            {
+              text: t(currentLanguage, 'common.cancel'),
+              style: 'cancel'
+            },
+            {
+              text: `🔄 ${t(currentLanguage, 'shifts.applyNewShift')}`,
+              style: 'destructive',
+              onPress: async () => {
+                await performShiftChange(shiftId, selectedShift, true);
+              }
+            }
+          ]
+        );
+      } else {
+        // Không có dữ liệu quan trọng, áp dụng trực tiếp
+        console.log(`🔍 No important data found, applying shift directly without reset...`);
+        await performShiftChange(shiftId, selectedShift, false);
+      }
+
+    } catch (error) {
+      console.error('❌ Error applying new shift:', error);
+      Alert.alert(t(currentLanguage, 'common.error'), 'Không thể áp dụng ca mới. Vui lòng thử lại.');
+    }
+  };
+
+  /**
+   * 🔄 Thực hiện thay đổi ca làm việc và reset dữ liệu
+   */
+  const performShiftChange = async (shiftId: string, selectedShift: Shift, shouldReset: boolean) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      console.log(`🔄 STARTING shift change: ${selectedShift.name} (shouldReset: ${shouldReset})`);
+
+      if (shouldReset) {
+        console.log(`🔄 Reset flag is TRUE, calling resetTodayData...`);
+        await resetTodayData();
+        console.log(`🔄 Reset completed, continuing with shift change...`);
+      } else {
+        console.log(`🔄 Reset flag is FALSE, skipping data reset`);
+      }
+
+      // Áp dụng ca mới
+      console.log(`🔄 Setting active shift to: ${selectedShift.name}`);
+      await actions.setActiveShift(shiftId);
+
+      // Refresh tất cả state
+      console.log(`🔄 Refreshing all states...`);
+      await Promise.all([
+        actions.refreshButtonState(),
+        actions.refreshWeeklyStatus(),
+        actions.refreshTimeDisplayInfo()
+      ]);
+
+      // Force refresh toàn bộ nếu đã reset data
+      if (shouldReset) {
+        console.log(`🔄 Force refreshing all status after reset...`);
+        await actions.forceRefreshAllStatus();
+
+        // Double check - verify reset worked
+        const verifyLogs = await storageService.getAttendanceLogsForDate(today);
+        const verifyStatus = await storageService.getDailyWorkStatusForDate(today);
+        console.log(`🔄 VERIFICATION after refresh - Logs: ${verifyLogs.length}, Status:`, verifyStatus);
+      }
+
+      // Setup lại reminders cho ca mới
+      console.log(`🔄 Setting up reminders for new shift...`);
+      await setupRemindersForNewShift(selectedShift);
+
+      const message = shouldReset
+        ? `✅ Đã áp dụng ca "${selectedShift.name}" và reset dữ liệu hôm nay`
+        : `✅ Đã áp dụng ca "${selectedShift.name}"`;
+
+      console.log(`🔄 Shift change completed successfully: ${message}`);
+      Alert.alert('🎉 Thành công', message);
+
+    } catch (error) {
+      console.error('❌ Error performing shift change:', error);
+      Alert.alert(t(currentLanguage, 'common.error'), 'Không thể thay đổi ca làm việc. Vui lòng thử lại.');
+    }
+  };
+
+  /**
+   * 🗑️ Reset toàn bộ dữ liệu hôm nay
+   */
+  const resetTodayData = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      console.log(`🗑️ STARTING comprehensive reset for ${today}`);
+
+      // Kiểm tra dữ liệu trước khi xóa
+      const beforeLogs = await storageService.getAttendanceLogsForDate(today);
+      const beforeStatus = await storageService.getDailyWorkStatusForDate(today);
+      console.log(`🗑️ BEFORE reset - Logs: ${beforeLogs.length}, Status:`, beforeStatus);
+
+      // 1. Xóa attendance logs hôm nay
+      console.log(`🗑️ Clearing attendance logs for ${today}...`);
+      await storageService.setAttendanceLogsForDate(today, []);
+
+      // 2. Xóa work status hôm nay (cả old và new format)
+      console.log(`🗑️ Clearing work status for ${today}...`);
+      const allStatus = await storageService.getDailyWorkStatusNew();
+      delete allStatus[today];
+      await storageService.setDailyWorkStatusNew(allStatus);
+
+      // 3. Xóa old format work status nếu có
+      try {
+        await storageService.saveData(`dailyWorkStatus_${today}`, null);
+      } catch (e) {
+        console.log(`🗑️ No old format status to clear for ${today}`);
+      }
+
+      // 4. Clear button state cache
+      console.log(`🗑️ Clearing button state cache...`);
+      await storageService.saveData('buttonStateCache', null);
+
+      // 5. Clear time display cache
+      console.log(`🗑️ Clearing time display cache...`);
+      await storageService.saveData('timeDisplayCache', null);
+
+      // 6. Clear weekly status cache
+      console.log(`🗑️ Clearing weekly status cache...`);
+      await storageService.saveData('weeklyStatusCache', null);
+
+      // 7. Reset manual override flags
+      console.log(`🗑️ Clearing manual override flags...`);
+      await storageService.saveData(`manualOverride_${today}`, null);
+
+      // 8. Clear any cached statistics
+      console.log(`🗑️ Clearing statistics cache...`);
+      await storageService.saveData('statisticsCache', null);
+
+      // Verify reset
+      const afterLogs = await storageService.getAttendanceLogsForDate(today);
+      const afterStatus = await storageService.getDailyWorkStatusForDate(today);
+      console.log(`🗑️ AFTER reset - Logs: ${afterLogs.length}, Status:`, afterStatus);
+
+      console.log('✅ Comprehensive data reset completed successfully');
+
+    } catch (error) {
+      console.error('❌ Error resetting today data:', error);
+      throw error;
+    }
+  };
+
+  /**
+   * 🔔 Setup reminders cho ca mới
+   */
+  const setupRemindersForNewShift = async (shift: Shift) => {
+    try {
+      console.log(`🔔 Setting up reminders for shift: ${shift.name}`);
+
+      // Import reminderSyncService và setup lại
+      const { reminderSyncService } = await import('../services/reminderSync');
+      await reminderSyncService.forceResetForNewShift(shift);
+
+      console.log('✅ Reminders setup completed');
+
+    } catch (error) {
+      console.error('❌ Error setting up reminders:', error);
+      // Không throw error vì đây không phải critical
+    }
+  };
+
   const handleSelectShift = async (shiftId: string) => {
     if (isRotationMode) {
       // Multi-select for rotation
@@ -83,12 +284,7 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
       });
     } else {
       // Single select for active shift
-      try {
-        await actions.setActiveShift(shiftId);
-        Alert.alert(t(currentLanguage, 'common.success'), t(currentLanguage, 'shifts.successSelected'));
-      } catch (error) {
-        Alert.alert(t(currentLanguage, 'common.error'), t(currentLanguage, 'shifts.errorSelect'));
-      }
+      await handleApplyNewShift(shiftId);
     }
   };
 
