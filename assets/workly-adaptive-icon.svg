@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="432" height="432" viewBox="0 0 432 432" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Adaptive Icon - Foreground only (no background) -->
+  <defs>
+    <linearGradient id="clockGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E3F2FD;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="handGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF5722;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#D84315;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Clock Face -->
+  <circle cx="216" cy="216" r="160" fill="url(#clockGradient)" stroke="#1976D2" stroke-width="4"/>
+  
+  <!-- Hour Markers -->
+  <g stroke="#1976D2" stroke-width="6" stroke-linecap="round">
+    <!-- 12 o'clock -->
+    <line x1="216" y1="80" x2="216" y2="100" />
+    <!-- 3 o'clock -->
+    <line x1="352" y1="216" x2="332" y2="216" />
+    <!-- 6 o'clock -->
+    <line x1="216" y1="352" x2="216" y2="332" />
+    <!-- 9 o'clock -->
+    <line x1="80" y1="216" x2="100" y2="216" />
+  </g>
+  
+  <!-- Smaller Hour Markers -->
+  <g stroke="#42A5F5" stroke-width="3" stroke-linecap="round">
+    <!-- 1 o'clock -->
+    <line x1="285" y1="115" x2="275" y2="125" />
+    <!-- 2 o'clock -->
+    <line x1="317" y1="147" x2="307" y2="157" />
+    <!-- 4 o'clock -->
+    <line x1="317" y1="285" x2="307" y2="275" />
+    <!-- 5 o'clock -->
+    <line x1="285" y1="317" x2="275" y2="307" />
+    <!-- 7 o'clock -->
+    <line x1="147" y1="317" x2="157" y2="307" />
+    <!-- 8 o'clock -->
+    <line x1="115" y1="285" x2="125" y2="275" />
+    <!-- 10 o'clock -->
+    <line x1="115" y1="147" x2="125" y2="157" />
+    <!-- 11 o'clock -->
+    <line x1="147" y1="115" x2="157" y2="125" />
+  </g>
+  
+  <!-- Clock Hands -->
+  <!-- Hour Hand (pointing to 9) -->
+  <line x1="216" y1="216" x2="160" y2="216" stroke="url(#handGradient)" stroke-width="8" stroke-linecap="round"/>
+  
+  <!-- Minute Hand (pointing to 12) -->
+  <line x1="216" y1="216" x2="216" y2="140" stroke="url(#handGradient)" stroke-width="6" stroke-linecap="round"/>
+  
+  <!-- Center Dot -->
+  <circle cx="216" cy="216" r="12" fill="url(#handGradient)"/>
+  
+  <!-- Work Badge/Icon -->
+  <g transform="translate(300, 140)">
+    <!-- Badge Background -->
+    <circle cx="0" cy="0" r="40" fill="#4CAF50" stroke="#FFFFFF" stroke-width="3"/>
+    
+    <!-- Briefcase Icon -->
+    <g fill="#FFFFFF">
+      <!-- Briefcase Body -->
+      <rect x="-20" y="-10" width="40" height="25" rx="4" ry="4"/>
+      <!-- Briefcase Handle -->
+      <rect x="-10" y="-18" width="20" height="10" rx="2" ry="2" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+      <!-- Briefcase Lock -->
+      <rect x="-4" y="-3" width="8" height="6" rx="1" ry="1"/>
+    </g>
+  </g>
+</svg>
