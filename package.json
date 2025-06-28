@@ -15,7 +15,13 @@
     "switch:normal": "node scripts/switch-expo-go.js normal",
     "bundle:optimize": "node scripts/optimize-bundle.js",
     "bundle:analyze": "npx expo export --dump-assetmap",
-    "start:optimized": "npx expo start --clear --minify"
+    "start:optimized": "npx expo start --clear --minify",
+    "build:guide": "node scripts/build-android.js",
+    "build:simple": "node scripts/simple-build.js",
+    "build:dev-android": "eas build --platform android --profile development",
+    "build:local-android": "eas build --platform android --profile development --local",
+    "prebuild:android": "npx expo prebuild --platform android",
+    "start:dev-client": "npx expo start --dev-client"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
@@ -37,7 +43,8 @@
     "react-native": "0.79.4",
     "react-native-paper": "^5.14.5",
     "react-native-safe-area-context": "5.4.0",
-    "react-native-screens": "~4.11.1"
+    "react-native-screens": "~4.11.1",
+    "expo-dev-client": "~5.2.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

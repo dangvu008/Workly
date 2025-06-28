@@ -18,6 +18,64 @@ Development Build là giải pháp tốt nhất để test ứng dụng Workly v
 
 ## 🛠️ Cách Setup Development Build
 
+### 📱 Build với Android Studio
+
+#### Bước 1: Cài đặt môi trường
+```bash
+# 1. Cài đặt EAS CLI
+npm install -g @expo/eas-cli
+
+# 2. Login vào Expo
+eas login
+
+# 3. Cài đặt expo-dev-client
+npx expo install expo-dev-client
+```
+
+#### Bước 2: Build Development APK
+```bash
+# Option 1: Cloud build (dễ nhất)
+npm run build:dev-android
+
+# Option 2: Local build (nhanh hơn, cần Android SDK)
+npm run build:local-android
+
+# Option 3: Prebuild cho Android Studio
+npm run prebuild:android
+```
+
+#### Bước 3: Cài đặt và chạy
+```bash
+# 1. Download APK từ Expo dashboard hoặc build output
+# 2. Cài đặt APK lên device/emulator
+# 3. Chạy development server
+npm run start:dev-client
+
+# 4. Scan QR code từ development build app
+```
+
+### 🔧 Setup Android Studio (cho local build)
+
+#### Environment Variables
+```bash
+# Windows
+ANDROID_HOME=C:\Users\%USERNAME%\AppData\Local\Android\Sdk
+ANDROID_SDK_ROOT=C:\Users\%USERNAME%\AppData\Local\Android\Sdk
+
+# PATH additions
+%ANDROID_HOME%\platform-tools
+%ANDROID_HOME%\tools
+%ANDROID_HOME%\tools\bin
+```
+
+#### Android Studio Setup
+1. Download Android Studio: https://developer.android.com/studio
+2. Install Android SDK (API 33+)
+3. Create virtual device (AVD) hoặc connect physical device
+4. Enable USB Debugging trên device
+
+## 🛠️ Cách Setup Development Build (Cũ)
+
 ### Bước 1: Cài Đặt EAS CLI
 ```bash
 npm install -g @expo/eas-cli
