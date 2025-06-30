@@ -18,10 +18,13 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+<<<<<<< HEAD
 # Prebuild
 /android/
 /ios/
 
+=======
+>>>>>>> 229e83784fd46ef5ffd97c8f8212653c1ebc9d7f
 # Metro
 .metro-health-check*
 
@@ -39,6 +42,7 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+<<<<<<< HEAD
 
 # IDE
 .vscode/
@@ -50,3 +54,5 @@ yarn-error.*
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+=======
+>>>>>>> 229e83784fd46ef5ffd97c8f8212653c1ebc9d7f
