@@ -4,7 +4,7 @@
   },
   "build": {
     "development": {
-      "developmentClient": true,
+      "developmentClient": false,
       "distribution": "internal",
       "android": {
         "gradleCommand": ":app:assembleDebug",
@@ -23,6 +23,13 @@
     "production": {
       "android": {
         "buildType": "app-bundle"
+      }
+    },
+    "apk": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
       }
     }
   },
