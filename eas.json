@@ -4,7 +4,7 @@
   },
   "build": {
     "development": {
-      "developmentClient": false,
+      "developmentClient": true,
       "distribution": "internal",
       "android": {
         "gradleCommand": ":app:assembleDebug",
@@ -26,6 +26,14 @@
       }
     },
     "apk": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      }
+    },
+    "standalone": {
+      "developmentClient": false,
       "distribution": "internal",
       "android": {
         "buildType": "apk",
